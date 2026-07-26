@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Kalkulator">
+    <meta name="description" content="Kalkulator Kalkulus - Turunan, Integral, dan Limit">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+    <title>Kalkulator Kalkulus</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <header class="app-header">
+            <h1>Kalkulator Kalkulus</h1>
+            <p class="subtitle">Turunan, Integral, dan Limit</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab active" data-tab="turunan">Turunan</button>
+            <button class="tab" data-tab="integral">Integral</button>
+            <button class="tab" data-tab="limit">Limit</button>
+        </nav>
+
+        <main class="content">
+            <div class="card" id="form-turunan">
+                <label for="turunan-fungsi">Fungsi f(x)</label>
+                <input type="text" id="turunan-fungsi" placeholder="x**3 + 2*x" inputmode="text" autocomplete="off">
+                <label for="turunan-orde">Orde Turunan</label>
+                <input type="number" id="turunan-orde" value="1" min="1" max="10" inputmode="numeric">
+                <label for="turunan-titik">Titik Evaluasi (opsional)</label>
+                <input type="text" id="turunan-titik" placeholder="misal: 1" inputmode="decimal">
+                <button class="btn" onclick="hitungTurunan()">Hitung</button>
+                <div class="hasil" id="hasil-turunan"></div>
+                <div class="plot-container hidden" id="plot-turunan">
+                    <img id="plot-turunan-img" alt="Plot Turunan" loading="lazy">
+                </div>
+            </div>
+
+            <div class="card hidden" id="form-integral">
+                <label for="integral-fungsi">Fungsi f(x)</label>
+                <input type="text" id="integral-fungsi" placeholder="x**2 + 1" inputmode="text" autocomplete="off">
+                <label for="integral-bawah">Batas Bawah (opsional)</label>
+                <input type="text" id="integral-bawah" placeholder="misal: 0" inputmode="decimal">
+                <label for="integral-atas">Batas Atas (opsional)</label>
+                <input type="text" id="integral-atas" placeholder="misal: 1" inputmode="decimal">
+                <button class="btn" onclick="hitungIntegral()">Hitung</button>
+                <div class="hasil" id="hasil-integral"></div>
+                <div class="plot-container hidden" id="plot-integral">
+                    <img id="plot-integral-img" alt="Plot Integral" loading="lazy">
+                </div>
+            </div>
+
+            <div class="card hidden" id="form-limit">
+                <label for="limit-fungsi">Fungsi f(x)</label>
+                <input type="text" id="limit-fungsi" placeholder="sin(x)/x" inputmode="text" autocomplete="off">
+                <label for="limit-titik">Titik x mendekati</label>
+                <input type="text" id="limit-titik" value="0" inputmode="decimal">
+                <label for="limit-arah">Arah</label>
+                <select id="limit-arah">
+                    <option value="+-">Kiri & Kanan</option>
+                    <option value="+">Kanan saja (+)</option>
+                    <option value="-">Kiri saja (-)</option>
+                </select>
+                <button class="btn" onclick="hitungLimit()">Hitung</button>
+                <div class="hasil" id="hasil-limit"></div>
+                <div class="plot-container hidden" id="plot-limit">
+                    <img id="plot-limit-img" alt="Plot Limit" loading="lazy">
+                </div>
+            </div>
+        </main>
+
+        <footer class="app-footer">
+            <button class="panduan-toggle" onclick="togglePanduan()">Panduan Sintaksis Fungsi</button>
+            <div class="card panduan hidden" id="panduan">
+                <h3>Panduan Sintaksis Fungsi Matematika</h3>
+                <p class="panduan-desc">Gunakan sintaks berikut saat memasukkan fungsi:</p>
+                <table class="panduan-table">
+                    <thead>
+                        <tr><th>Kategori</th><th>Input</th><th>Artinya</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Variabel</td><td><code>x</code></td><td>Variabel utama</td></tr>
+                        <tr><td>Pangkat</td><td><code>x**2</code> / <code>x^2</code></td><td>x supaya 2</td></tr>
+                        <tr><td>Perkalian</td><td><code>2*x</code></td><td>2x (wajib pakai *)</td></tr>
+                        <tr><td>Pembagian</td><td><code>1/x</code></td><td>1/x</td></tr>
+                        <tr><td>Konstanta</td><td><code>pi</code></td><td>&pi;</td></tr>
+                        <tr><td>Konstanta</td><td><code>e</code></td><td>Bilangan Euler</td></tr>
+                        <tr><td>Trigonometri</td><td><code>sin(x)</code> <code>cos(x)</code> <code>tan(x)</code></td><td>sin, cos, tan</td></tr>
+                        <tr><td>Invers Trig</td><td><code>asin(x)</code> <code>acos(x)</code> <code>atan(x)</code></td><td>arcsin, arccos, arctan</td></tr>
+                        <tr><td>Ln</td><td><code>log(x)</code> / <code>ln(x)</code></td><td>Logaritma natural</td></tr>
+                        <tr><td>Log10</td><td><code>log10(x)</code></td><td>Log basis 10</td></tr>
+                        <tr><td>Eksponen</td><td><code>exp(x)</code></td><td>e pangkat x</td></tr>
+                        <tr><td>Akar</td><td><code>sqrt(x)</code></td><td>Akar kuadrat</td></tr>
+                        <tr><td>Absolut</td><td><code>Abs(x)</code></td><td>|x|</td></tr>
+                    </tbody>
+                </table>
+                <h4>Contoh:</h4>
+                <div class="panduan-contoh">
+                    <code>x**3 - 2*x + 1</code>
+                    <code>sin(x)/x</code>
+                    <code>exp(-x**2)</code>
+                    <code>log(x**2 + 1)</code>
+                    <code>Abs(x-2)</code>
+                </div>
+                <p class="panduan-note">Gunakan <code>*</code> untuk perkalian dan kurung yang benar.</p>
+            </div>
+        </footer>
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
