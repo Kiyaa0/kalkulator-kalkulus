@@ -2,117 +2,606 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Kalkulator">
-    <meta name="description" content="Kalkulator Kalkulus - Turunan, Integral, dan Limit">
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
-    <title>CalcKu</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1B2838">
+    <meta name="description" content="CalcKu — Hitung turunan, integral, limit dengan jelas.">
+    <meta property="og:title" content="CalcKu — Kalkulus">
+    <meta property="og:description" content="Turunan, Integral, Limit.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/static/icon-512.png">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <title>CalcKu — Kalkulus</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'crt-green': '#33FF00',
+                        'phosphor-amber': '#FFB000',
+                        'charcoal': '#333333',
+                        'deep-navy': '#1B2838',
+                        'warm-beige': '#D2B48C',
+                        'tape-red': '#CC0000',
+                        'static-grey': '#999999',
+                        'off-white': '#E8E0D0',
+                    },
+                    fontFamily: {
+                        'cassette': ['VT323', 'monospace'],
+                        'mono': ['JetBrains Mono', 'monospace'],
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+    <style>
+        :root{
+            --crt-green-cassette:#33FF00;
+            --phosphor-amber-cassette:#FFB000;
+            --charcoal-cassette:#333333;
+            --deep-navy-cassette:#1B2838;
+        }
+        /* USER FRIENDLY BASE — readable, high contrast */
+        body{
+            background:#1B2838;
+            color:#E8E0D0; /* off-white for max readability, not neon green */
+            font-family:'Inter', system-ui, -apple-system, sans-serif;
+            font-size:15px;
+            line-height:1.6;
+            overflow-x:hidden;
+            -webkit-font-smoothing:antialiased;
+            text-rendering:optimizeLegibility;
+        }
+        ::selection{background:#FFB000;color:#1B2838}
+        /* CRT overlay — SUBTLE, tapi keliatan bedanya */
+        .crt-overlay{
+            position:fixed;inset:0;pointer-events:none;z-index:9999;
+            background-image:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.10) 2px, rgba(0,0,0,0.10) 4px);
+            opacity:0.42;
+            transition:opacity 0.2s;
+        }
+        .crt-flicker{
+            position:fixed;inset:0;pointer-events:none;z-index:9998;
+            background:rgba(51,255,0,0.022);
+            animation:flicker 0.45s linear infinite;
+            opacity:0.30;
+            transition:opacity 0.2s;
+        }
+        @keyframes flicker{0%,100%{opacity:0.26} 50%{opacity:0.10}}
+        /* CRT OFF — beneran hilang, gampang dites */
+        body.crt-off .crt-overlay, body.crt-off .crt-flicker{ opacity:0 !important; pointer-events:none; }
+        body.crt-off{ filter:none; }
+        body:not(.crt-off) .crt-overlay{ opacity:0.42; }
+        .glow-green{ text-shadow:0 0 6px rgba(51,255,0,0.45); }
+        .card-border{ border:1.5px solid #334155; border-radius:10px; background:#1e293b; }
+        .led{width:7px;height:7px;border-radius:50%;background:#334155;}
+        .led.on{background:#33FF00;box-shadow:0 0 6px #33FF00}
+        .btn-primary{
+            background:#33FF00;color:#0f172a;border:none;
+            border-radius:8px;
+            font-family:'JetBrains Mono', monospace;
+            font-weight:700;
+            letter-spacing:0.02em;
+            transition:all 0.18s;
+            box-shadow:0 2px 0 #1e3a1e, 0 4px 12px rgba(51,255,0,0.25);
+        }
+        .btn-primary:hover{ background:#2ee600; transform:translateY(-1px); box-shadow:0 3px 0 #1e3a1e, 0 6px 16px rgba(51,255,0,0.3); }
+        .btn-primary:active{ transform:translateY(1px); box-shadow:0 1px 0 #1e3a1e; }
+        .btn-primary:disabled{ opacity:0.6; cursor:not-allowed; transform:none; }
+        /* Inputs — HIGH readability */
+        .input-field{
+            background:#0f172a;
+            border:1.5px solid #334155;
+            border-radius:8px;
+            color:#f1f5f9;
+            font-family:'JetBrains Mono', monospace;
+            font-size:15px;
+            font-weight:500;
+            transition:all 0.18s;
+        }
+        .input-field::placeholder{ color:#64748b; }
+        .input-field:focus{
+            outline:none;
+            border-color:#33FF00;
+            box-shadow:0 0 0 3px rgba(51,255,0,0.18);
+            background:#0f1f2f;
+        }
+        .input-field:focus::placeholder{ color:#475569; }
+        /* Labels — clear, high contrast */
+        .label{
+            font-family:'Inter', sans-serif;
+            font-size:13px;
+            font-weight:600;
+            letter-spacing:0.02em;
+            color:#e2e8f0;
+            margin-bottom:6px;
+            display:block;
+        }
+        .label small{ font-weight:400; color:#94a3b8; font-size:12px; }
+        /* Helper text */
+        .help{ font-size:12px; color:#94a3b8; line-height:1.5; margin-top:6px; }
+        .help code{ background:#0f172a; border:1px solid #334155; padding:1px 5px; border-radius:4px; color:#33FF00; font-family:'JetBrains Mono', monospace; font-size:11px; }
+        ::-webkit-scrollbar{width:8px;height:8px}
+        ::-webkit-scrollbar-track{background:#1B2838}
+        ::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
+        ::-webkit-scrollbar-thumb:hover{background:#475569}
+        /* KaTeX results — larger, clearer */
+        .katex{ font-size:1.15em !important; }
+        .katex-display{ margin:0.6em 0 !important; }
+        /* Tab — clear active/inactive */
+        .tab-active{ background:#FFB000 !important; color:#1B2838 !important; border-color:#FFB000 !important; font-weight:700; box-shadow:0 2px 8px rgba(255,176,0,0.25); }
+        .tab-inactive{ background:#1e293b !important; color:#cbd5e1 !important; border:1.5px solid #334155 !important; }
+        .tab-inactive:hover{ background:#252f45 !important; color:#f1f5f9 !important; border-color:#475569 !important; }
+    </style>
 </head>
-<body>
-    <div class="app">
-        <header class="app-header">
-            <h1>CalcKu</h1>
-            <p class="subtitle">Turunan, Integral, dan Limit</p>
-        </header>
+<body class="min-h-screen flex flex-col">
+    <div class="crt-overlay"></div>
+    <div class="crt-flicker"></div>
 
-        <nav class="tabs">
-            <button class="tab active" data-tab="turunan">Turunan</button>
-            <button class="tab" data-tab="integral">Integral</button>
-            <button class="tab" data-tab="limit">Limit</button>
-        </nav>
+    <!-- HEADER — clean -->
+    <header class="relative z-40 bg-deep-navy border-b border-[#243044] sticky top-0 backdrop-blur-md bg-opacity-95">
+        <div class="max-w-[720px] mx-auto px-4 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-[#0f172a] border border-[#334155] flex items-center justify-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#33FF00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="5.5" width="18" height="13" rx="2"></rect>
+                        <circle cx="8.2" cy="12" r="2"></circle>
+                        <circle cx="15.8" cy="12" r="2"></circle>
+                        <path d="M8.2 10.2h7.6M10 14h4" stroke="#FFB000" stroke-width="1.3"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="font-cassette text-[22px] leading-none tracking-wide text-off-white">CalcKu</div>
+                    <div class="font-mono text-[11px] tracking-[0.14em] text-static-grey -mt-0.5">KALKULUS</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="crtToggle" class="cursor-pointer bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] rounded-[6px] px-2.5 py-1 font-mono text-[11px] text-slate-300 hover:text-off-white transition-all">CRT: ON</button>
+                <span class="hidden sm:inline-flex items-center gap-1.5 bg-[#0f172a] border border-[#1e293b] rounded-[6px] px-2.5 py-1 font-mono text-[11px] text-crt-green"><span class="led on"></span> ONLINE</span>
+            </div>
+        </div>
+    </header>
 
-        <main class="content">
-            <div class="card" id="form-turunan">
-                <label for="turunan-fungsi">Fungsi f(x)</label>
-                <input type="text" id="turunan-fungsi" placeholder="x**3 + 2*x" inputmode="text" autocomplete="off">
-                <label for="turunan-orde">Orde Turunan</label>
-                <input type="number" id="turunan-orde" value="1" min="1" max="10" inputmode="numeric">
-                <label for="turunan-titik">Titik Evaluasi (opsional)</label>
-                <input type="text" id="turunan-titik" placeholder="misal: 1" inputmode="decimal">
-                <button class="btn" onclick="hitungTurunan()">Hitung</button>
-                <div class="hasil" id="hasil-turunan"></div>
-                <div class="plot-container hidden" id="plot-turunan">
-                    <img id="plot-turunan-img" alt="Plot Turunan" loading="lazy">
+    <!-- MAIN -->
+    <main class="relative z-10 flex-1 max-w-[720px] w-full mx-auto px-4 py-6 sm:py-8">
+        <!-- Intro — ringkas -->
+        <div class="text-center mb-5">
+            <h1 class="font-cassette text-[30px] sm:text-[36px] leading-none text-crt-green glow-green">Kalkulus</h1>
+            <p class="font-sans text-[14px] text-slate-300 mt-1">Turunan · Integral · Limit</p>
+        </div>
+
+        <!-- Tabs — big, clear -->
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <button class="tab active tab-active rounded-lg px-2 py-3 font-mono text-[13px] sm:text-[14px] cursor-pointer transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-tab="turunan">
+                <span class="text-[18px] leading-none">d/dx</span><span>TURUNAN</span>
+            </button>
+            <button class="tab tab-inactive rounded-lg px-2 py-3 font-mono text-[13px] sm:text-[14px] cursor-pointer transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-tab="integral">
+                <span class="text-[18px] leading-none">∫</span><span>INTEGRAL</span>
+            </button>
+            <button class="tab tab-inactive rounded-lg px-2 py-3 font-mono text-[13px] sm:text-[14px] cursor-pointer transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-tab="limit">
+                <span class="text-[13px] font-bold leading-none">LIM</span><span>LIMIT</span>
+            </button>
+        </div>
+
+        <!-- TURUNAN CARD -->
+        <div class="card card-border p-4 sm:p-5" id="form-turunan">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-sans font-semibold text-[15px] text-off-white flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-md bg-crt-green/15 border border-crt-green/30 flex items-center justify-center text-crt-green text-[10px]">d/dx</span>
+                    Turunan
+                </h2>
+                <span class="font-mono text-[11px] bg-[#0f172a] border border-[#334155] rounded-[6px] px-2.5 py-1 text-crt-green">READY</span>
+            </div>
+
+            <label class="label">Fungsi f(x) <small>— contoh: x**3 + 2*x, sin(x)/x</small></label>
+            <input id="turunan-fungsi" type="text" placeholder="Contoh: x**3 + 2*x" autocomplete="off" class="input-field w-full px-3.5 py-3">
+            <div id="valid-turunan" class="hidden mt-2"></div>
+            <div class="help">Gunakan <code>**</code> atau <code>^</code> untuk pangkat, <code>*</code> wajib untuk perkalian.</div>
+            <div class="mt-2 flex flex-wrap gap-1.5">
+                <button onclick="fillTurunan('x**3 + 2*x')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">x³+2x</button>
+                <button onclick="fillTurunan('sin(x)/x')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">sin(x)/x</button>
+                <button onclick="fillTurunan('exp(-x**2)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">exp(-x²)</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mt-4">
+                <div>
+                    <label class="label">Orde turunan</label>
+                    <input id="turunan-orde" type="number" value="1" min="1" max="10" class="input-field w-full px-3.5 py-3 text-center font-bold">
+                    <div class="help text-center">1 – 10</div>
+                </div>
+                <div>
+                    <label class="label">Titik evaluasi <small>opsional</small></label>
+                    <input id="turunan-titik" type="text" placeholder="misal: 2" class="input-field w-full px-3.5 py-3">
+                    <div class="help">Kosongkan jika tidak perlu</div>
                 </div>
             </div>
 
-            <div class="card hidden" id="form-integral">
-                <label for="integral-fungsi">Fungsi f(x)</label>
-                <input type="text" id="integral-fungsi" placeholder="x**2 + 1" inputmode="text" autocomplete="off">
-                <label for="integral-bawah">Batas Bawah (opsional)</label>
-                <input type="text" id="integral-bawah" placeholder="misal: 0" inputmode="decimal">
-                <label for="integral-atas">Batas Atas (opsional)</label>
-                <input type="text" id="integral-atas" placeholder="misal: 1" inputmode="decimal">
-                <button class="btn" onclick="hitungIntegral()">Hitung</button>
-                <div class="hasil" id="hasil-integral"></div>
-                <div class="plot-container hidden" id="plot-integral">
-                    <img id="plot-integral-img" alt="Plot Integral" loading="lazy">
+            <button onclick="hitungTurunan()" class="btn-primary w-full mt-5 py-3.5 text-[15px] cursor-pointer flex items-center justify-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                HITUNG TURUNAN
+            </button>
+
+            <div id="hasil-turunan" class="mt-4 bg-[#0f172a] border border-[#1e293b] rounded-lg p-4 min-h-[64px] flex items-center justify-center text-center">
+                <span class="font-mono text-[13px] text-slate-400">Hasil akan tampil di sini — LaTeX + grafik</span>
+            </div>
+            <div id="actions-turunan" class="hidden mt-2 flex gap-2">
+                <button onclick="copyLatex('turunan')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-crt-green/50 font-mono text-[12px] text-slate-300 hover:text-crt-green cursor-pointer transition-all">⧉ Copy LaTeX</button>
+                <button onclick="downloadPlot('turunan')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all">⬇ Download Grafik</button>
+            </div>
+            <div id="history-turunan" class="hidden mt-3"></div>
+            <div id="plot-turunan" class="hidden mt-3 rounded-lg border border-[#334155] bg-[#0f172a] p-2 overflow-hidden"><img id="plot-turunan-img" alt="Grafik Turunan" loading="lazy" decoding="async" class="w-full rounded-md"></div>
+        </div>
+
+        <!-- INTEGRAL CARD -->
+        <div class="card hidden card-border p-4 sm:p-5" id="form-integral">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-sans font-semibold text-[15px] text-off-white flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-md bg-phosphor-amber/15 border border-phosphor-amber/30 flex items-center justify-center text-phosphor-amber text-[16px]">∫</span>
+                    Integral
+                </h2>
+                <span class="font-mono text-[11px] bg-[#0f172a] border border-[#334155] rounded-[6px] px-2.5 py-1 text-phosphor-amber">READY</span>
+            </div>
+
+            <label class="label">Fungsi f(x)</label>
+            <input id="integral-fungsi" type="text" placeholder="Contoh: x**2 + 1" autocomplete="off" class="input-field w-full px-3.5 py-3">
+            <div id="valid-integral" class="hidden mt-2"></div>
+            <div class="mt-2 flex flex-wrap gap-1.5">
+                <button onclick="fillIntegral('x**2 + 1')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-phosphor-amber/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber transition-all">x²+1</button>
+                <button onclick="fillIntegral('exp(x)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-phosphor-amber/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber transition-all">exp(x)</button>
+                <button onclick="fillIntegral('1/x')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-phosphor-amber/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber transition-all">1/x</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mt-4">
+                <div>
+                    <label class="label">Batas bawah <small>opsional</small></label>
+                    <input id="integral-bawah" type="text" placeholder="0" class="input-field w-full px-3.5 py-3">
+                </div>
+                <div>
+                    <label class="label">Batas atas <small>opsional</small></label>
+                    <input id="integral-atas" type="text" placeholder="1" class="input-field w-full px-3.5 py-3">
+                </div>
+            </div>
+            <div class="help">Isi keduanya untuk integral tentu (luas area), kosongkan untuk tak tentu (+ C).</div>
+
+            <button onclick="hitungIntegral()" class="btn-primary w-full mt-5 py-3.5 text-[15px] cursor-pointer flex items-center justify-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                HITUNG INTEGRAL
+            </button>
+
+            <div id="hasil-integral" class="mt-4 bg-[#0f172a] border border-[#1e293b] rounded-lg p-4 min-h-[64px] flex items-center justify-center text-center">
+                <span class="font-mono text-[13px] text-slate-400">Hasil integral + grafik area</span>
+            </div>
+            <div id="actions-integral" class="hidden mt-2 flex gap-2">
+                <button onclick="copyLatex('integral')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-crt-green/50 font-mono text-[12px] text-slate-300 hover:text-crt-green cursor-pointer transition-all">⧉ Copy LaTeX</button>
+                <button onclick="downloadPlot('integral')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all">⬇ Download</button>
+            </div>
+            <div id="history-integral" class="hidden mt-3"></div>
+            <div id="plot-integral" class="hidden mt-3 rounded-lg border border-[#334155] bg-[#0f172a] p-2 overflow-hidden"><img id="plot-integral-img" alt="Grafik Integral" loading="lazy" decoding="async" class="w-full rounded-md"></div>
+        </div>
+
+        <!-- LIMIT CARD -->
+        <div class="card hidden card-border p-4 sm:p-5" id="form-limit">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-sans font-semibold text-[15px] text-off-white flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-md bg-tape-red/15 border border-tape-red/30 flex items-center justify-center text-tape-red font-mono text-[11px] font-bold">LIM</span>
+                    Limit
+                </h2>
+                <span class="font-mono text-[11px] bg-[#0f172a] border border-[#334155] rounded-[6px] px-2.5 py-1 text-tape-red">READY</span>
+            </div>
+
+            <label class="label">Fungsi f(x)</label>
+            <input id="limit-fungsi" type="text" placeholder="Contoh: sin(x)/x" autocomplete="off" class="input-field w-full px-3.5 py-3">
+            <div id="valid-limit" class="hidden mt-2"></div>
+            <div class="mt-2 flex flex-wrap gap-1.5">
+                <button onclick="fillLimit('sin(x)/x')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-tape-red/40 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-tape-red transition-all">sin(x)/x</button>
+                <button onclick="fillLimit('(x**2 - 1)/(x - 1)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-tape-red/40 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-tape-red transition-all">(x²-1)/(x-1)</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mt-4">
+                <div>
+                    <label class="label">Mendekati x =</label>
+                    <input id="limit-titik" type="text" value="0" class="input-field w-full px-3.5 py-3 text-center font-bold">
+                </div>
+                <div>
+                    <label class="label">Arah</label>
+                    <select id="limit-arah" class="input-field w-full px-3.5 py-3 cursor-pointer">
+                        <option value="+-">Kiri & Kanan (dua sisi)</option>
+                        <option value="+">Kanan saja (+)</option>
+                        <option value="-">Kiri saja (-)</option>
+                    </select>
                 </div>
             </div>
 
-            <div class="card hidden" id="form-limit">
-                <label for="limit-fungsi">Fungsi f(x)</label>
-                <input type="text" id="limit-fungsi" placeholder="sin(x)/x" inputmode="text" autocomplete="off">
-                <label for="limit-titik">Titik x mendekati</label>
-                <input type="text" id="limit-titik" value="0" inputmode="decimal">
-                <label for="limit-arah">Arah</label>
-                <select id="limit-arah">
-                    <option value="+-">Kiri & Kanan</option>
-                    <option value="+">Kanan saja (+)</option>
-                    <option value="-">Kiri saja (-)</option>
-                </select>
-                <button class="btn" onclick="hitungLimit()">Hitung</button>
-                <div class="hasil" id="hasil-limit"></div>
-                <div class="plot-container hidden" id="plot-limit">
-                    <img id="plot-limit-img" alt="Plot Limit" loading="lazy">
-                </div>
-            </div>
-        </main>
+            <button onclick="hitungLimit()" class="btn-primary w-full mt-5 py-3.5 text-[15px] cursor-pointer flex items-center justify-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                HITUNG LIMIT
+            </button>
 
-        <footer class="app-footer">
-            <button class="panduan-toggle" onclick="togglePanduan()">Panduan Sintaksis Fungsi</button>
-            <div class="card panduan hidden" id="panduan">
-                <h3>Panduan Sintaksis Fungsi Matematika</h3>
-                <p class="panduan-desc">Gunakan sintaks berikut saat memasukkan fungsi:</p>
-                <table class="panduan-table">
-                    <thead>
-                        <tr><th>Kategori</th><th>Input</th><th>Artinya</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>Variabel</td><td><code>x</code></td><td>Variabel utama</td></tr>
-                        <tr><td>Pangkat</td><td><code>x**2</code> / <code>x^2</code></td><td>x supaya 2</td></tr>
-                        <tr><td>Perkalian</td><td><code>2*x</code></td><td>2x (wajib pakai *)</td></tr>
-                        <tr><td>Pembagian</td><td><code>1/x</code></td><td>1/x</td></tr>
-                        <tr><td>Konstanta</td><td><code>pi</code></td><td>&pi;</td></tr>
-                        <tr><td>Konstanta</td><td><code>e</code></td><td>Bilangan Euler</td></tr>
-                        <tr><td>Trigonometri</td><td><code>sin(x)</code> <code>cos(x)</code> <code>tan(x)</code></td><td>sin, cos, tan</td></tr>
-                        <tr><td>Invers Trig</td><td><code>asin(x)</code> <code>acos(x)</code> <code>atan(x)</code></td><td>arcsin, arccos, arctan</td></tr>
-                        <tr><td>Ln</td><td><code>log(x)</code> / <code>ln(x)</code></td><td>Logaritma natural</td></tr>
-                        <tr><td>Log10</td><td><code>log10(x)</code></td><td>Log basis 10</td></tr>
-                        <tr><td>Eksponen</td><td><code>exp(x)</code></td><td>e pangkat x</td></tr>
-                        <tr><td>Akar</td><td><code>sqrt(x)</code></td><td>Akar kuadrat</td></tr>
-                        <tr><td>Absolut</td><td><code>Abs(x)</code></td><td>|x|</td></tr>
-                    </tbody>
-                </table>
-                <h4>Contoh:</h4>
-                <div class="panduan-contoh">
-                    <code>x**3 - 2*x + 1</code>
-                    <code>sin(x)/x</code>
-                    <code>exp(-x**2)</code>
-                    <code>log(x**2 + 1)</code>
-                    <code>Abs(x-2)</code>
-                </div>
-                <p class="panduan-note">Gunakan <code>*</code> untuk perkalian dan kurung yang benar.</p>
+            <div id="hasil-limit" class="mt-4 bg-[#0f172a] border border-[#1e293b] rounded-lg p-4 min-h-[64px] flex items-center justify-center text-center">
+                <span class="font-mono text-[13px] text-slate-400">Hasil limit + grafik titik dekat</span>
             </div>
-        </footer>
-    </div>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+            <div id="actions-limit" class="hidden mt-2 flex gap-2">
+                <button onclick="copyLatex('limit')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-crt-green/50 font-mono text-[12px] text-slate-300 hover:text-crt-green cursor-pointer transition-all">⧉ Copy LaTeX</button>
+                <button onclick="downloadPlot('limit')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all">⬇ Download</button>
+            </div>
+            <div id="history-limit" class="hidden mt-3"></div>
+            <div id="plot-limit" class="hidden mt-3 rounded-lg border border-[#334155] bg-[#0f172a] p-2 overflow-hidden"><img id="plot-limit-img" alt="Grafik Limit" loading="lazy" decoding="async" class="w-full rounded-md"></div>
+        </div>
+
+        <!-- Panduan — readable -->
+        <div class="mt-5 rounded-lg border border-[#334155] bg-[#1e293b] p-4">
+            <button onclick="togglePanduan()" class="w-full flex items-center justify-between py-1 cursor-pointer group">
+                <span class="font-sans font-semibold text-[14px] text-off-white flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB000" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                    Panduan
+                </span>
+                <span class="font-mono text-[12px] text-phosphor-amber group-hover:text-amber-300 flex items-center gap-1">LIHAT <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span>
+            </button>
+            <div id="panduan" class="hidden mt-4 space-y-4">
+                <!-- Tabel ringkas — kotak -->
+                <div class="overflow-hidden rounded-lg border border-[#334155]">
+                    <table class="w-full text-left border-collapse font-sans text-[13px]">
+                        <thead class="bg-[#0f172a]">
+                            <tr class="font-mono text-[11px] tracking-widest text-phosphor-amber">
+                                <th class="px-3 py-2.5 border-b border-[#334155]">Kategori</th>
+                                <th class="px-3 py-2.5 border-b border-[#334155]">Input</th>
+                                <th class="px-3 py-2.5 border-b border-[#334155]">Arti</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#1e293b] text-[13px]">
+                            <tr><td class="px-3 py-2.5 font-semibold text-off-white">Variabel</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-crt-green/30 text-crt-green rounded px-1.5 py-0.5 font-mono text-[12px]">x</code></td><td class="px-3 py-2.5 text-slate-300">Variabel utama — hanya <code class="text-crt-green">x</code> yang didukung</td></tr>
+                            <tr><td class="px-3 py-2.5 font-semibold text-off-white">Pangkat</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-phosphor-amber/30 text-phosphor-amber rounded px-1.5 py-0.5 font-mono text-[12px]">x**2</code> atau <code class="bg-[#1e293b] border border-phosphor-amber/30 text-phosphor-amber rounded px-1.5 py-0.5 font-mono text-[12px]">x^2</code></td><td class="px-3 py-2.5 text-slate-300"><code>^</code> otomatis jadi <code>**</code> → x²</td></tr>
+                            <tr><td class="px-3 py-2.5 font-semibold text-off-white">Perkalian</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-crt-green/30 text-crt-green rounded px-1.5 py-0.5 font-mono text-[12px]">2*x</code></td><td class="px-3 py-2.5 text-slate-300">Wajib pakai <code>*</code> — <code>2x</code> atau <code>x*y</code> akan error kalau tanpa <code>*</code></td></tr>
+                            <tr><td class="px-3 py-2.5 font-semibold text-off-white">Pembagian</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-slate-600 text-slate-200 rounded px-1.5 py-0.5 font-mono text-[12px]">1/x</code></td><td class="px-3 py-2.5 text-slate-300">Contoh: <code>(x^2+1)/(x-3)</code> pakai kurung</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Konstanta & Trigonometri -->
+                <div class="grid sm:grid-cols-2 gap-3">
+                    <div class="bg-[#0f172a] rounded-lg border border-[#334155] p-3.5">
+                        <div class="font-sans font-semibold text-[13px] text-crt-green mb-2 flex items-center gap-2"><span class="w-6 h-6 rounded bg-crt-green/15 border border-crt-green/30 flex items-center justify-center text-[12px]">π</span> Konstanta</div>
+                        <div class="space-y-1.5 font-mono text-[12px] leading-relaxed">
+                            <div class="flex justify-between"><code class="text-phosphor-amber">pi</code><span class="text-slate-300">→ π</span></div>
+                            <div class="flex justify-between"><code class="text-phosphor-amber">e</code><span class="text-slate-300">→ e (Euler, auto jadi <code class="text-crt-green">E</code>)</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-[#0f172a] rounded-lg border border-[#334155] p-3.5">
+                        <div class="font-sans font-semibold text-[13px] text-phosphor-amber mb-2">Trigonometri</div>
+                        <div class="flex flex-wrap gap-1.5 font-mono text-[12px]">
+                            <button onclick="fillActive('sin(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-crt-green text-crt-green rounded px-2 py-1 hover:bg-crt-green/10 transition-all">sin(x)</button>
+                            <button onclick="fillActive('cos(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-crt-green text-crt-green rounded px-2 py-1 hover:bg-crt-green/10 transition-all">cos(x)</button>
+                            <button onclick="fillActive('tan(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-crt-green text-crt-green rounded px-2 py-1 hover:bg-crt-green/10 transition-all">tan(x)</button>
+                            <button onclick="fillActive('asin(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-phosphor-amber text-phosphor-amber rounded px-2 py-1 hover:bg-phosphor-amber/10 transition-all">asin(x)</button>
+                            <button onclick="fillActive('acos(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-phosphor-amber text-phosphor-amber rounded px-2 py-1 hover:bg-phosphor-amber/10 transition-all">acos(x)</button>
+                            <button onclick="fillActive('atan(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-phosphor-amber text-phosphor-amber rounded px-2 py-1 hover:bg-phosphor-amber/10 transition-all">atan(x)</button>
+                        </div>
+                        <div class="font-sans text-[11px] text-slate-400 mt-2">→ klik untuk masukkan</div>
+                    </div>
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-3">
+                    <div class="bg-[#0f172a] rounded-lg border border-[#334155] p-3.5">
+                        <div class="font-sans font-semibold text-[13px] text-phosphor-amber mb-2">Logaritma & Eksponensial</div>
+                        <div class="space-y-1 font-mono text-[12px] leading-relaxed text-slate-300">
+                            <div><code class="text-crt-green">log(x)</code> atau <code class="text-crt-green">ln(x)</code> → ln(x) natural</div>
+                            <div><code class="text-phosphor-amber">log10(x)</code> → log₁₀(x)</div>
+                            <div><code class="text-crt-green">exp(x)</code> → eˣ</div>
+                        </div>
+                    </div>
+                    <div class="bg-[#0f172a] rounded-lg border border-[#334155] p-3.5">
+                        <div class="font-sans font-semibold text-[13px] text-off-white mb-2">Fungsi Lain</div>
+                        <div class="space-y-1 font-mono text-[12px] leading-relaxed text-slate-300">
+                            <div><code class="text-crt-green">sqrt(x)</code> → √x</div>
+                            <div><code class="text-phosphor-amber">Abs(x)</code> → |x| (A besar, case-sensitive)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contoh — clickable -->
+                <div>
+                    <div class="font-sans font-semibold text-[13px] text-off-white mb-2">Contoh Penggunaan — klik untuk isi:</div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="fillTurunan('x**3 - 2*x + 1')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-crt-green/30 hover:border-crt-green text-crt-green rounded-[6px] px-3 py-1.5 transition-all">x**3 - 2*x + 1</button>
+                        <button onclick="fillLimit('sin(x)/x')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-phosphor-amber/30 hover:border-phosphor-amber text-phosphor-amber rounded-[6px] px-3 py-1.5 transition-all">sin(x)/x</button>
+                        <button onclick="fillTurunan('exp(-x**2)')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-crt-green/30 hover:border-crt-green text-crt-green rounded-[6px] px-3 py-1.5 transition-all">exp(-x**2)</button>
+                        <button onclick="fillTurunan('log(x**2 + 1)')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-slate-600 hover:border-slate-400 text-slate-300 rounded-[6px] px-3 py-1.5 transition-all">log(x**2 + 1)</button>
+                        <button onclick="fillTurunan('Abs(x-2)')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-slate-600 hover:border-slate-400 text-slate-300 rounded-[6px] px-3 py-1.5 transition-all">Abs(x-2)</button>
+                        <button onclick="fillTurunan('(x**2 + 1)/(x - 3)')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-crt-green/30 hover:border-crt-green text-crt-green rounded-[6px] px-3 py-1.5 transition-all">(x^2+1)/(x-3)</button>
+                    </div>
+                </div>
+
+                <!-- Warning -->
+                <div class="flex gap-2.5 bg-amber-500/10 border border-phosphor-amber/30 rounded-lg p-3">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFB000" stroke-width="2" class="shrink-0 mt-0.5"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.3L3.6 14a2 2 0 001.7 3h13.4a2 2 0 001.7-3L13.7 3.3a2 2 0 00-3.4 0z"/></svg>
+                    <p class="font-sans text-[12.5px] leading-[1.6] text-amber-100/90">
+                        <b class="text-phosphor-amber">Penting:</b> Selalu gunakan <code class="bg-[#1e293b] border border-phosphor-amber/30 text-phosphor-amber rounded px-1 py-0.5 font-mono text-[11px]">*</code> untuk perkalian eksplisit dan <b class="text-off-white">kurung yang benar</b> — contoh salah: <code class="text-tape-red">2x</code> → benar: <code class="text-crt-green">2*x</code>. Ini mencegah kesalahan penguraian SymPy.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="relative z-10 mt-6 border-t border-[#243044] bg-[#0f172a] py-5">
+        <div class="max-w-[720px] mx-auto px-4 flex flex-col sm:flex-row justify-between gap-2 font-mono text-[12px]">
+            <div class="text-slate-400">© 2026 <span class="text-off-white font-semibold">CalcKu</span> — Kalkulus jadi jelas.</div>
+            <div class="text-slate-500 flex gap-3"><span class="text-crt-green">● ONLINE</span> <span class="hidden sm:inline">Cassette Futurism · Readable Mode</span></div>
+        </div>
+    </footer>
+
+    <script>
+        // === efisien: cache, debounce, CRT toggle, validasi ===
+        const $=id=>document.getElementById(id);
+        const LS_H='calcku-h', LS_CRT='calcku-crt';
+        const last={};
+        const debounce=(f,d)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f(...a),d)}};
+        const autoFix=s=>s.replaceAll('^','**').replace(/(\d)([a-zA-Z])/g,'$1*$2').replace(/(x)\(/g,'$1*(').replace(/\)\(/g,')*(').replace(/\)([a-zA-Z])/g,')*$1').replace(/(\d)\(/g,'$1*(');
+        const hasMissingStar=s=>/(\d[a-zA-Z]|\d\(|x\(|\)[a-zA-Z0-9(])/.test(s);
+        // Tabs efisien
+        document.querySelectorAll('.tab').forEach(tab=>{
+            tab.addEventListener('click', ()=>{
+                document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('tab-active','active');t.classList.add('tab-inactive')});
+                document.querySelectorAll('.card').forEach(c=>c.classList.add('hidden'));
+                tab.classList.remove('tab-inactive');tab.classList.add('tab-active','active');
+                const tb=tab.dataset.tab; $('form-'+tb).classList.remove('hidden');
+                try{renderHistory(tb)}catch(e){}
+            });
+        });
+        function fillTurunan(v){ $('turunan-fungsi').value=v; $('turunan-fungsi').dispatchEvent(new Event('input')); $('turunan-fungsi').focus(); }
+        function fillIntegral(v){ $('integral-fungsi').value=v; $('integral-fungsi').dispatchEvent(new Event('input')); $('integral-fungsi').focus(); }
+        function fillLimit(v){ $('limit-fungsi').value=v; $('limit-fungsi').dispatchEvent(new Event('input')); $('limit-fungsi').focus(); }
+        const fillActive=s=>{ const a=document.querySelector('.tab.active')?.dataset.tab||'turunan', m={turunan:'turunan-fungsi',integral:'integral-fungsi',limit:'limit-fungsi'}, e=$(m[a]); if(!e) return; const i=e.selectionStart||e.value.length, b=e.value.slice(0,i), c=e.value.slice(e.selectionEnd||i), n=b&&/[0-9x\)]$/.test(b)&&/^[a-zA-Z]/.test(s)?'*':''; e.value=b+n+s+c; e.focus(); e.setSelectionRange(i+s.length+(n?1:0),i+s.length+(n?1:0)); e.dispatchEvent(new Event('input')); };
+        // CRT toggle persisten — pakai body class biar pasti work
+        const crtBtn=$('crtToggle');
+        const applyCRT=on=>{
+            document.body.classList.toggle('crt-off', !on);
+            crtBtn.textContent=on?'CRT: ON':'CRT: OFF';
+            // visual feedback jelas
+            crtBtn.classList.toggle('bg-crt-green', on);
+            crtBtn.classList.toggle('text-deep-navy', on);
+            crtBtn.classList.toggle('border-crt-green', on);
+            crtBtn.classList.toggle('bg-[#0f172a]', !on);
+            crtBtn.classList.toggle('text-slate-300', !on);
+            localStorage.setItem(LS_CRT, on?'1':'0');
+        };
+        let crtOn=localStorage.getItem(LS_CRT)!=='0'; applyCRT(crtOn);
+        crtBtn.addEventListener('click',()=>{crtOn=!crtOn;applyCRT(crtOn);});
+
+        // === render efisien (cache, fragment) ===
+        function renderLatex(id, latex, isError){
+            const el=$(id); el.classList.remove('justify-center'); el.style.display='block';
+            if(isError){ el.innerHTML='<div class="flex items-center justify-center gap-2 text-tape-red font-mono text-[13px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg> '+latex+'</div>'; }
+            else{ el.innerHTML=''; try{ katex.render(latex, el, {throwOnError:false, displayMode:true}); }catch(e){ el.textContent=latex; } }
+        }
+        const showPlot=(tab,b64)=>{ const c=$('plot-'+tab), img=$('plot-'+tab+'-img'); img.src='data:image/png;base64,'+b64; c.classList.remove('hidden'); img.loading='lazy'; };
+        const hidePlot=tab=>$('plot-'+tab).classList.add('hidden');
+        function renderMultiLine(id, lines){
+            const el=$(id); el.classList.remove('justify-center'); el.style.display='block'; el.innerHTML='';
+            const frag=document.createDocumentFragment();
+            lines.forEach(latex=>{ const d=document.createElement('div'); d.className='py-1'; try{katex.render(latex,d,{throwOnError:false,displayMode:true})}catch(e){d.textContent=latex} frag.appendChild(d); });
+            el.appendChild(frag);
+        }
+        const setLoading=(btn,loading)=>{ if(loading){btn.dataset.text=btn.innerHTML;btn.innerHTML='⏳ MENGHITUNG...';btn.disabled=true} else{btn.innerHTML=btn.dataset.text||'HITUNG';btn.disabled=false} };
+        // Validasi live — efisien debounce
+        function showValid(tab, msg, fix){
+            const el=$('valid-'+tab); if(!msg){el.classList.add('hidden');el.innerHTML='';return}
+            el.classList.remove('hidden');
+            el.innerHTML='<div class="flex items-center gap-2 bg-amber-500/10 border border-phosphor-amber/30 rounded-[6px] px-2.5 py-2 font-mono text-[12px] text-amber-100"><span>'+msg+'</span>'+(fix?'<button onclick="autoFixAndFocus(\''+tab+'\')" class="ml-auto bg-phosphor-amber text-deep-navy px-2 py-1 rounded font-bold hover:brightness-110 cursor-pointer">Fix → '+fix+'</button>':'')+'</div>';
+        }
+        function autoFixAndFocus(tab){
+            const map={turunan:'turunan-fungsi',integral:'integral-fungsi',limit:'limit-fungsi'};
+            const id=map[tab], el=$(id), fixed=autoFix(el.value);
+            el.value=fixed; el.dispatchEvent(new Event('input')); el.focus(); showValid(tab,'','');
+        }
+        const bindValid=(inputId,tab)=>{ const el=$(inputId); if(!el) return; el.addEventListener('input', debounce(()=>{
+            const v=el.value.trim(); if(!v){showValid(tab,'','');return}
+            if(hasMissingStar(v)){ const f=autoFix(v); showValid(tab,'Terlihat <code class=\"text-tape-red\">'+v+'</code> — mungkin maksud <code class=\"text-crt-green\">'+f+'</code> ?',f); }
+            else showValid(tab,'','');
+        },220)); };
+        bindValid('turunan-fungsi','turunan'); bindValid('integral-fungsi','integral'); bindValid('limit-fungsi','limit');
+        // History + copy — efisien localStorage
+        function loadH(){ try{return JSON.parse(localStorage.getItem(LS_H)||'{}')}catch(e){return{}} }
+        function saveH(o){ localStorage.setItem(LS_H, JSON.stringify(o)); }
+        function pushHistory(tab, input, latex){
+            if(!latex||latex.includes('Gagal')) return;
+            const h=loadH(); h[tab]=h[tab]||[]; h[tab].unshift({input, latex, t:Date.now()}); h[tab]=h[tab].slice(0,5); saveH(h); renderHistory(tab);
+        }
+        function renderHistory(tab){
+            const el=$('history-'+tab), h=(loadH()[tab]||[]); if(!h.length){ el.classList.add('hidden'); el.innerHTML=''; return; }
+            el.classList.remove('hidden');
+            el.innerHTML='<div class="font-mono text-[11px] tracking-widest text-slate-400 mb-1">RIWAYAT ('+h.length+')</div>';
+            const frag=document.createDocumentFragment();
+            h.forEach((it,i)=>{
+                const b=document.createElement('button');
+                b.className='w-full text-left bg-[#0f172a] hover:bg-[#162032] border border-[#1e293b] hover:border-[#334155] rounded-[6px] px-3 py-2 font-mono text-[12px] text-slate-300 hover:text-off-white flex justify-between gap-2 cursor-pointer';
+                b.innerHTML='<span class=\"truncate\">'+it.input+'</span><span class=\"text-crt-green shrink-0\">↺</span>';
+                b.title='Klik untuk isi lagi';
+                b.addEventListener('click',()=>{ const map={turunan:'turunan-fungsi',integral:'integral-fungsi',limit:'limit-fungsi'}; $(map[tab]).value=it.input; $(map[tab]).dispatchEvent(new Event('input')); });
+                frag.appendChild(b);
+            });
+            // clear btn
+            const clr=document.createElement('button'); clr.className='mt-2 font-mono text-[11px] text-slate-500 hover:text-tape-red cursor-pointer'; clr.textContent='Hapus riwayat';
+            clr.addEventListener('click',()=>{const h=loadH();h[tab]=[];saveH(h);renderHistory(tab)});
+            frag.appendChild(clr); el.appendChild(frag);
+        }
+        function copyLatex(tab){
+            const latex=last[tab]; if(!latex){return}
+            const txt=latex.replace(/<[^>]*>/g,'');
+            navigator.clipboard.writeText(latex).then(()=>{
+                const b=document.querySelector('#actions-'+tab+' button'); if(b){const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>b.textContent=o,1200)}
+            }).catch(()=>{ const ta=document.createElement('textarea'); ta.value=latex; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); });
+        }
+        function downloadPlot(tab){
+            const img=$('plot-'+tab+'-img'); if(!img||!img.src||img.src.includes('data:')===false){alert('Belum ada grafik untuk di-download. Hitung dulu.');return}
+            const a=document.createElement('a'); a.href=img.src; a.download='calcku-'+tab+'-'+Date.now()+'.png'; document.body.appendChild(a); a.click(); a.remove();
+        }
+        // Init render history efisien
+        (()=>{
+            ['turunan','integral','limit'].forEach(renderHistory);
+            ['turunan-fungsi','integral-fungsi','limit-fungsi'].forEach(id=>{ const el=$(id); if(el&&el.value) el.dispatchEvent(new Event('input')); });
+        })();
+        async function hitungTurunan(){
+            const fungsi=$('turunan-fungsi').value.trim(); if(!fungsi){$('turunan-fungsi').focus();return}
+            const orde=$('turunan-orde').value, titik=$('turunan-titik').value.trim();
+            const btn=document.querySelector('#form-turunan .btn-primary');
+            hidePlot('turunan'); setLoading(btn,true);
+            try{
+                const res=await fetch('/api/turunan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fungsi, orde, titik: titik||null})});
+                const data=await res.json();
+                if(data.sukses){
+                    const lines=[data.notasi+' = '+data.hasil];
+                    if(data.evaluasi) lines.push('f^{'+orde+'}('+data.titik+') = '+data.evaluasi);
+                    renderMultiLine('hasil-turunan', lines); last['turunan']=lines.join(' \\n ');
+                    if(data.plot) showPlot('turunan', data.plot);
+                    $('actions-turunan').classList.remove('hidden'); pushHistory('turunan', fungsi, last['turunan']);
+                } else renderLatex('hasil-turunan', data.error, true);
+            }catch(e){ renderLatex('hasil-turunan','Gagal menghubungi server — cek koneksi',true); }
+            finally{ setLoading(btn,false); }
+        }
+        async function hitungIntegral(){
+            const fungsi=$('integral-fungsi').value.trim(); if(!fungsi){$('integral-fungsi').focus();return}
+            const batas_bawah=$('integral-bawah').value.trim(), batas_atas=$('integral-atas').value.trim();
+            const btn=document.querySelector('#form-integral .btn-primary');
+            hidePlot('integral'); setLoading(btn,true);
+            try{
+                const res=await fetch('/api/integral',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fungsi,batas_bawah,batas_atas})});
+                const data=await res.json();
+                if(data.sukses){
+                    const lines=[]; if(data.tentu) lines.push(data.notasi+' = '+data.tentu); else lines.push(data.notasi+' = '+data.hasil+' + C');
+                    renderMultiLine('hasil-integral', lines); last['integral']=lines.join(' \\n ');
+                    if(data.plot) showPlot('integral', data.plot);
+                    $('actions-integral').classList.remove('hidden'); pushHistory('integral', fungsi, last['integral']);
+                } else renderLatex('hasil-integral', data.error, true);
+            }catch(e){ renderLatex('hasil-integral','Gagal menghubungi server',true); }
+            finally{ setLoading(btn,false); }
+        }
+        async function hitungLimit(){
+            const fungsi=$('limit-fungsi').value.trim(); if(!fungsi){$('limit-fungsi').focus();return}
+            const titik=$('limit-titik').value.trim(), arah=$('limit-arah').value;
+            const btn=document.querySelector('#form-limit .btn-primary');
+            hidePlot('limit'); setLoading(btn,true);
+            try{
+                const res=await fetch('/api/limit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fungsi,titik,arah})});
+                const data=await res.json();
+                if(data.sukses){ const line=data.notasi+' = '+data.hasil; renderMultiLine('hasil-limit',[line]); last['limit']=line; if(data.plot) showPlot('limit', data.plot); $('actions-limit').classList.remove('hidden'); pushHistory('limit', fungsi, line); }
+                else renderLatex('hasil-limit', data.error, true);
+            }catch(e){ renderLatex('hasil-limit','Gagal menghubungi server',true); }
+            finally{ setLoading(btn,false); }
+        }
+        function togglePanduan(){ $('panduan').classList.toggle('hidden'); }
+        document.querySelectorAll('.card input').forEach(i=>{
+            i.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); e.target.closest('.card').querySelector('.btn-primary').click(); }});
+        });
+        $('limit-arah').addEventListener('keydown', e=>{ if(e.key==='Enter') hitungLimit(); });
+    </script>
 </body>
 </html>

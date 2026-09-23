@@ -260,4 +260,5 @@ def limit():
 if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5050))
-    app.run(debug=True, port=port)
+    # host 0.0.0.0 biar bisa diakses via localhost & LAN, use_reloader=False cegah double process di Windows
+    app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)

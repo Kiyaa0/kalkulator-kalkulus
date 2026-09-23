@@ -3,3 +3,10 @@ __pycache__/
 *.pyo
 .env
 venv/
+.venv/
+DESIGN.md
+index_backup.html
+.omo/
+server_*.log
+*.log
+.opencode/
