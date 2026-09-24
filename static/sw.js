@@ -3,7 +3,7 @@
  * Naikkan VERSION saat deploy perubahan pada file statis (main.js, style.css,
  * index.html) agar cache lama dibersihkan dan asset baru di-precache ulang.
  */
-const VERSION = 'v9-download';
+const VERSION = 'v11-grafik-d3v3';
 const CACHE_STATIC = 'calcku-static-' + VERSION;
 const CACHE_RUNTIME = 'calcku-runtime-' + VERSION;
 // efisien: cuma cache yang beneran ada (index.html inline, no css/js terpisah)

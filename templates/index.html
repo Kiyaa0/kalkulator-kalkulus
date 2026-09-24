@@ -42,15 +42,11 @@
     </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/function-plot@1.14.0/dist/function-plot.js"></script>
 
     <style>
-        :root{
-            --crt-green-cassette:#33FF00;
-            --phosphor-amber-cassette:#FFB000;
-            --charcoal-cassette:#333333;
-            --deep-navy-cassette:#1B2838;
-        }
-        /* USER FRIENDLY BASE — readable, high contrast */
+        /* BASE — readable, high contrast */
         body{
             background:#1B2838;
             color:#E8E0D0; /* off-white for max readability, not neon green */
@@ -62,25 +58,6 @@
             text-rendering:optimizeLegibility;
         }
         ::selection{background:#FFB000;color:#1B2838}
-        /* CRT overlay — SUBTLE, tapi keliatan bedanya */
-        .crt-overlay{
-            position:fixed;inset:0;pointer-events:none;z-index:9999;
-            background-image:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.10) 2px, rgba(0,0,0,0.10) 4px);
-            opacity:0.42;
-            transition:opacity 0.2s;
-        }
-        .crt-flicker{
-            position:fixed;inset:0;pointer-events:none;z-index:9998;
-            background:rgba(51,255,0,0.022);
-            animation:flicker 0.45s linear infinite;
-            opacity:0.30;
-            transition:opacity 0.2s;
-        }
-        @keyframes flicker{0%,100%{opacity:0.26} 50%{opacity:0.10}}
-        /* CRT OFF — beneran hilang, gampang dites */
-        body.crt-off .crt-overlay, body.crt-off .crt-flicker{ opacity:0 !important; pointer-events:none; }
-        body.crt-off{ filter:none; }
-        body:not(.crt-off) .crt-overlay{ opacity:0.42; }
         .glow-green{ text-shadow:0 0 6px rgba(51,255,0,0.45); }
         .card-border{ border:1.5px solid #334155; border-radius:10px; background:#1e293b; }
         .led{width:7px;height:7px;border-radius:50%;background:#334155;}
@@ -141,12 +118,24 @@
         .tab-active{ background:#FFB000 !important; color:#1B2838 !important; border-color:#FFB000 !important; font-weight:700; box-shadow:0 2px 8px rgba(255,176,0,0.25); }
         .tab-inactive{ background:#1e293b !important; color:#cbd5e1 !important; border:1.5px solid #334155 !important; }
         .tab-inactive:hover{ background:#252f45 !important; color:#f1f5f9 !important; border-color:#475569 !important; }
+        /* Grafik — Desmos-like */
+        .grafik-row{ display:flex; gap:8px; align-items:center; background:#0f172a; border:1.5px solid #334155; border-radius:8px; padding:8px 10px; transition:border-color .18s; }
+        .grafik-row:focus-within{ border-color:#33FF00; box-shadow:0 0 0 3px rgba(51,255,0,.12); }
+        .grafik-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; box-shadow:0 0 6px currentColor; }
+        .grafik-input{ flex:1; background:transparent; border:none; outline:none; color:#f1f5f9; font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:500; min-width:0; }
+        .grafik-input::placeholder{ color:#64748b; }
+        .grafik-del{ width:28px; height:28px; border-radius:6px; background:#1e293b; border:1px solid #334155; color:#94a3b8; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .15s; flex-shrink:0; }
+        .grafik-del:hover{ background:#2a1f1f; border-color:#CC0000; color:#f87171; }
+        #grafik-canvas .function-plot{ width:100%; height:100%; }
+        /* Grid diperjelas — kontras lebih tinggi agar memudahkan user */
+        #grafik-canvas .axis path, #grafik-canvas .axis line{ stroke:#475569; stroke-width:1.2; }
+        #grafik-canvas .axis text{ fill:#cbd5e1; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; }
+        #grafik-canvas .grid line{ stroke:#334155; stroke-opacity:0.65; stroke-width:0.9; }
+        #grafik-canvas .grid line.minor{ stroke:#1e293b; stroke-opacity:0.5; }
+        #grafik-canvas .origin{ stroke:#94a3b8; stroke-width:1.4; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
-    <div class="crt-overlay"></div>
-    <div class="crt-flicker"></div>
-
     <!-- HEADER — clean -->
     <header class="relative z-40 bg-deep-navy border-b border-[#243044] sticky top-0 backdrop-blur-md bg-opacity-95">
         <div class="max-w-[720px] mx-auto px-4 py-3.5 flex items-center justify-between">
@@ -165,7 +154,6 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <button id="crtToggle" class="cursor-pointer bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] rounded-[6px] px-2.5 py-1 font-mono text-[11px] text-slate-300 hover:text-off-white transition-all">CRT: ON</button>
                 <span class="hidden sm:inline-flex items-center gap-1.5 bg-[#0f172a] border border-[#1e293b] rounded-[6px] px-2.5 py-1 font-mono text-[11px] text-crt-green"><span class="led on"></span> ONLINE</span>
             </div>
         </div>
@@ -180,7 +168,7 @@
         </div>
 
         <!-- Tabs — big, clear -->
-        <div class="grid grid-cols-3 gap-2 mb-4">
+        <div class="grid grid-cols-4 gap-2 mb-4">
             <button class="tab active tab-active rounded-lg px-2 py-3 font-mono text-[13px] sm:text-[14px] cursor-pointer transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-tab="turunan">
                 <span class="text-[18px] leading-none">d/dx</span><span>TURUNAN</span>
             </button>
@@ -189,6 +177,9 @@
             </button>
             <button class="tab tab-inactive rounded-lg px-2 py-3 font-mono text-[13px] sm:text-[14px] cursor-pointer transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-tab="limit">
                 <span class="text-[13px] font-bold leading-none">LIM</span><span>LIMIT</span>
+            </button>
+            <button class="tab tab-inactive rounded-lg px-2 py-3 font-mono text-[13px] sm:text-[14px] cursor-pointer transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-tab="grafik">
+                <span class="text-[16px] leading-none">◧</span><span>GRAFIK</span>
             </button>
         </div>
 
@@ -235,7 +226,13 @@
             </div>
             <div id="actions-turunan" class="hidden mt-2 flex gap-2">
                 <button onclick="copyLatex('turunan')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-crt-green/50 font-mono text-[12px] text-slate-300 hover:text-crt-green cursor-pointer transition-all">⧉ Copy LaTeX</button>
-                <button onclick="downloadPlot('turunan')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all">⬇ Download Grafik</button>
+                <div class="relative flex-1">
+                    <button onclick="toggleDownloadMenu('turunan')" id="btn-download-turunan" class="w-full py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all flex items-center justify-center gap-1">⬇ Download <span class="text-[9px]">▼</span></button>
+                    <div id="menu-turunan" class="hidden absolute bottom-full mb-1.5 left-0 right-0 bg-[#0f172a] border border-[#334155] rounded-[6px] shadow-xl overflow-hidden z-20">
+                        <button onclick="downloadPlotAs('turunan','png');toggleDownloadMenu('turunan',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2 border-b border-[#1e293b]">🖼️ Download PNG</button>
+                        <button onclick="downloadPlotAs('turunan','svg');toggleDownloadMenu('turunan',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2">📐 Download SVG</button>
+                    </div>
+                </div>
             </div>
             <div id="history-turunan" class="hidden mt-3"></div>
             <div id="plot-turunan" class="hidden mt-3 rounded-lg border border-[#334155] bg-[#0f172a] p-2 overflow-hidden"><img id="plot-turunan-img" alt="Grafik Turunan" loading="lazy" decoding="async" class="w-full rounded-md"></div>
@@ -282,7 +279,13 @@
             </div>
             <div id="actions-integral" class="hidden mt-2 flex gap-2">
                 <button onclick="copyLatex('integral')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-crt-green/50 font-mono text-[12px] text-slate-300 hover:text-crt-green cursor-pointer transition-all">⧉ Copy LaTeX</button>
-                <button onclick="downloadPlot('integral')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all">⬇ Download</button>
+                <div class="relative flex-1">
+                    <button onclick="toggleDownloadMenu('integral')" id="btn-download-integral" class="w-full py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all flex items-center justify-center gap-1">⬇ Download <span class="text-[9px]">▼</span></button>
+                    <div id="menu-integral" class="hidden absolute bottom-full mb-1.5 left-0 right-0 bg-[#0f172a] border border-[#334155] rounded-[6px] shadow-xl overflow-hidden z-20">
+                        <button onclick="downloadPlotAs('integral','png');toggleDownloadMenu('integral',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2 border-b border-[#1e293b]">🖼️ Download PNG</button>
+                        <button onclick="downloadPlotAs('integral','svg');toggleDownloadMenu('integral',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2">📐 Download SVG</button>
+                    </div>
+                </div>
             </div>
             <div id="history-integral" class="hidden mt-3"></div>
             <div id="plot-integral" class="hidden mt-3 rounded-lg border border-[#334155] bg-[#0f172a] p-2 overflow-hidden"><img id="plot-integral-img" alt="Grafik Integral" loading="lazy" decoding="async" class="w-full rounded-md"></div>
@@ -331,10 +334,76 @@
             </div>
             <div id="actions-limit" class="hidden mt-2 flex gap-2">
                 <button onclick="copyLatex('limit')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-crt-green/50 font-mono text-[12px] text-slate-300 hover:text-crt-green cursor-pointer transition-all">⧉ Copy LaTeX</button>
-                <button onclick="downloadPlot('limit')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all">⬇ Download</button>
+                <div class="relative flex-1">
+                    <button onclick="toggleDownloadMenu('limit')" id="btn-download-limit" class="w-full py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all flex items-center justify-center gap-1">⬇ Download <span class="text-[9px]">▼</span></button>
+                    <div id="menu-limit" class="hidden absolute bottom-full mb-1.5 left-0 right-0 bg-[#0f172a] border border-[#334155] rounded-[6px] shadow-xl overflow-hidden z-20">
+                        <button onclick="downloadPlotAs('limit','png');toggleDownloadMenu('limit',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2 border-b border-[#1e293b]">🖼️ Download PNG</button>
+                        <button onclick="downloadPlotAs('limit','svg');toggleDownloadMenu('limit',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2">📐 Download SVG</button>
+                    </div>
+                </div>
             </div>
             <div id="history-limit" class="hidden mt-3"></div>
             <div id="plot-limit" class="hidden mt-3 rounded-lg border border-[#334155] bg-[#0f172a] p-2 overflow-hidden"><img id="plot-limit-img" alt="Grafik Limit" loading="lazy" decoding="async" class="w-full rounded-md"></div>
+        </div>
+
+        <!-- GRAFIK CARD — Desmos-like sederhana -->
+        <div class="card hidden card-border p-4 sm:p-5" id="form-grafik">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-sans font-semibold text-[15px] text-off-white flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-md bg-crt-green/15 border border-crt-green/30 flex items-center justify-center text-crt-green text-[14px]">◧</span>
+                    Grafik
+                </h2>
+                <span class="font-mono text-[11px] bg-[#0f172a] border border-[#334155] rounded-[6px] px-2.5 py-1 text-crt-green">INTERAKTIF</span>
+            </div>
+
+            <!-- List fungsi -->
+            <div id="grafik-list" class="space-y-2"></div>
+            <button onclick="addGrafikRow()" class="mt-2 w-full py-2.5 rounded-[8px] bg-[#0f172a] hover:bg-[#162032] border border-dashed border-[#334155] hover:border-crt-green/50 font-mono text-[13px] text-slate-300 hover:text-crt-green cursor-pointer transition-all flex items-center justify-center gap-2">
+                <span class="text-[16px] leading-none">+</span> Tambah Fungsi
+            </button>
+            <div class="mt-2 flex flex-wrap gap-1.5">
+                <button onclick="addGrafikPreset('x**2')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">x²</button>
+                <button onclick="addGrafikPreset('y**2')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">y²</button>
+                <button onclick="addGrafikPreset('sin(x)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">sin(x)</button>
+                <button onclick="addGrafikPreset('sin(y)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">sin(y)</button>
+                <button onclick="addGrafikPreset('sin(x)/x')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-phosphor-amber/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber transition-all">sin(x)/x</button>
+                <button onclick="addGrafikPreset('exp(-x**2)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">exp(-x²)</button>
+            </div>
+
+            <!-- Kontrol rentang -->
+            <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div><label class="label">xMin</label><input id="grafik-xmin" type="number" value="-10" step="1" class="input-field w-full px-2.5 py-2 text-center"></div>
+                <div><label class="label">xMax</label><input id="grafik-xmax" type="number" value="10" step="1" class="input-field w-full px-2.5 py-2 text-center"></div>
+                <div><label class="label">yMin</label><input id="grafik-ymin" type="number" value="-10" step="1" class="input-field w-full px-2.5 py-2 text-center"></div>
+                <div><label class="label">yMax</label><input id="grafik-ymax" type="number" value="10" step="1" class="input-field w-full px-2.5 py-2 text-center"></div>
+            </div>
+            <label class="mt-3 flex items-center gap-2 cursor-pointer select-none">
+                <input id="grafik-grid" type="checkbox" checked class="w-4 h-4 rounded border-[#334155] bg-[#0f172a] text-crt-green focus:ring-crt-green focus:ring-offset-0">
+                <span class="font-sans text-[13px] text-slate-300">Tampilkan grid</span>
+                <span id="grafik-coords" class="ml-auto font-mono text-[11px] text-crt-green hidden"></span>
+            </label>
+
+            <!-- Canvas -->
+            <div id="grafik-canvas-wrap" class="mt-3 rounded-lg border border-[#334155] bg-[#0f172a] overflow-hidden relative">
+                <div id="grafik-canvas" class="w-full" style="height:380px; min-height:320px;"></div>
+                <div id="grafik-empty" class="absolute inset-0 flex items-center justify-center bg-[#0f172a]/90 backdrop-blur-[1px] hidden">
+                    <span class="font-mono text-[13px] text-slate-400">Tambah fungsi untuk melihat grafik</span>
+                </div>
+            </div>
+            <div id="grafik-error" class="hidden mt-2 rounded-[6px] bg-tape-red/10 border border-tape-red/30 px-3 py-2 font-mono text-[12px] text-tape-red"></div>
+
+            <div class="mt-3 grid grid-cols-3 gap-2">
+                <button onclick="resetGrafikView()" class="py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-slate-500 font-mono text-[12px] text-slate-300 cursor-pointer transition-all">⟲ Reset Posisi</button>
+                <button onclick="shareGrafik()" class="py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all">⧉ Share</button>
+                <div class="relative">
+                    <button onclick="toggleDownloadMenu('grafik')" id="btn-download-grafik" class="w-full py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-crt-green/50 font-mono text-[12px] text-slate-300 hover:text-crt-green cursor-pointer transition-all flex items-center justify-center gap-1">⬇ Download <span class="text-[9px]">▼</span></button>
+                    <div id="menu-grafik" class="hidden absolute bottom-full mb-1.5 left-0 right-0 bg-[#0f172a] border border-[#334155] rounded-[6px] shadow-xl overflow-hidden z-20">
+                        <button onclick="downloadGrafikAs('png');toggleDownloadMenu('grafik',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2 border-b border-[#1e293b]">🖼️ Download PNG</button>
+                        <button onclick="downloadGrafikAs('svg');toggleDownloadMenu('grafik',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2">📐 Download SVG</button>
+                    </div>
+                </div>
+            </div>
+            <div class="help mt-2">Tips: support <code>x</code> dan <code>y</code> — ketik <code>y^2</code> / <code>sin(y)</code> otomatis di-plot sebagai <code>x</code>. Drag untuk pan, scroll zoom, Enter untuk update. Gunakan <code>**</code> atau <code>^</code> untuk pangkat.</div>
         </div>
 
         <!-- Panduan — readable -->
@@ -358,7 +427,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#1e293b] text-[13px]">
-                            <tr><td class="px-3 py-2.5 font-semibold text-off-white">Variabel</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-crt-green/30 text-crt-green rounded px-1.5 py-0.5 font-mono text-[12px]">x</code></td><td class="px-3 py-2.5 text-slate-300">Variabel utama — hanya <code class="text-crt-green">x</code> yang didukung</td></tr>
+                            <tr><td class="px-3 py-2.5 font-semibold text-off-white">Variabel</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-crt-green/30 text-crt-green rounded px-1.5 py-0.5 font-mono text-[12px]">x</code>, <code class="bg-[#1e293b] border border-crt-green/30 text-crt-green rounded px-1.5 py-0.5 font-mono text-[12px]">y</code></td><td class="px-3 py-2.5 text-slate-300">Variabel utama — <code class="text-crt-green">x</code> dan <code class="text-crt-green">y</code> didukung (auto-detect, grafik <code>y</code>→<code>x</code>)</td></tr>
                             <tr><td class="px-3 py-2.5 font-semibold text-off-white">Pangkat</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-phosphor-amber/30 text-phosphor-amber rounded px-1.5 py-0.5 font-mono text-[12px]">x**2</code> atau <code class="bg-[#1e293b] border border-phosphor-amber/30 text-phosphor-amber rounded px-1.5 py-0.5 font-mono text-[12px]">x^2</code></td><td class="px-3 py-2.5 text-slate-300"><code>^</code> otomatis jadi <code>**</code> → x²</td></tr>
                             <tr><td class="px-3 py-2.5 font-semibold text-off-white">Perkalian</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-crt-green/30 text-crt-green rounded px-1.5 py-0.5 font-mono text-[12px]">2*x</code></td><td class="px-3 py-2.5 text-slate-300">Wajib pakai <code>*</code> — <code>2x</code> atau <code>x*y</code> akan error kalau tanpa <code>*</code></td></tr>
                             <tr><td class="px-3 py-2.5 font-semibold text-off-white">Pembagian</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-slate-600 text-slate-200 rounded px-1.5 py-0.5 font-mono text-[12px]">1/x</code></td><td class="px-3 py-2.5 text-slate-300">Contoh: <code>(x^2+1)/(x-3)</code> pakai kurung</td></tr>
@@ -433,19 +502,20 @@
 
     <footer class="relative z-10 mt-6 border-t border-[#243044] bg-[#0f172a] py-5">
         <div class="max-w-[720px] mx-auto px-4 flex flex-col sm:flex-row justify-between gap-2 font-mono text-[12px]">
-            <div class="text-slate-400">© 2026 <span class="text-off-white font-semibold">CalcKu</span> — Kalkulus jadi jelas.</div>
-            <div class="text-slate-500 flex gap-3"><span class="text-crt-green">● ONLINE</span> <span class="hidden sm:inline">Cassette Futurism · Readable Mode</span></div>
+            <div class="text-slate-400">© 2026 <span class="text-off-white font-semibold">CalcKu</span>
+            <div class="text-slate-500 flex gap-3"><span class="text-crt-green">● ONLINE</span>
         </div>
     </footer>
 
     <script>
-        // === efisien: cache, debounce, CRT toggle, validasi ===
+        // === cache, debounce, validasi ===
         const $=id=>document.getElementById(id);
-        const LS_H='calcku-h', LS_CRT='calcku-crt';
+        const LS_H='calcku-h';
         const last={};
+        const plotSvgCache={};
         const debounce=(f,d)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f(...a),d)}};
-        const autoFix=s=>s.replaceAll('^','**').replace(/(\d)([a-zA-Z])/g,'$1*$2').replace(/(x)\(/g,'$1*(').replace(/\)\(/g,')*(').replace(/\)([a-zA-Z])/g,')*$1').replace(/(\d)\(/g,'$1*(');
-        const hasMissingStar=s=>/(\d[a-zA-Z]|\d\(|x\(|\)[a-zA-Z0-9(])/.test(s);
+        const autoFix=s=>s.replaceAll('^','**').replace(/(\d)([a-zA-Z])/g,'$1*$2').replace(/([xy])\(/g,'$1*(').replace(/\)\(/g,')*(').replace(/\)([a-zA-Z])/g,')*$1').replace(/(\d)\(/g,'$1*(');
+        const hasMissingStar=s=>/(\d[a-zA-Z]|\d\(|[xy]\(|\)[a-zA-Z0-9(])/.test(s);
         // Tabs efisien
         document.querySelectorAll('.tab').forEach(tab=>{
             tab.addEventListener('click', ()=>{
@@ -454,29 +524,27 @@
                 tab.classList.remove('tab-inactive');tab.classList.add('tab-active','active');
                 const tb=tab.dataset.tab; $('form-'+tb).classList.remove('hidden');
                 try{renderHistory(tb)}catch(e){}
+                if(tb==='grafik') initGrafik();
             });
         });
-        function fillTurunan(v){ $('turunan-fungsi').value=v; $('turunan-fungsi').dispatchEvent(new Event('input')); $('turunan-fungsi').focus(); }
-        function fillIntegral(v){ $('integral-fungsi').value=v; $('integral-fungsi').dispatchEvent(new Event('input')); $('integral-fungsi').focus(); }
-        function fillLimit(v){ $('limit-fungsi').value=v; $('limit-fungsi').dispatchEvent(new Event('input')); $('limit-fungsi').focus(); }
-        const fillActive=s=>{ const a=document.querySelector('.tab.active')?.dataset.tab||'turunan', m={turunan:'turunan-fungsi',integral:'integral-fungsi',limit:'limit-fungsi'}, e=$(m[a]); if(!e) return; const i=e.selectionStart||e.value.length, b=e.value.slice(0,i), c=e.value.slice(e.selectionEnd||i), n=b&&/[0-9x\)]$/.test(b)&&/^[a-zA-Z]/.test(s)?'*':''; e.value=b+n+s+c; e.focus(); e.setSelectionRange(i+s.length+(n?1:0),i+s.length+(n?1:0)); e.dispatchEvent(new Event('input')); };
-        // CRT toggle persisten — pakai body class biar pasti work
-        const crtBtn=$('crtToggle');
-        const applyCRT=on=>{
-            document.body.classList.toggle('crt-off', !on);
-            crtBtn.textContent=on?'CRT: ON':'CRT: OFF';
-            // visual feedback jelas
-            crtBtn.classList.toggle('bg-crt-green', on);
-            crtBtn.classList.toggle('text-deep-navy', on);
-            crtBtn.classList.toggle('border-crt-green', on);
-            crtBtn.classList.toggle('bg-[#0f172a]', !on);
-            crtBtn.classList.toggle('text-slate-300', !on);
-            localStorage.setItem(LS_CRT, on?'1':'0');
-        };
-        let crtOn=localStorage.getItem(LS_CRT)!=='0'; applyCRT(crtOn);
-        crtBtn.addEventListener('click',()=>{crtOn=!crtOn;applyCRT(crtOn);});
+        // helper isi field — DRY untuk fillTurunan/fillIntegral/fillLimit
+        function fillField(id, v){ const el=$(id); if(!el) return; el.value=v; el.dispatchEvent(new Event('input')); el.focus(); }
+        function fillTurunan(v){ fillField('turunan-fungsi', v); }
+        function fillIntegral(v){ fillField('integral-fungsi', v); }
+        function fillLimit(v){ fillField('limit-fungsi', v); }
+        const fillActive=s=>{ 
+            const a=document.querySelector('.tab.active')?.dataset.tab||'turunan';
+            if(a==='grafik'){
+                const inputs=document.querySelectorAll('#grafik-list .grafik-input');
+                let e=document.activeElement && document.activeElement.classList.contains('grafik-input') ? document.activeElement : (inputs[inputs.length-1] || null);
+                if(!e){ addGrafikRow(s, true); saveGrafikState(); renderGrafik(); return; }
+                const i=e.selectionStart||e.value.length, b=e.value.slice(0,i), c=e.value.slice(e.selectionEnd||i), n=b&&/[0-9xy\)]$/.test(b)&&/^[a-zA-Z]/.test(s)?'*':'';
+                e.value=b+n+s+c; e.focus(); e.setSelectionRange(i+s.length+(n?1:0),i+s.length+(n?1:0)); e.dispatchEvent(new Event('input'));
+                saveGrafikState(); renderGrafik(); return;
+            }
+            const m={turunan:'turunan-fungsi',integral:'integral-fungsi',limit:'limit-fungsi'}, e=$(m[a]); if(!e) return; const i=e.selectionStart||e.value.length, b=e.value.slice(0,i), c=e.value.slice(e.selectionEnd||i), n=b&&/[0-9xy\)]$/.test(b)&&/^[a-zA-Z]/.test(s)?'*':''; e.value=b+n+s+c; e.focus(); e.setSelectionRange(i+s.length+(n?1:0),i+s.length+(n?1:0)); e.dispatchEvent(new Event('input')); };
 
-        // === render efisien (cache, fragment) ===
+        // === render (cache, fragment) ===
         function renderLatex(id, latex, isError){
             const el=$(id); el.classList.remove('justify-center'); el.style.display='block';
             if(isError){ el.innerHTML='<div class="flex items-center justify-center gap-2 text-tape-red font-mono text-[13px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg> '+latex+'</div>'; }
@@ -540,66 +608,422 @@
                 const b=document.querySelector('#actions-'+tab+' button'); if(b){const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>b.textContent=o,1200)}
             }).catch(()=>{ const ta=document.createElement('textarea'); ta.value=latex; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); });
         }
+        function toggleDownloadMenu(tab, forceClose){
+            const menu=$('menu-'+tab);
+            if(!menu) return;
+            if(forceClose){ menu.classList.add('hidden'); return; }
+            const willShow=menu.classList.contains('hidden');
+            // close all menus first
+            document.querySelectorAll('[id^="menu-"]').forEach(m=>m.classList.add('hidden'));
+            if(willShow) menu.classList.remove('hidden');
+        }
+        // close menus when clicking outside
+        document.addEventListener('click', e=>{
+            const isBtn=e.target.closest('[onclick*="toggleDownloadMenu"]');
+            const isMenu=e.target.closest('[id^="menu-"]');
+            if(!isBtn && !isMenu){
+                document.querySelectorAll('[id^="menu-"]').forEach(m=>m.classList.add('hidden'));
+            }
+        });
         function downloadPlot(tab){
-            const img=$('plot-'+tab+'-img'); if(!img||!img.src||img.src.includes('data:')===false){alert('Belum ada grafik untuk di-download. Hitung dulu.');return}
-            const a=document.createElement('a'); a.href=img.src; a.download='calcku-'+tab+'-'+Date.now()+'.png'; document.body.appendChild(a); a.click(); a.remove();
+            // backward compat: default to PNG
+            downloadPlotAs(tab,'png');
+        }
+        function downloadPlotAs(tab, fmt){
+            fmt=(fmt||'png').toLowerCase();
+            if(fmt==='png'){
+                const img=$('plot-'+tab+'-img'); if(!img||!img.src||img.src.includes('data:')===false){alert('Belum ada grafik untuk di-download. Hitung dulu.');return}
+                const a=document.createElement('a'); a.href=img.src; a.download='calcku-'+tab+'-'+Date.now()+'.png'; document.body.appendChild(a); a.click(); a.remove();
+            } else if(fmt==='svg'){
+                const svg=plotSvgCache[tab];
+                if(!svg){ alert('Belum ada grafik SVG. Hitung ulang terlebih dahulu.'); return; }
+                const blob=new Blob([svg], {type:'image/svg+xml;charset=utf-8'});
+                const url=URL.createObjectURL(blob);
+                const a=document.createElement('a'); a.href=url; a.download='calcku-'+tab+'-'+Date.now()+'.svg'; document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(()=>URL.revokeObjectURL(url),1000);
+            }
         }
         // Init render history efisien
         (()=>{
             ['turunan','integral','limit'].forEach(renderHistory);
             ['turunan-fungsi','integral-fungsi','limit-fungsi'].forEach(id=>{ const el=$(id); if(el&&el.value) el.dispatchEvent(new Event('input')); });
         })();
+        // helper DRY untuk semua kalkulasi — loading, fetch, render, history
+        async function calcApi({endpoint, payload, tab, btnSel, resultId, onSuccess}){
+            const btn=document.querySelector(btnSel);
+            hidePlot(tab); setLoading(btn,true);
+            try{
+                const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+                const data=await res.json();
+                if(data.sukses){ onSuccess(data); }
+                else renderLatex(resultId, data.error, true);
+            }catch(e){ renderLatex(resultId,'Gagal menghubungi server — cek koneksi',true); }
+            finally{ setLoading(btn,false); }
+        }
         async function hitungTurunan(){
             const fungsi=$('turunan-fungsi').value.trim(); if(!fungsi){$('turunan-fungsi').focus();return}
             const orde=$('turunan-orde').value, titik=$('turunan-titik').value.trim();
-            const btn=document.querySelector('#form-turunan .btn-primary');
-            hidePlot('turunan'); setLoading(btn,true);
-            try{
-                const res=await fetch('/api/turunan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fungsi, orde, titik: titik||null})});
-                const data=await res.json();
-                if(data.sukses){
+            await calcApi({
+                endpoint:'/api/turunan', payload:{fungsi, orde, titik: titik||null},
+                tab:'turunan', btnSel:'#form-turunan .btn-primary', resultId:'hasil-turunan',
+                onSuccess:(data)=>{
                     const lines=[data.notasi+' = '+data.hasil];
                     if(data.evaluasi) lines.push('f^{'+orde+'}('+data.titik+') = '+data.evaluasi);
                     renderMultiLine('hasil-turunan', lines); last['turunan']=lines.join(' \\n ');
                     if(data.plot) showPlot('turunan', data.plot);
+                    if(data.plot_svg) plotSvgCache['turunan']=data.plot_svg;
                     $('actions-turunan').classList.remove('hidden'); pushHistory('turunan', fungsi, last['turunan']);
-                } else renderLatex('hasil-turunan', data.error, true);
-            }catch(e){ renderLatex('hasil-turunan','Gagal menghubungi server — cek koneksi',true); }
-            finally{ setLoading(btn,false); }
+                }
+            });
         }
         async function hitungIntegral(){
             const fungsi=$('integral-fungsi').value.trim(); if(!fungsi){$('integral-fungsi').focus();return}
             const batas_bawah=$('integral-bawah').value.trim(), batas_atas=$('integral-atas').value.trim();
-            const btn=document.querySelector('#form-integral .btn-primary');
-            hidePlot('integral'); setLoading(btn,true);
-            try{
-                const res=await fetch('/api/integral',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fungsi,batas_bawah,batas_atas})});
-                const data=await res.json();
-                if(data.sukses){
+            await calcApi({
+                endpoint:'/api/integral', payload:{fungsi,batas_bawah,batas_atas},
+                tab:'integral', btnSel:'#form-integral .btn-primary', resultId:'hasil-integral',
+                onSuccess:(data)=>{
                     const lines=[]; if(data.tentu) lines.push(data.notasi+' = '+data.tentu); else lines.push(data.notasi+' = '+data.hasil+' + C');
                     renderMultiLine('hasil-integral', lines); last['integral']=lines.join(' \\n ');
                     if(data.plot) showPlot('integral', data.plot);
+                    if(data.plot_svg) plotSvgCache['integral']=data.plot_svg;
                     $('actions-integral').classList.remove('hidden'); pushHistory('integral', fungsi, last['integral']);
-                } else renderLatex('hasil-integral', data.error, true);
-            }catch(e){ renderLatex('hasil-integral','Gagal menghubungi server',true); }
-            finally{ setLoading(btn,false); }
+                }
+            });
         }
         async function hitungLimit(){
             const fungsi=$('limit-fungsi').value.trim(); if(!fungsi){$('limit-fungsi').focus();return}
             const titik=$('limit-titik').value.trim(), arah=$('limit-arah').value;
-            const btn=document.querySelector('#form-limit .btn-primary');
-            hidePlot('limit'); setLoading(btn,true);
-            try{
-                const res=await fetch('/api/limit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fungsi,titik,arah})});
-                const data=await res.json();
-                if(data.sukses){ const line=data.notasi+' = '+data.hasil; renderMultiLine('hasil-limit',[line]); last['limit']=line; if(data.plot) showPlot('limit', data.plot); $('actions-limit').classList.remove('hidden'); pushHistory('limit', fungsi, line); }
-                else renderLatex('hasil-limit', data.error, true);
-            }catch(e){ renderLatex('hasil-limit','Gagal menghubungi server',true); }
-            finally{ setLoading(btn,false); }
+            await calcApi({
+                endpoint:'/api/limit', payload:{fungsi,titik,arah},
+                tab:'limit', btnSel:'#form-limit .btn-primary', resultId:'hasil-limit',
+                onSuccess:(data)=>{
+                    const line=data.notasi+' = '+data.hasil;
+                    renderMultiLine('hasil-limit',[line]); last['limit']=line;
+                    if(data.plot) showPlot('limit', data.plot);
+                    if(data.plot_svg) plotSvgCache['limit']=data.plot_svg;
+                    $('actions-limit').classList.remove('hidden'); pushHistory('limit', fungsi, line);
+                }
+            });
         }
+        // === Grafik Desmos-like — simple, client-only, efisien ===
+        const LS_GRAFIK='calcku-grafik-v1';
+        const GRAFIK_COLORS=['#33FF00','#38bdf8','#FFB000','#f87171','#a855f7','#4ade80','#fb7185','#22d3ee'];
+        let grafikInited=false;
+        const toPlotExpr=s=>{
+            if(!s||!s.trim()) return '';
+            let t=s.trim();
+            // dukung "y = ..." atau "x = ..." -> ambil sisi kanan "="
+            if(t.includes('=')){
+                t=t.split('=').pop().trim();
+            }
+            // deteksi variabel y (termasuk "2y") — pakai includes agar "2y" terdeteksi
+            const hasY = t.includes('y');
+            // reuse autoFix for * insertion + ^->** normalization, then convert back for function-plot (^)
+            t=autoFix(t);
+            t=t.replaceAll('**','^');
+            t=t.replace(/\bAbs\b/g,'abs').replace(/\bABS\b/g,'abs');
+            t=t.replace(/\bln\b/g,'log');
+            // function-plot supports log10 via builtIn sampler, keep as is; E -> e
+            t=t.replace(/\bE\b/g,'e');
+            // grafik function-plot hanya support variabel x; jika user ketik y (mis. y^2, sin(y), 2y), konversi y -> x
+            if(hasY){
+                t=t.replace(/\by\b/g,'x');
+            }
+            // sqrt is sqrt, pi is pi — already ok
+            return t;
+        };
+        const getGrafikFns=()=>{
+            const inputs=document.querySelectorAll('#grafik-list .grafik-input');
+            return Array.from(inputs).map(i=>i.value.trim()).filter(Boolean);
+        };
+        const saveGrafikState=()=>{
+            try{
+                const data={
+                    fns: Array.from(document.querySelectorAll('#grafik-list .grafik-input')).map(i=>i.value),
+                    xmin:$('grafik-xmin').value, xmax:$('grafik-xmax').value,
+                    ymin:$('grafik-ymin').value, ymax:$('grafik-ymax').value,
+                    grid:$('grafik-grid').checked
+                };
+                localStorage.setItem(LS_GRAFIK, JSON.stringify(data));
+                // share hash (short)
+                const hash=encodeURIComponent(JSON.stringify(data.fns.filter(Boolean)));
+                if(hash.length<1800) history.replaceState(null,'','#grafik='+hash);
+            }catch(e){}
+        };
+        const loadGrafikState=()=>{
+            try{
+                // hash first
+                const m=location.hash.match(/#grafik=([^&]+)/);
+                if(m){
+                    const fns=JSON.parse(decodeURIComponent(m[1]));
+                    if(Array.isArray(fns)&&fns.length) return {fns};
+                }
+                const raw=localStorage.getItem(LS_GRAFIK);
+                if(raw) return JSON.parse(raw);
+            }catch(e){}
+            return null;
+        };
+        function addGrafikRow(val='', focus=true){
+            const list=$('grafik-list');
+            const idx=list.children.length;
+            const color=GRAFIK_COLORS[idx % GRAFIK_COLORS.length];
+            const row=document.createElement('div');
+            row.className='grafik-row';
+            row.innerHTML='<span class="grafik-dot" style="background:'+color+';color:'+color+'"></span>'
+                +'<input type="text" placeholder="contoh: x^2, y^2  atau  sin(x)/x" autocomplete="off" spellcheck="false" class="grafik-input" value="'+val.replace(/"/g,'&quot;')+'">'
+                +'<button type="button" class="grafik-del" title="Hapus" aria-label="Hapus">×</button>';
+            const inp=row.querySelector('input');
+            const del=row.querySelector('button');
+            const deb=debounce(()=>{ saveGrafikState(); renderGrafik(); }, 200);
+            inp.addEventListener('input', deb);
+            inp.addEventListener('keydown', e=>{
+                if(e.key==='Enter'){ e.preventDefault(); renderGrafik(); saveGrafikState(); }
+                if(e.key==='Escape') inp.blur();
+            });
+            del.addEventListener('click', ()=>{
+                row.remove();
+                // recolor remaining dots efficiently
+                document.querySelectorAll('#grafik-list .grafik-dot').forEach((d,i)=>{
+                    const c=GRAFIK_COLORS[i % GRAFIK_COLORS.length];
+                    d.style.background=c; d.style.color=c;
+                });
+                if(!list.children.length) addGrafikRow('', true);
+                saveGrafikState(); renderGrafik();
+            });
+            list.appendChild(row);
+            if(focus) inp.focus();
+            return row;
+        }
+        function addGrafikPreset(v){ 
+            const list=$('grafik-list');
+            // if last row empty, fill it, else add new
+            const inputs=list.querySelectorAll('.grafik-input');
+            if(inputs.length && !inputs[inputs.length-1].value.trim()){
+                inputs[inputs.length-1].value=v;
+                inputs[inputs.length-1].dispatchEvent(new Event('input'));
+                inputs[inputs.length-1].focus();
+            } else {
+                addGrafikRow(v, true);
+            }
+            saveGrafikState(); renderGrafik(); 
+        }
+        function clearGrafikError(){ const e=$('grafik-error'); e.classList.add('hidden'); e.textContent=''; }
+        function showGrafikError(msg){ const e=$('grafik-error'); e.textContent=msg; e.classList.remove('hidden'); }
+        const renderGrafik=debounce(()=>{
+            const wrap=$('grafik-canvas'), empty=$('grafik-empty');
+            const inputs=document.querySelectorAll('#grafik-list .grafik-input');
+            const rawFns=Array.from(inputs).map(i=>i.value.trim());
+            const fns=rawFns.map(toPlotExpr).filter(Boolean);
+            const xmin=parseFloat($('grafik-xmin').value), xmax=parseFloat($('grafik-xmax').value);
+            const ymin=parseFloat($('grafik-ymin').value), ymax=parseFloat($('grafik-ymax').value);
+            const xDomain=[isFinite(xmin)?xmin:-10, isFinite(xmax)?xmax:10];
+            const yDomain=[isFinite(ymin)?ymin:-10, isFinite(ymax)?ymax:10];
+            const withGrid=$('grafik-grid').checked;
+            if(!fns.length){
+                wrap.innerHTML=''; empty.classList.remove('hidden');
+                clearGrafikError(); return;
+            }
+            empty.classList.add('hidden'); clearGrafikError();
+            // validate: at least one fn parseable
+            const data=fns.map((fn,i)=>({
+                fn,
+                color: GRAFIK_COLORS[i % GRAFIK_COLORS.length],
+                graphType: 'polyline'
+            }));
+            try{
+                // functionPlot is global from CDN
+                if(typeof functionPlot==='undefined'){
+                    showGrafikError('Library grafik belum termuat. Cek koneksi.');
+                    return;
+                }
+                // ensure width
+                const w=wrap.parentElement.clientWidth || 600;
+                wrap.innerHTML='';
+                functionPlot({
+                    target: '#grafik-canvas',
+                    width: w,
+                    height: 380,
+                    xAxis: { domain: xDomain },
+                    yAxis: { domain: yDomain },
+                    grid: withGrid,
+                    disableZoom: false,
+                    data
+                });
+                // koordinat hover sederhana via mousemove on svg
+                const svg=wrap.querySelector('svg');
+                if(svg){
+                    const coords=$('grafik-coords');
+                    coords.classList.remove('hidden');
+                    svg.addEventListener('mousemove', e=>{
+                        const rect=svg.getBoundingClientRect();
+                        const x = xDomain[0] + (e.clientX-rect.left)/rect.width*(xDomain[1]-xDomain[0]);
+                        const y = yDomain[1] - (e.clientY-rect.top)/rect.height*(yDomain[1]-yDomain[0]);
+                        coords.textContent='x: '+x.toFixed(2)+'  y: '+y.toFixed(2);
+                    });
+                    svg.addEventListener('mouseleave', ()=>{ coords.textContent='drag • scroll zoom'; });
+                    coords.textContent='drag • scroll zoom';
+                }
+                saveGrafikState();
+            }catch(err){
+                showGrafikError('Gagal menggambar: '+(err.message||err));
+            }
+        }, 160);
+        function initGrafik(){
+            if(grafikInited) { renderGrafik(); return; }
+            grafikInited=true;
+            const list=$('grafik-list');
+            list.innerHTML='';
+            const saved=loadGrafikState();
+            if(saved && saved.fns && saved.fns.length){
+                saved.fns.forEach(v=> addGrafikRow(v, false));
+                if(saved.xmin!==undefined) $('grafik-xmin').value=saved.xmin;
+                if(saved.xmax!==undefined) $('grafik-xmax').value=saved.xmax;
+                if(saved.ymin!==undefined) $('grafik-ymin').value=saved.ymin;
+                if(saved.ymax!==undefined) $('grafik-ymax').value=saved.ymax;
+                if(saved.grid!==undefined) $('grafik-grid').checked=!!saved.grid;
+            }
+            if(!list.children.length){
+                addGrafikRow('x^2', false);
+                addGrafikRow('sin(x)', false);
+            }
+            // bind range changes efficiently
+            ['grafik-xmin','grafik-xmax','grafik-ymin','grafik-ymax'].forEach(id=>{
+                $(id).addEventListener('input', debounce(()=>{ saveGrafikState(); renderGrafik(); }, 300));
+            });
+            $('grafik-grid').addEventListener('change', ()=>{ saveGrafikState(); renderGrafik(); });
+            // resize observer
+            try{
+                const ro=new ResizeObserver(debounce(()=>renderGrafik(), 200));
+                ro.observe($('grafik-canvas-wrap'));
+            }catch(e){ window.addEventListener('resize', debounce(()=>renderGrafik(), 300)); }
+            renderGrafik();
+        }
+        function resetGrafikView(){
+            $('grafik-xmin').value=-10; $('grafik-xmax').value=10;
+            $('grafik-ymin').value=-10; $('grafik-ymax').value=10;
+            $('grafik-grid').checked=true;
+            saveGrafikState(); renderGrafik();
+        }
+        function shareGrafik(){
+            const fns=getGrafikFns();
+            if(!fns.length){ alert('Tambah fungsi dulu.'); return; }
+            const url=location.href;
+            if(navigator.clipboard){
+                navigator.clipboard.writeText(url).then(()=>{
+                    const b=document.querySelector('#form-grafik button[onclick="shareGrafik()"]');
+                    const old=b.textContent; b.textContent='✓ Copied'; setTimeout(()=>b.textContent=old,1200);
+                });
+            } else {
+                prompt('Copy URL:', url);
+            }
+        }
+        function _getGrafikSvgString(){
+            const wrap=$('grafik-canvas');
+            const svg=wrap.querySelector('svg');
+            if(!svg) return null;
+            const clone=svg.cloneNode(true);
+            clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+            clone.setAttribute('xmlns:xlink','http://www.w3.org/1999/xlink');
+            // pastikan width/height eksplisit dulu
+            const rectB=svg.getBoundingClientRect();
+            const wAttr=clone.getAttribute('width');
+            const hAttr=clone.getAttribute('height');
+            const w=wAttr ? parseFloat(wAttr) : (rectB.width || wrap.parentElement.clientWidth || 700);
+            const h=hAttr ? parseFloat(hAttr) : (rectB.height || 380);
+            clone.setAttribute('width', w);
+            clone.setAttribute('height', h);
+            clone.setAttribute('viewBox', clone.getAttribute('viewBox') || `0 0 ${w} ${h}`);
+            // background rect dengan ukuran eksplisit (jangan 100% agar png tidak transparan/fail)
+            const bg='#0f172a';
+            const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+            rect.setAttribute('x','0'); rect.setAttribute('y','0');
+            rect.setAttribute('width', w); rect.setAttribute('height', h);
+            rect.setAttribute('fill', bg);
+            clone.insertBefore(rect, clone.firstChild);
+            // inline style untuk memastikan stroke terlihat (function-plot sudah inline)
+            return {str:new XMLSerializer().serializeToString(clone), svg, w, h};
+        }
+        function downloadGrafik(){
+            downloadGrafikAs('svg');
+        }
+        function downloadGrafikAs(fmt){
+            fmt=(fmt||'svg').toLowerCase();
+            const data=_getGrafikSvgString();
+            if(!data){ alert('Belum ada grafik. Tambah fungsi dulu.'); return; }
+            if(fmt==='svg'){
+                const blob=new Blob([data.str], {type:'image/svg+xml;charset=utf-8'});
+                const url=URL.createObjectURL(blob);
+                const a=document.createElement('a'); a.href=url; a.download='calcku-grafik-'+Date.now()+'.svg';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(()=>URL.revokeObjectURL(url),1000);
+            } else if(fmt==='png'){
+                // pakai data URL (bukan blob) agar lolos CSP img-src data: dan lebih reliable
+                let svg64;
+                try{
+                    svg64=btoa(unescape(encodeURIComponent(data.str)));
+                }catch(e){
+                    // fallback blob jika btoa gagal (mis. karakter aneh)
+                    const blob=new Blob([data.str], {type:'image/svg+xml;charset=utf-8'});
+                    const url=URL.createObjectURL(blob);
+                    _renderSvgToPng(url, data, true);
+                    return;
+                }
+                const dataUrl='data:image/svg+xml;base64,'+svg64;
+                _renderSvgToPng(dataUrl, data, false);
+            }
+        }
+        function _renderSvgToPng(src, data, isBlob){
+            const img=new Image();
+            // penting: jangan set crossOrigin agar tidak taint canvas
+            img.onload=function(){
+                try{
+                    const w=Math.round(data.w)||800;
+                    const h=Math.round(data.h)||380;
+                    const scale=Math.min(2, window.devicePixelRatio || 2);
+                    const canvas=document.createElement('canvas');
+                    canvas.width=w*scale;
+                    canvas.height=h*scale;
+                    const ctx=canvas.getContext('2d');
+                    ctx.fillStyle='#0f172a';
+                    ctx.fillRect(0,0,canvas.width,canvas.height);
+                    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+                    if(isBlob) URL.revokeObjectURL(src);
+                    if(canvas.toBlob){
+                        canvas.toBlob(function(pngBlob){
+                            if(!pngBlob){ alert('Gagal konversi PNG'); return; }
+                            const pngUrl=URL.createObjectURL(pngBlob);
+                            const a=document.createElement('a'); a.href=pngUrl; a.download='calcku-grafik-'+Date.now()+'.png';
+                            document.body.appendChild(a); a.click(); a.remove();
+                            setTimeout(()=>URL.revokeObjectURL(pngUrl),800);
+                        },'image/png');
+                    } else {
+                        const pngUrl=canvas.toDataURL('image/png');
+                        const a=document.createElement('a'); a.href=pngUrl; a.download='calcku-grafik-'+Date.now()+'.png';
+                        document.body.appendChild(a); a.click(); a.remove();
+                    }
+                }catch(err){
+                    if(isBlob) URL.revokeObjectURL(src);
+                    console.error(err);
+                    alert('Gagal render PNG: '+(err.message||err));
+                }
+            };
+            img.onerror=function(e){
+                if(isBlob) URL.revokeObjectURL(src);
+                console.error('img load error', e);
+                alert('Gagal konversi PNG — coba download SVG. Jika tetap gagal, screenshot manual ya.');
+            };
+            img.src=src;
+        }
+        // auto-init if hash has grafik or user lands via share
+        if(location.hash.includes('grafik=')){
+            // defer until DOM ready
+            setTimeout(()=>{ document.querySelector('[data-tab="grafik"]')?.click(); }, 200);
+        }
+
         function togglePanduan(){ $('panduan').classList.toggle('hidden'); }
         document.querySelectorAll('.card input').forEach(i=>{
-            i.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); e.target.closest('.card').querySelector('.btn-primary').click(); }});
+            i.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const card=e.target.closest('.card'); const btn=card && card.querySelector('.btn-primary'); if(btn) btn.click(); }});
         });
         $('limit-arah').addEventListener('keydown', e=>{ if(e.key==='Enter') hitungLimit(); });
     </script>
