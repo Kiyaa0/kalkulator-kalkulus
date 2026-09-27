@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1B2838">
+    <meta name="theme-color" content="#ffffff">
     <meta name="description" content="CalcKu — Hitung turunan, integral, limit dengan jelas.">
     <meta property="og:title" content="CalcKu — Kalkulus">
     <meta property="og:description" content="Turunan, Integral, Limit.">
@@ -15,1017 +15,1034 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'crt-green': '#33FF00',
-                        'phosphor-amber': '#FFB000',
-                        'charcoal': '#333333',
-                        'deep-navy': '#1B2838',
-                        'warm-beige': '#D2B48C',
-                        'tape-red': '#CC0000',
-                        'static-grey': '#999999',
-                        'off-white': '#E8E0D0',
-                    },
-                    fontFamily: {
-                        'cassette': ['VT323', 'monospace'],
-                        'mono': ['JetBrains Mono', 'monospace'],
-                        'sans': ['Inter', 'system-ui', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/function-plot@1.14.0/dist/function-plot.js"></script>
 
-    <style>
-        /* BASE — readable, high contrast */
-        body{
-            background:#1B2838;
-            color:#E8E0D0; /* off-white for max readability, not neon green */
-            font-family:'Inter', system-ui, -apple-system, sans-serif;
-            font-size:15px;
-            line-height:1.6;
-            overflow-x:hidden;
-            -webkit-font-smoothing:antialiased;
-            text-rendering:optimizeLegibility;
-        }
-        ::selection{background:#FFB000;color:#1B2838}
-        .glow-green{ text-shadow:0 0 6px rgba(51,255,0,0.45); }
-        .card-border{ border:1.5px solid #334155; border-radius:10px; background:#1e293b; }
-        .led{width:7px;height:7px;border-radius:50%;background:#334155;}
-        .led.on{background:#33FF00;box-shadow:0 0 6px #33FF00}
-        .btn-primary{
-            background:#33FF00;color:#0f172a;border:none;
-            border-radius:8px;
-            font-family:'JetBrains Mono', monospace;
-            font-weight:700;
-            letter-spacing:0.02em;
-            transition:all 0.18s;
-            box-shadow:0 2px 0 #1e3a1e, 0 4px 12px rgba(51,255,0,0.25);
-        }
-        .btn-primary:hover{ background:#2ee600; transform:translateY(-1px); box-shadow:0 3px 0 #1e3a1e, 0 6px 16px rgba(51,255,0,0.3); }
-        .btn-primary:active{ transform:translateY(1px); box-shadow:0 1px 0 #1e3a1e; }
-        .btn-primary:disabled{ opacity:0.6; cursor:not-allowed; transform:none; }
-        /* Inputs — HIGH readability */
-        .input-field{
-            background:#0f172a;
-            border:1.5px solid #334155;
-            border-radius:8px;
-            color:#f1f5f9;
-            font-family:'JetBrains Mono', monospace;
-            font-size:15px;
-            font-weight:500;
-            transition:all 0.18s;
-        }
-        .input-field::placeholder{ color:#64748b; }
-        .input-field:focus{
-            outline:none;
-            border-color:#33FF00;
-            box-shadow:0 0 0 3px rgba(51,255,0,0.18);
-            background:#0f1f2f;
-        }
-        .input-field:focus::placeholder{ color:#475569; }
-        /* Labels — clear, high contrast */
-        .label{
-            font-family:'Inter', sans-serif;
-            font-size:13px;
-            font-weight:600;
-            letter-spacing:0.02em;
-            color:#e2e8f0;
-            margin-bottom:6px;
-            display:block;
-        }
-        .label small{ font-weight:400; color:#94a3b8; font-size:12px; }
-        /* Helper text */
-        .help{ font-size:12px; color:#94a3b8; line-height:1.5; margin-top:6px; }
-        .help code{ background:#0f172a; border:1px solid #334155; padding:1px 5px; border-radius:4px; color:#33FF00; font-family:'JetBrains Mono', monospace; font-size:11px; }
-        ::-webkit-scrollbar{width:8px;height:8px}
-        ::-webkit-scrollbar-track{background:#1B2838}
-        ::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
-        ::-webkit-scrollbar-thumb:hover{background:#475569}
-        /* KaTeX results — larger, clearer */
-        .katex{ font-size:1.15em !important; }
-        .katex-display{ margin:0.6em 0 !important; }
-        /* Tab — clear active/inactive */
-        .tab-active{ background:#FFB000 !important; color:#1B2838 !important; border-color:#FFB000 !important; font-weight:700; box-shadow:0 2px 8px rgba(255,176,0,0.25); }
-        .tab-inactive{ background:#1e293b !important; color:#cbd5e1 !important; border:1.5px solid #334155 !important; }
-        .tab-inactive:hover{ background:#252f45 !important; color:#f1f5f9 !important; border-color:#475569 !important; }
-        /* Grafik — Desmos-like */
-        .grafik-row{ display:flex; gap:8px; align-items:center; background:#0f172a; border:1.5px solid #334155; border-radius:8px; padding:8px 10px; transition:border-color .18s; }
-        .grafik-row:focus-within{ border-color:#33FF00; box-shadow:0 0 0 3px rgba(51,255,0,.12); }
-        .grafik-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; box-shadow:0 0 6px currentColor; }
-        .grafik-input{ flex:1; background:transparent; border:none; outline:none; color:#f1f5f9; font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:500; min-width:0; }
-        .grafik-input::placeholder{ color:#64748b; }
-        .grafik-del{ width:28px; height:28px; border-radius:6px; background:#1e293b; border:1px solid #334155; color:#94a3b8; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .15s; flex-shrink:0; }
-        .grafik-del:hover{ background:#2a1f1f; border-color:#CC0000; color:#f87171; }
-        #grafik-canvas .function-plot{ width:100%; height:100%; }
-        /* Grid diperjelas — kontras lebih tinggi agar memudahkan user */
-        #grafik-canvas .axis path, #grafik-canvas .axis line{ stroke:#475569; stroke-width:1.2; }
-        #grafik-canvas .axis text{ fill:#cbd5e1; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; }
-        #grafik-canvas .grid line{ stroke:#334155; stroke-opacity:0.65; stroke-width:0.9; }
-        #grafik-canvas .grid line.minor{ stroke:#1e293b; stroke-opacity:0.5; }
-        #grafik-canvas .origin{ stroke:#94a3b8; stroke-width:1.4; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body class="min-h-screen flex flex-col">
-    <!-- HEADER — clean -->
-    <header class="relative z-40 bg-deep-navy border-b border-[#243044] sticky top-0 backdrop-blur-md bg-opacity-95">
-        <div class="max-w-[720px] mx-auto px-4 py-3.5 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-lg bg-[#0f172a] border border-[#334155] flex items-center justify-center">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#33FF00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="5.5" width="18" height="13" rx="2"></rect>
-                        <circle cx="8.2" cy="12" r="2"></circle>
-                        <circle cx="15.8" cy="12" r="2"></circle>
-                        <path d="M8.2 10.2h7.6M10 14h4" stroke="#FFB000" stroke-width="1.3"></path>
+<body>
+    <!-- HEADER -->
+    <header class="site-header">
+        <div class="header-inner">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 7h16M4 12h16M4 17h16"/>
+                        <circle cx="4" cy="7" r="1.5" fill="#fff" stroke="none"/>
+                        <circle cx="4" cy="12" r="1.5" fill="#fff" stroke="none"/>
+                        <circle cx="4" cy="17" r="1.5" fill="#fff" stroke="none"/>
                     </svg>
                 </div>
                 <div>
-                    <div class="font-cassette text-[22px] leading-none tracking-wide text-off-white">CalcKu</div>
-                    <div class="font-mono text-[11px] tracking-[0.14em] text-static-grey -mt-0.5">KALKULUS</div>
+                    <div class="logo-text">CalcKu</div>
+                    <div class="logo-sub">Kalkulus</div>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
-                <span class="hidden sm:inline-flex items-center gap-1.5 bg-[#0f172a] border border-[#1e293b] rounded-[6px] px-2.5 py-1 font-mono text-[11px] text-crt-green"><span class="led on"></span> ONLINE</span>
+            <div class="header-actions">
+                <span class="badge-online" style="display:none" id="badge-status">ONLINE</span>
+                <button id="theme-toggle-btn" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+                    <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                    <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                </button>
             </div>
         </div>
     </header>
 
     <!-- MAIN -->
-    <main class="relative z-10 flex-1 max-w-[720px] w-full mx-auto px-4 py-6 sm:py-8">
-        <!-- Intro — ringkas -->
-        <div class="text-center mb-5">
-            <h1 class="font-cassette text-[30px] sm:text-[36px] leading-none text-crt-green glow-green">Kalkulus</h1>
-            <p class="font-sans text-[14px] text-slate-300 mt-1">Turunan · Integral · Limit</p>
-        </div>
+    <main>
+        <div class="app-wrapper">
 
-        <!-- Tabs — big, clear -->
-        <div class="grid grid-cols-4 gap-2 mb-4">
-            <button class="tab active tab-active rounded-lg px-2 py-3 font-mono text-[13px] sm:text-[14px] cursor-pointer transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-tab="turunan">
-                <span class="text-[18px] leading-none">d/dx</span><span>TURUNAN</span>
-            </button>
-            <button class="tab tab-inactive rounded-lg px-2 py-3 font-mono text-[13px] sm:text-[14px] cursor-pointer transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-tab="integral">
-                <span class="text-[18px] leading-none">∫</span><span>INTEGRAL</span>
-            </button>
-            <button class="tab tab-inactive rounded-lg px-2 py-3 font-mono text-[13px] sm:text-[14px] cursor-pointer transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-tab="limit">
-                <span class="text-[13px] font-bold leading-none">LIM</span><span>LIMIT</span>
-            </button>
-            <button class="tab tab-inactive rounded-lg px-2 py-3 font-mono text-[13px] sm:text-[14px] cursor-pointer transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-tab="grafik">
-                <span class="text-[16px] leading-none">◧</span><span>GRAFIK</span>
-            </button>
-        </div>
-
-        <!-- TURUNAN CARD -->
-        <div class="card card-border p-4 sm:p-5" id="form-turunan">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="font-sans font-semibold text-[15px] text-off-white flex items-center gap-2">
-                    <span class="w-7 h-7 rounded-md bg-crt-green/15 border border-crt-green/30 flex items-center justify-center text-crt-green text-[10px]">d/dx</span>
-                    Turunan
-                </h2>
-                <span class="font-mono text-[11px] bg-[#0f172a] border border-[#334155] rounded-[6px] px-2.5 py-1 text-crt-green">READY</span>
+            <!-- Hero -->
+            <div class="hero">
+                <h1 class="hero-title">Kalkulator <span>Kalkulus</span></h1>
+                <p class="hero-sub">Turunan · Integral · Limit · Grafik</p>
             </div>
 
-            <label class="label">Fungsi f(x) <small>— contoh: x**3 + 2*x, sin(x)/x</small></label>
-            <input id="turunan-fungsi" type="text" placeholder="Contoh: x**3 + 2*x" autocomplete="off" class="input-field w-full px-3.5 py-3">
-            <div id="valid-turunan" class="hidden mt-2"></div>
-            <div class="help">Gunakan <code>**</code> atau <code>^</code> untuk pangkat, <code>*</code> wajib untuk perkalian.</div>
-            <div class="mt-2 flex flex-wrap gap-1.5">
-                <button onclick="fillTurunan('x**3 + 2*x')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">x³+2x</button>
-                <button onclick="fillTurunan('sin(x)/x')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">sin(x)/x</button>
-                <button onclick="fillTurunan('exp(-x**2)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">exp(-x²)</button>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 mt-4">
-                <div>
-                    <label class="label">Orde turunan</label>
-                    <input id="turunan-orde" type="number" value="1" min="1" max="10" class="input-field w-full px-3.5 py-3 text-center font-bold">
-                    <div class="help text-center">1 – 10</div>
-                </div>
-                <div>
-                    <label class="label">Titik evaluasi <small>opsional</small></label>
-                    <input id="turunan-titik" type="text" placeholder="misal: 2" class="input-field w-full px-3.5 py-3">
-                    <div class="help">Kosongkan jika tidak perlu</div>
-                </div>
-            </div>
-
-            <button onclick="hitungTurunan()" class="btn-primary w-full mt-5 py-3.5 text-[15px] cursor-pointer flex items-center justify-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                HITUNG TURUNAN
-            </button>
-
-            <div id="hasil-turunan" class="mt-4 bg-[#0f172a] border border-[#1e293b] rounded-lg p-4 min-h-[64px] flex items-center justify-center text-center">
-                <span class="font-mono text-[13px] text-slate-400">Hasil akan tampil di sini — LaTeX + grafik</span>
-            </div>
-            <div id="actions-turunan" class="hidden mt-2 flex gap-2">
-                <button onclick="copyLatex('turunan')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-crt-green/50 font-mono text-[12px] text-slate-300 hover:text-crt-green cursor-pointer transition-all">⧉ Copy LaTeX</button>
-                <div class="relative flex-1">
-                    <button onclick="toggleDownloadMenu('turunan')" id="btn-download-turunan" class="w-full py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all flex items-center justify-center gap-1">⬇ Download <span class="text-[9px]">▼</span></button>
-                    <div id="menu-turunan" class="hidden absolute bottom-full mb-1.5 left-0 right-0 bg-[#0f172a] border border-[#334155] rounded-[6px] shadow-xl overflow-hidden z-20">
-                        <button onclick="downloadPlotAs('turunan','png');toggleDownloadMenu('turunan',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2 border-b border-[#1e293b]">🖼️ Download PNG</button>
-                        <button onclick="downloadPlotAs('turunan','svg');toggleDownloadMenu('turunan',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2">📐 Download SVG</button>
-                    </div>
-                </div>
-            </div>
-            <div id="history-turunan" class="hidden mt-3"></div>
-            <div id="plot-turunan" class="hidden mt-3 rounded-lg border border-[#334155] bg-[#0f172a] p-2 overflow-hidden"><img id="plot-turunan-img" alt="Grafik Turunan" loading="lazy" decoding="async" class="w-full rounded-md"></div>
-        </div>
-
-        <!-- INTEGRAL CARD -->
-        <div class="card hidden card-border p-4 sm:p-5" id="form-integral">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="font-sans font-semibold text-[15px] text-off-white flex items-center gap-2">
-                    <span class="w-7 h-7 rounded-md bg-phosphor-amber/15 border border-phosphor-amber/30 flex items-center justify-center text-phosphor-amber text-[16px]">∫</span>
-                    Integral
-                </h2>
-                <span class="font-mono text-[11px] bg-[#0f172a] border border-[#334155] rounded-[6px] px-2.5 py-1 text-phosphor-amber">READY</span>
-            </div>
-
-            <label class="label">Fungsi f(x)</label>
-            <input id="integral-fungsi" type="text" placeholder="Contoh: x**2 + 1" autocomplete="off" class="input-field w-full px-3.5 py-3">
-            <div id="valid-integral" class="hidden mt-2"></div>
-            <div class="mt-2 flex flex-wrap gap-1.5">
-                <button onclick="fillIntegral('x**2 + 1')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-phosphor-amber/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber transition-all">x²+1</button>
-                <button onclick="fillIntegral('exp(x)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-phosphor-amber/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber transition-all">exp(x)</button>
-                <button onclick="fillIntegral('1/x')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-phosphor-amber/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber transition-all">1/x</button>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 mt-4">
-                <div>
-                    <label class="label">Batas bawah <small>opsional</small></label>
-                    <input id="integral-bawah" type="text" placeholder="0" class="input-field w-full px-3.5 py-3">
-                </div>
-                <div>
-                    <label class="label">Batas atas <small>opsional</small></label>
-                    <input id="integral-atas" type="text" placeholder="1" class="input-field w-full px-3.5 py-3">
-                </div>
-            </div>
-            <div class="help">Isi keduanya untuk integral tentu (luas area), kosongkan untuk tak tentu (+ C).</div>
-
-            <button onclick="hitungIntegral()" class="btn-primary w-full mt-5 py-3.5 text-[15px] cursor-pointer flex items-center justify-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                HITUNG INTEGRAL
-            </button>
-
-            <div id="hasil-integral" class="mt-4 bg-[#0f172a] border border-[#1e293b] rounded-lg p-4 min-h-[64px] flex items-center justify-center text-center">
-                <span class="font-mono text-[13px] text-slate-400">Hasil integral + grafik area</span>
-            </div>
-            <div id="actions-integral" class="hidden mt-2 flex gap-2">
-                <button onclick="copyLatex('integral')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-crt-green/50 font-mono text-[12px] text-slate-300 hover:text-crt-green cursor-pointer transition-all">⧉ Copy LaTeX</button>
-                <div class="relative flex-1">
-                    <button onclick="toggleDownloadMenu('integral')" id="btn-download-integral" class="w-full py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all flex items-center justify-center gap-1">⬇ Download <span class="text-[9px]">▼</span></button>
-                    <div id="menu-integral" class="hidden absolute bottom-full mb-1.5 left-0 right-0 bg-[#0f172a] border border-[#334155] rounded-[6px] shadow-xl overflow-hidden z-20">
-                        <button onclick="downloadPlotAs('integral','png');toggleDownloadMenu('integral',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2 border-b border-[#1e293b]">🖼️ Download PNG</button>
-                        <button onclick="downloadPlotAs('integral','svg');toggleDownloadMenu('integral',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2">📐 Download SVG</button>
-                    </div>
-                </div>
-            </div>
-            <div id="history-integral" class="hidden mt-3"></div>
-            <div id="plot-integral" class="hidden mt-3 rounded-lg border border-[#334155] bg-[#0f172a] p-2 overflow-hidden"><img id="plot-integral-img" alt="Grafik Integral" loading="lazy" decoding="async" class="w-full rounded-md"></div>
-        </div>
-
-        <!-- LIMIT CARD -->
-        <div class="card hidden card-border p-4 sm:p-5" id="form-limit">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="font-sans font-semibold text-[15px] text-off-white flex items-center gap-2">
-                    <span class="w-7 h-7 rounded-md bg-tape-red/15 border border-tape-red/30 flex items-center justify-center text-tape-red font-mono text-[11px] font-bold">LIM</span>
-                    Limit
-                </h2>
-                <span class="font-mono text-[11px] bg-[#0f172a] border border-[#334155] rounded-[6px] px-2.5 py-1 text-tape-red">READY</span>
-            </div>
-
-            <label class="label">Fungsi f(x)</label>
-            <input id="limit-fungsi" type="text" placeholder="Contoh: sin(x)/x" autocomplete="off" class="input-field w-full px-3.5 py-3">
-            <div id="valid-limit" class="hidden mt-2"></div>
-            <div class="mt-2 flex flex-wrap gap-1.5">
-                <button onclick="fillLimit('sin(x)/x')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-tape-red/40 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-tape-red transition-all">sin(x)/x</button>
-                <button onclick="fillLimit('(x**2 - 1)/(x - 1)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-tape-red/40 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-tape-red transition-all">(x²-1)/(x-1)</button>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 mt-4">
-                <div>
-                    <label class="label">Mendekati x =</label>
-                    <input id="limit-titik" type="text" value="0" class="input-field w-full px-3.5 py-3 text-center font-bold">
-                </div>
-                <div>
-                    <label class="label">Arah</label>
-                    <select id="limit-arah" class="input-field w-full px-3.5 py-3 cursor-pointer">
-                        <option value="+-">Kiri & Kanan (dua sisi)</option>
-                        <option value="+">Kanan saja (+)</option>
-                        <option value="-">Kiri saja (-)</option>
-                    </select>
-                </div>
-            </div>
-
-            <button onclick="hitungLimit()" class="btn-primary w-full mt-5 py-3.5 text-[15px] cursor-pointer flex items-center justify-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                HITUNG LIMIT
-            </button>
-
-            <div id="hasil-limit" class="mt-4 bg-[#0f172a] border border-[#1e293b] rounded-lg p-4 min-h-[64px] flex items-center justify-center text-center">
-                <span class="font-mono text-[13px] text-slate-400">Hasil limit + grafik titik dekat</span>
-            </div>
-            <div id="actions-limit" class="hidden mt-2 flex gap-2">
-                <button onclick="copyLatex('limit')" class="flex-1 py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-crt-green/50 font-mono text-[12px] text-slate-300 hover:text-crt-green cursor-pointer transition-all">⧉ Copy LaTeX</button>
-                <div class="relative flex-1">
-                    <button onclick="toggleDownloadMenu('limit')" id="btn-download-limit" class="w-full py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all flex items-center justify-center gap-1">⬇ Download <span class="text-[9px]">▼</span></button>
-                    <div id="menu-limit" class="hidden absolute bottom-full mb-1.5 left-0 right-0 bg-[#0f172a] border border-[#334155] rounded-[6px] shadow-xl overflow-hidden z-20">
-                        <button onclick="downloadPlotAs('limit','png');toggleDownloadMenu('limit',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2 border-b border-[#1e293b]">🖼️ Download PNG</button>
-                        <button onclick="downloadPlotAs('limit','svg');toggleDownloadMenu('limit',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2">📐 Download SVG</button>
-                    </div>
-                </div>
-            </div>
-            <div id="history-limit" class="hidden mt-3"></div>
-            <div id="plot-limit" class="hidden mt-3 rounded-lg border border-[#334155] bg-[#0f172a] p-2 overflow-hidden"><img id="plot-limit-img" alt="Grafik Limit" loading="lazy" decoding="async" class="w-full rounded-md"></div>
-        </div>
-
-        <!-- GRAFIK CARD — Desmos-like sederhana -->
-        <div class="card hidden card-border p-4 sm:p-5" id="form-grafik">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="font-sans font-semibold text-[15px] text-off-white flex items-center gap-2">
-                    <span class="w-7 h-7 rounded-md bg-crt-green/15 border border-crt-green/30 flex items-center justify-center text-crt-green text-[14px]">◧</span>
-                    Grafik
-                </h2>
-                <span class="font-mono text-[11px] bg-[#0f172a] border border-[#334155] rounded-[6px] px-2.5 py-1 text-crt-green">INTERAKTIF</span>
-            </div>
-
-            <!-- List fungsi -->
-            <div id="grafik-list" class="space-y-2"></div>
-            <button onclick="addGrafikRow()" class="mt-2 w-full py-2.5 rounded-[8px] bg-[#0f172a] hover:bg-[#162032] border border-dashed border-[#334155] hover:border-crt-green/50 font-mono text-[13px] text-slate-300 hover:text-crt-green cursor-pointer transition-all flex items-center justify-center gap-2">
-                <span class="text-[16px] leading-none">+</span> Tambah Fungsi
-            </button>
-            <div class="mt-2 flex flex-wrap gap-1.5">
-                <button onclick="addGrafikPreset('x**2')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">x²</button>
-                <button onclick="addGrafikPreset('y**2')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">y²</button>
-                <button onclick="addGrafikPreset('sin(x)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">sin(x)</button>
-                <button onclick="addGrafikPreset('sin(y)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">sin(y)</button>
-                <button onclick="addGrafikPreset('sin(x)/x')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-phosphor-amber/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber transition-all">sin(x)/x</button>
-                <button onclick="addGrafikPreset('exp(-x**2)')" class="cursor-pointer bg-[#0f172a] hover:bg-[#162032] border border-[#334155] hover:border-crt-green/50 rounded-[6px] px-2.5 py-1 font-mono text-[12px] text-slate-300 hover:text-crt-green transition-all">exp(-x²)</button>
-            </div>
-
-            <!-- Kontrol rentang -->
-            <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div><label class="label">xMin</label><input id="grafik-xmin" type="number" value="-10" step="1" class="input-field w-full px-2.5 py-2 text-center"></div>
-                <div><label class="label">xMax</label><input id="grafik-xmax" type="number" value="10" step="1" class="input-field w-full px-2.5 py-2 text-center"></div>
-                <div><label class="label">yMin</label><input id="grafik-ymin" type="number" value="-10" step="1" class="input-field w-full px-2.5 py-2 text-center"></div>
-                <div><label class="label">yMax</label><input id="grafik-ymax" type="number" value="10" step="1" class="input-field w-full px-2.5 py-2 text-center"></div>
-            </div>
-            <label class="mt-3 flex items-center gap-2 cursor-pointer select-none">
-                <input id="grafik-grid" type="checkbox" checked class="w-4 h-4 rounded border-[#334155] bg-[#0f172a] text-crt-green focus:ring-crt-green focus:ring-offset-0">
-                <span class="font-sans text-[13px] text-slate-300">Tampilkan grid</span>
-                <span id="grafik-coords" class="ml-auto font-mono text-[11px] text-crt-green hidden"></span>
-            </label>
-
-            <!-- Canvas -->
-            <div id="grafik-canvas-wrap" class="mt-3 rounded-lg border border-[#334155] bg-[#0f172a] overflow-hidden relative">
-                <div id="grafik-canvas" class="w-full" style="height:380px; min-height:320px;"></div>
-                <div id="grafik-empty" class="absolute inset-0 flex items-center justify-center bg-[#0f172a]/90 backdrop-blur-[1px] hidden">
-                    <span class="font-mono text-[13px] text-slate-400">Tambah fungsi untuk melihat grafik</span>
-                </div>
-            </div>
-            <div id="grafik-error" class="hidden mt-2 rounded-[6px] bg-tape-red/10 border border-tape-red/30 px-3 py-2 font-mono text-[12px] text-tape-red"></div>
-
-            <div class="mt-3 grid grid-cols-3 gap-2">
-                <button onclick="resetGrafikView()" class="py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-slate-500 font-mono text-[12px] text-slate-300 cursor-pointer transition-all">⟲ Reset Posisi</button>
-                <button onclick="shareGrafik()" class="py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-phosphor-amber/50 font-mono text-[12px] text-slate-300 hover:text-phosphor-amber cursor-pointer transition-all">⧉ Share</button>
-                <div class="relative">
-                    <button onclick="toggleDownloadMenu('grafik')" id="btn-download-grafik" class="w-full py-2 rounded-[6px] bg-[#0f172a] border border-[#334155] hover:border-crt-green/50 font-mono text-[12px] text-slate-300 hover:text-crt-green cursor-pointer transition-all flex items-center justify-center gap-1">⬇ Download <span class="text-[9px]">▼</span></button>
-                    <div id="menu-grafik" class="hidden absolute bottom-full mb-1.5 left-0 right-0 bg-[#0f172a] border border-[#334155] rounded-[6px] shadow-xl overflow-hidden z-20">
-                        <button onclick="downloadGrafikAs('png');toggleDownloadMenu('grafik',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2 border-b border-[#1e293b]">🖼️ Download PNG</button>
-                        <button onclick="downloadGrafikAs('svg');toggleDownloadMenu('grafik',true)" class="w-full text-left px-3 py-2.5 font-mono text-[12px] text-slate-300 hover:bg-[#1e293b] hover:text-off-white cursor-pointer flex items-center gap-2">📐 Download SVG</button>
-                    </div>
-                </div>
-            </div>
-            <div class="help mt-2">Tips: support <code>x</code> dan <code>y</code> — ketik <code>y^2</code> / <code>sin(y)</code> otomatis di-plot sebagai <code>x</code>. Drag untuk pan, scroll zoom, Enter untuk update. Gunakan <code>**</code> atau <code>^</code> untuk pangkat.</div>
-        </div>
-
-        <!-- Panduan — readable -->
-        <div class="mt-5 rounded-lg border border-[#334155] bg-[#1e293b] p-4">
-            <button onclick="togglePanduan()" class="w-full flex items-center justify-between py-1 cursor-pointer group">
-                <span class="font-sans font-semibold text-[14px] text-off-white flex items-center gap-2">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB000" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-                    Panduan
-                </span>
-                <span class="font-mono text-[12px] text-phosphor-amber group-hover:text-amber-300 flex items-center gap-1">LIHAT <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span>
-            </button>
-            <div id="panduan" class="hidden mt-4 space-y-4">
-                <!-- Tabel ringkas — kotak -->
-                <div class="overflow-hidden rounded-lg border border-[#334155]">
-                    <table class="w-full text-left border-collapse font-sans text-[13px]">
-                        <thead class="bg-[#0f172a]">
-                            <tr class="font-mono text-[11px] tracking-widest text-phosphor-amber">
-                                <th class="px-3 py-2.5 border-b border-[#334155]">Kategori</th>
-                                <th class="px-3 py-2.5 border-b border-[#334155]">Input</th>
-                                <th class="px-3 py-2.5 border-b border-[#334155]">Arti</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-[#1e293b] text-[13px]">
-                            <tr><td class="px-3 py-2.5 font-semibold text-off-white">Variabel</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-crt-green/30 text-crt-green rounded px-1.5 py-0.5 font-mono text-[12px]">x</code>, <code class="bg-[#1e293b] border border-crt-green/30 text-crt-green rounded px-1.5 py-0.5 font-mono text-[12px]">y</code></td><td class="px-3 py-2.5 text-slate-300">Variabel utama — <code class="text-crt-green">x</code> dan <code class="text-crt-green">y</code> didukung (auto-detect, grafik <code>y</code>→<code>x</code>)</td></tr>
-                            <tr><td class="px-3 py-2.5 font-semibold text-off-white">Pangkat</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-phosphor-amber/30 text-phosphor-amber rounded px-1.5 py-0.5 font-mono text-[12px]">x**2</code> atau <code class="bg-[#1e293b] border border-phosphor-amber/30 text-phosphor-amber rounded px-1.5 py-0.5 font-mono text-[12px]">x^2</code></td><td class="px-3 py-2.5 text-slate-300"><code>^</code> otomatis jadi <code>**</code> → x²</td></tr>
-                            <tr><td class="px-3 py-2.5 font-semibold text-off-white">Perkalian</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-crt-green/30 text-crt-green rounded px-1.5 py-0.5 font-mono text-[12px]">2*x</code></td><td class="px-3 py-2.5 text-slate-300">Wajib pakai <code>*</code> — <code>2x</code> atau <code>x*y</code> akan error kalau tanpa <code>*</code></td></tr>
-                            <tr><td class="px-3 py-2.5 font-semibold text-off-white">Pembagian</td><td class="px-3 py-2.5"><code class="bg-[#1e293b] border border-slate-600 text-slate-200 rounded px-1.5 py-0.5 font-mono text-[12px]">1/x</code></td><td class="px-3 py-2.5 text-slate-300">Contoh: <code>(x^2+1)/(x-3)</code> pakai kurung</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Konstanta & Trigonometri -->
-                <div class="grid sm:grid-cols-2 gap-3">
-                    <div class="bg-[#0f172a] rounded-lg border border-[#334155] p-3.5">
-                        <div class="font-sans font-semibold text-[13px] text-crt-green mb-2 flex items-center gap-2"><span class="w-6 h-6 rounded bg-crt-green/15 border border-crt-green/30 flex items-center justify-center text-[12px]">π</span> Konstanta</div>
-                        <div class="space-y-1.5 font-mono text-[12px] leading-relaxed">
-                            <div class="flex justify-between"><code class="text-phosphor-amber">pi</code><span class="text-slate-300">→ π</span></div>
-                            <div class="flex justify-between"><code class="text-phosphor-amber">e</code><span class="text-slate-300">→ e (Euler, auto jadi <code class="text-crt-green">E</code>)</span></div>
-                        </div>
-                    </div>
-                    <div class="bg-[#0f172a] rounded-lg border border-[#334155] p-3.5">
-                        <div class="font-sans font-semibold text-[13px] text-phosphor-amber mb-2">Trigonometri</div>
-                        <div class="flex flex-wrap gap-1.5 font-mono text-[12px]">
-                            <button onclick="fillActive('sin(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-crt-green text-crt-green rounded px-2 py-1 hover:bg-crt-green/10 transition-all">sin(x)</button>
-                            <button onclick="fillActive('cos(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-crt-green text-crt-green rounded px-2 py-1 hover:bg-crt-green/10 transition-all">cos(x)</button>
-                            <button onclick="fillActive('tan(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-crt-green text-crt-green rounded px-2 py-1 hover:bg-crt-green/10 transition-all">tan(x)</button>
-                            <button onclick="fillActive('asin(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-phosphor-amber text-phosphor-amber rounded px-2 py-1 hover:bg-phosphor-amber/10 transition-all">asin(x)</button>
-                            <button onclick="fillActive('acos(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-phosphor-amber text-phosphor-amber rounded px-2 py-1 hover:bg-phosphor-amber/10 transition-all">acos(x)</button>
-                            <button onclick="fillActive('atan(x)')" class="cursor-pointer bg-[#1e293b] border border-[#334155] hover:border-phosphor-amber text-phosphor-amber rounded px-2 py-1 hover:bg-phosphor-amber/10 transition-all">atan(x)</button>
-                        </div>
-                        <div class="font-sans text-[11px] text-slate-400 mt-2">→ klik untuk masukkan</div>
-                    </div>
-                </div>
-
-                <div class="grid sm:grid-cols-2 gap-3">
-                    <div class="bg-[#0f172a] rounded-lg border border-[#334155] p-3.5">
-                        <div class="font-sans font-semibold text-[13px] text-phosphor-amber mb-2">Logaritma & Eksponensial</div>
-                        <div class="space-y-1 font-mono text-[12px] leading-relaxed text-slate-300">
-                            <div><code class="text-crt-green">log(x)</code> atau <code class="text-crt-green">ln(x)</code> → ln(x) natural</div>
-                            <div><code class="text-phosphor-amber">log10(x)</code> → log₁₀(x)</div>
-                            <div><code class="text-crt-green">exp(x)</code> → eˣ</div>
-                        </div>
-                    </div>
-                    <div class="bg-[#0f172a] rounded-lg border border-[#334155] p-3.5">
-                        <div class="font-sans font-semibold text-[13px] text-off-white mb-2">Fungsi Lain</div>
-                        <div class="space-y-1 font-mono text-[12px] leading-relaxed text-slate-300">
-                            <div><code class="text-crt-green">sqrt(x)</code> → √x</div>
-                            <div><code class="text-phosphor-amber">Abs(x)</code> → |x| (A besar, case-sensitive)</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Contoh — clickable -->
-                <div>
-                    <div class="font-sans font-semibold text-[13px] text-off-white mb-2">Contoh Penggunaan — klik untuk isi:</div>
-                    <div class="flex flex-wrap gap-2">
-                        <button onclick="fillTurunan('x**3 - 2*x + 1')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-crt-green/30 hover:border-crt-green text-crt-green rounded-[6px] px-3 py-1.5 transition-all">x**3 - 2*x + 1</button>
-                        <button onclick="fillLimit('sin(x)/x')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-phosphor-amber/30 hover:border-phosphor-amber text-phosphor-amber rounded-[6px] px-3 py-1.5 transition-all">sin(x)/x</button>
-                        <button onclick="fillTurunan('exp(-x**2)')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-crt-green/30 hover:border-crt-green text-crt-green rounded-[6px] px-3 py-1.5 transition-all">exp(-x**2)</button>
-                        <button onclick="fillTurunan('log(x**2 + 1)')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-slate-600 hover:border-slate-400 text-slate-300 rounded-[6px] px-3 py-1.5 transition-all">log(x**2 + 1)</button>
-                        <button onclick="fillTurunan('Abs(x-2)')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-slate-600 hover:border-slate-400 text-slate-300 rounded-[6px] px-3 py-1.5 transition-all">Abs(x-2)</button>
-                        <button onclick="fillTurunan('(x**2 + 1)/(x - 3)')" class="cursor-pointer font-mono text-[12px] bg-[#0f172a] hover:bg-[#162032] border border-crt-green/30 hover:border-crt-green text-crt-green rounded-[6px] px-3 py-1.5 transition-all">(x^2+1)/(x-3)</button>
-                    </div>
-                </div>
-
-                <!-- Warning -->
-                <div class="flex gap-2.5 bg-amber-500/10 border border-phosphor-amber/30 rounded-lg p-3">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFB000" stroke-width="2" class="shrink-0 mt-0.5"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.3L3.6 14a2 2 0 001.7 3h13.4a2 2 0 001.7-3L13.7 3.3a2 2 0 00-3.4 0z"/></svg>
-                    <p class="font-sans text-[12.5px] leading-[1.6] text-amber-100/90">
-                        <b class="text-phosphor-amber">Penting:</b> Selalu gunakan <code class="bg-[#1e293b] border border-phosphor-amber/30 text-phosphor-amber rounded px-1 py-0.5 font-mono text-[11px]">*</code> untuk perkalian eksplisit dan <b class="text-off-white">kurung yang benar</b> — contoh salah: <code class="text-tape-red">2x</code> → benar: <code class="text-crt-green">2*x</code>. Ini mencegah kesalahan penguraian SymPy.
+            <!-- PANDUAN GLOBAL — referensi simbol, dipindah ke atas -->
+            <div class="panduan-global">
+                <button onclick="togglePanduan()" class="panduan-toggle" id="btn-panduan">
+                    <span class="panduan-toggle-label">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        Cara Menulis Rumus — Panduan Lengkap
+                    </span>
+                    <span class="panduan-toggle-icon" id="panduan-toggle-text">
+                        Buka
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </span>
+                </button>
+                <div id="panduan" class="panduan-body hidden" style="border-top:1px solid var(--border)">
+                    <p style="font-size:13px; color:var(--text-muted); line-height:1.7; padding-top:4px">
+                        CalcKu menggunakan penulisan rumus gaya Python. Ikuti aturan berikut agar hasil benar:
                     </p>
+                    <div class="panduan-table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>Kategori</th><th>Tulis seperti ini</th><th>Artinya</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Variabel</td><td><code>x</code></td><td>Gunakan huruf <code>x</code> sebagai variabel utama</td></tr>
+                                <tr><td>Pangkat</td><td><code>x**2</code> atau <code>x^2</code></td><td>x² — tanda <code>^</code> otomatis diubah</td></tr>
+                                <tr><td>Perkalian</td><td><code>2*x</code></td><td>Tanda <code>*</code> wajib — jangan tulis <code>2x</code></td></tr>
+                                <tr><td>Pembagian</td><td><code>1/x</code> atau <code>(x+1)/(x-2)</code></td><td>Gunakan kurung jika lebih dari satu suku</td></tr>
+                                <tr><td>Akar</td><td><code>sqrt(x)</code></td><td>√x</td></tr>
+                                <tr><td>Eksponensial</td><td><code>exp(x)</code></td><td>eˣ</td></tr>
+                                <tr><td>Logaritma</td><td><code>log(x)</code> atau <code>ln(x)</code></td><td>ln(x) — logaritma natural</td></tr>
+                                <tr><td>Trigonometri</td><td><code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code></td><td>Fungsi trig standar</td></tr>
+                                <tr><td>Nilai mutlak</td><td><code>Abs(x)</code></td><td>|x| — huruf A harus kapital</td></tr>
+                                <tr><td>Konstanta</td><td><code>pi</code>, <code>e</code></td><td>π dan bilangan Euler</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <div class="panduan-box-title" style="margin-bottom:6px">Contoh Siap Pakai — klik untuk langsung isi:</div>
+                        <div class="example-chips">
+                            <button onclick="fillTurunan('x**3 - 2*x + 1')" class="example-chip">x**3 - 2*x + 1</button>
+                            <button onclick="fillLimit('sin(x)/x')" class="example-chip">sin(x)/x → limit</button>
+                            <button onclick="fillTurunan('exp(-x**2)')" class="example-chip">exp(-x**2)</button>
+                            <button onclick="fillTurunan('log(x**2 + 1)')" class="example-chip">log(x**2 + 1)</button>
+                            <button onclick="fillTurunan('(x**2 + 1)/(x - 3)')" class="example-chip">(x^2+1)/(x-3)</button>
+                        </div>
+                    </div>
+                    <div class="warning-box">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <path d="M12 9v4"/><path d="M12 17h.01"/>
+                            <path d="M10.3 3.3L3.6 14a2 2 0 001.7 3h13.4a2 2 0 001.7-3L13.7 3.3a2 2 0 00-3.4 0z"/>
+                        </svg>
+                        <p><b style="color:var(--text)">Perhatian:</b> Tanda <code>*</code> untuk perkalian wajib ditulis. Contoh salah: <code>2x</code> — benar: <code>2*x</code>. Jika muncul error, klik tombol <em>Fix</em> yang tampil otomatis.</p>
+                    </div>
                 </div>
             </div>
-        </div>
+
+            <!-- Tabs -->
+            <div class="tabs" role="tablist">
+                <button class="tab active" data-tab="turunan" role="tab" aria-selected="true">
+                    <span class="tab-icon">d/dx</span>
+                    <span>Turunan</span>
+                </button>
+                <button class="tab" data-tab="integral" role="tab" aria-selected="false">
+                    <span class="tab-icon">∫</span>
+                    <span>Integral</span>
+                </button>
+                <button class="tab" data-tab="limit" role="tab" aria-selected="false">
+                    <span class="tab-icon">lim</span>
+                    <span>Limit</span>
+                </button>
+                <button class="tab" data-tab="grafik" role="tab" aria-selected="false">
+                    <span class="tab-icon">◧</span>
+                    <span>Grafik</span>
+                </button>
+            </div>
+
+            <!-- TURUNAN CARD -->
+            <div class="card" id="form-turunan">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="card-icon">d/dx</span>
+                        Turunan
+                    </h2>
+                    <span class="card-badge">READY</span>
+                </div>
+                <div class="card-panduan">
+                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-turunan','pt-turunan')" aria-expanded="false" aria-controls="p-turunan" type="button">
+                        <span class="card-panduan-left">
+                            <span class="card-panduan-icon-wrap">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                                </svg>
+                            </span>
+                            <span class="card-panduan-text">
+                                <span class="card-panduan-main">Cara Pakai Turunan</span>
+                                <span class="card-panduan-sub">Langkah input &amp; evaluasi titik</span>
+                            </span>
+                        </span>
+                        <span class="card-panduan-badge">
+                            <span class="card-panduan-badge-text">Buka</span>
+                            <svg id="pt-turunan" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
+                        </span>
+                    </button>
+                    <div id="p-turunan" class="card-panduan-body hidden">
+                        <div class="panduan-step"><div class="panduan-step-num">1</div><div class="panduan-step-text">Ketik fungsi di kolom <strong>Fungsi f(x)</strong>, misal: <code>x**2 + 3*x</code> atau <code>sin(x)</code>.</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">2</div><div class="panduan-step-text"><strong>Orde turunan</strong>: isi <code>1</code> untuk turunan pertama (f'), <code>2</code> untuk turunan kedua (f''), dst. (maks. 10).</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">3</div><div class="panduan-step-text"><strong>Titik evaluasi</strong> (opsional): isi angka, misal <code>2</code>, untuk menghitung nilai f'(2). Kosongkan jika tidak perlu.</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">4</div><div class="panduan-step-text">Tekan <strong>Hitung Turunan</strong> atau tekan <kbd>Enter</kbd>. Grafik otomatis muncul.</div></div>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:16px">
+                    <label class="label" for="turunan-fungsi">Fungsi f(x)</label>
+                    <input id="turunan-fungsi" type="text" placeholder="Contoh: x**3 + 2*x" autocomplete="off" class="input-field">
+                    <div id="valid-turunan" class="hidden"></div>
+                    <div class="presets">
+                        <button onclick="fillTurunan('x**3 + 2*x')" class="preset-chip">x³+2x</button>
+                        <button onclick="fillTurunan('sin(x)/x')" class="preset-chip">sin(x)/x</button>
+                        <button onclick="fillTurunan('exp(-x**2)')" class="preset-chip">exp(-x²)</button>
+                    </div>
+                </div>
+                <div class="form-grid-2">
+                    <div>
+                        <label class="label" for="turunan-orde">Orde turunan</label>
+                        <input id="turunan-orde" type="number" value="1" min="1" max="10" class="input-field" style="text-align:center; font-weight:600">
+                        <div class="help" style="text-align:center">1 = f' &nbsp; 2 = f'' &nbsp; dst.</div>
+                    </div>
+                    <div>
+                        <label class="label" for="turunan-titik">Titik evaluasi <small>opsional</small></label>
+                        <input id="turunan-titik" type="text" placeholder="misal: 2" class="input-field">
+                        <div class="help">Hitung nilai f'(x) di titik ini</div>
+                    </div>
+                </div>
+                <button onclick="hitungTurunan()" class="btn-primary" id="btn-turunan">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    Hitung Turunan
+                </button>
+                <div id="hasil-turunan" class="result-box"><span class="result-empty">Hasil akan tampil di sini</span></div>
+                <div id="actions-turunan" class="hidden actions-row">
+                    <button onclick="copyLatex('turunan')" class="btn-secondary">⧉ Copy LaTeX</button>
+                    <div class="dropdown-wrap">
+                        <button onclick="toggleDownloadMenu('turunan')" id="btn-download-turunan" class="btn-secondary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">⬇ Download <span style="font-size:9px">▼</span></button>
+                        <div id="menu-turunan" class="dropdown-menu hidden">
+                            <button onclick="downloadPlotAs('turunan','png');toggleDownloadMenu('turunan',true)" class="dropdown-item">🖼️ Download PNG</button>
+                            <button onclick="downloadPlotAs('turunan','svg');toggleDownloadMenu('turunan',true)" class="dropdown-item">📐 Download SVG</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="history-turunan" class="hidden history-wrap"></div>
+                <div id="plot-turunan" class="hidden plot-container"><img id="plot-turunan-img" alt="Grafik Turunan" loading="lazy"></div>
+            </div>
+
+            <!-- INTEGRAL CARD -->
+            <div class="card hidden" id="form-integral">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="card-icon" style="font-size:16px">∫</span>
+                        Integral
+                    </h2>
+                    <span class="card-badge">READY</span>
+                </div>
+                <div class="card-panduan">
+                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-integral','pt-integral')" aria-expanded="false" aria-controls="p-integral" type="button">
+                        <span class="card-panduan-left">
+                            <span class="card-panduan-icon-wrap">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                                </svg>
+                            </span>
+                            <span class="card-panduan-text">
+                                <span class="card-panduan-main">Cara Pakai Integral</span>
+                                <span class="card-panduan-sub">Integral tentu (luas) &amp; tak tentu (+ C)</span>
+                            </span>
+                        </span>
+                        <span class="card-panduan-badge">
+                            <span class="card-panduan-badge-text">Buka</span>
+                            <svg id="pt-integral" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
+                        </span>
+                    </button>
+                    <div id="p-integral" class="card-panduan-body hidden">
+                        <div class="panduan-step"><div class="panduan-step-num">1</div><div class="panduan-step-text">Ketik fungsi di kolom <strong>Fungsi f(x)</strong>, misal: <code>x**2 + 1</code>.</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">2</div><div class="panduan-step-text"><strong>Integral tak tentu</strong>: kosongkan batas bawah dan atas. Hasil berupa fungsi + C.</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">3</div><div class="panduan-step-text"><strong>Integral tentu</strong> (luas area): isi <strong>batas bawah</strong> dan <strong>batas atas</strong>, misal <code>0</code> dan <code>1</code>. Hasilnya angka.</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">4</div><div class="panduan-step-text">Tekan tombol <strong>Hitung Integral</strong>.</div></div>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:16px">
+                    <label class="label" for="integral-fungsi">Fungsi f(x)</label>
+                    <input id="integral-fungsi" type="text" placeholder="Contoh: x**2 + 1" autocomplete="off" class="input-field">
+                    <div id="valid-integral" class="hidden"></div>
+                    <div class="presets">
+                        <button onclick="fillIntegral('x**2 + 1')" class="preset-chip">x²+1</button>
+                        <button onclick="fillIntegral('exp(x)')" class="preset-chip">exp(x)</button>
+                        <button onclick="fillIntegral('1/x')" class="preset-chip">1/x</button>
+                    </div>
+                </div>
+                <div class="form-grid-2">
+                    <div>
+                        <label class="label" for="integral-bawah">Batas bawah <small>opsional untuk tentu</small></label>
+                        <input id="integral-bawah" type="text" placeholder="0" class="input-field">
+                    </div>
+                    <div>
+                        <label class="label" for="integral-atas">Batas atas <small>opsional untuk tentu</small></label>
+                        <input id="integral-atas" type="text" placeholder="1" class="input-field">
+                    </div>
+                </div>
+                <div class="help">Isi keduanya → integral tentu (angka). Kosongkan → integral tak tentu (fungsi + C).</div>
+                <button onclick="hitungIntegral()" class="btn-primary" id="btn-integral">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    Hitung Integral
+                </button>
+                <div id="hasil-integral" class="result-box"><span class="result-empty">Hasil integral akan tampil di sini</span></div>
+                <div id="actions-integral" class="hidden actions-row">
+                    <button onclick="copyLatex('integral')" class="btn-secondary">⧉ Copy LaTeX</button>
+                    <div class="dropdown-wrap">
+                        <button onclick="toggleDownloadMenu('integral')" id="btn-download-integral" class="btn-secondary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">⬇ Download <span style="font-size:9px">▼</span></button>
+                        <div id="menu-integral" class="dropdown-menu hidden">
+                            <button onclick="downloadPlotAs('integral','png');toggleDownloadMenu('integral',true)" class="dropdown-item">🖼️ Download PNG</button>
+                            <button onclick="downloadPlotAs('integral','svg');toggleDownloadMenu('integral',true)" class="dropdown-item">📐 Download SVG</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="history-integral" class="hidden history-wrap"></div>
+                <div id="plot-integral" class="hidden plot-container"><img id="plot-integral-img" alt="Grafik Integral" loading="lazy"></div>
+            </div>
+
+            <!-- LIMIT CARD -->
+            <div class="card hidden" id="form-limit">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="card-icon" style="font-size:10px; font-weight:700">LIM</span>
+                        Limit
+                    </h2>
+                    <span class="card-badge">READY</span>
+                </div>
+                <div class="card-panduan">
+                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-limit','pt-limit')" aria-expanded="false" aria-controls="p-limit" type="button">
+                        <span class="card-panduan-left">
+                            <span class="card-panduan-icon-wrap">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                                </svg>
+                            </span>
+                            <span class="card-panduan-text">
+                                <span class="card-panduan-main">Cara Pakai Limit</span>
+                                <span class="card-panduan-sub">Aturan titik &amp; arah pendekatan</span>
+                            </span>
+                        </span>
+                        <span class="card-panduan-badge">
+                            <span class="card-panduan-badge-text">Buka</span>
+                            <svg id="pt-limit" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
+                        </span>
+                    </button>
+                    <div id="p-limit" class="card-panduan-body hidden">
+                        <div class="panduan-step"><div class="panduan-step-num">1</div><div class="panduan-step-text">Ketik fungsi, misal: <code>sin(x)/x</code> atau <code>(x**2-1)/(x-1)</code>.</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">2</div><div class="panduan-step-text">Isi <strong>Mendekati x =</strong> dengan nilai yang dituju. Contoh: <code>0</code> artinya x → 0.</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">3</div><div class="panduan-step-text"><strong>Arah</strong>: pilih <em>Kiri & Kanan</em> (default), <em>Kanan (+)</em> jika dari kanan, atau <em>Kiri (−)</em> jika dari kiri.</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">4</div><div class="panduan-step-text">Tekan <strong>Hitung Limit</strong>. Contoh: <code>sin(x)/x</code> saat x→0 hasilnya <strong>1</strong>.</div></div>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:16px">
+                    <label class="label" for="limit-fungsi">Fungsi f(x)</label>
+                    <input id="limit-fungsi" type="text" placeholder="Contoh: sin(x)/x" autocomplete="off" class="input-field">
+                    <div id="valid-limit" class="hidden"></div>
+                    <div class="presets">
+                        <button onclick="fillLimit('sin(x)/x')" class="preset-chip">sin(x)/x</button>
+                        <button onclick="fillLimit('(x**2 - 1)/(x - 1)')" class="preset-chip">(x²-1)/(x-1)</button>
+                    </div>
+                </div>
+                <div class="form-grid-2 form-grid-limit">
+                    <div>
+                        <label class="label" for="limit-titik">Mendekati x =</label>
+                        <input id="limit-titik" type="text" value="0" class="input-field" style="text-align:center; font-weight:600">
+                    </div>
+                    <div>
+                        <label class="label" for="limit-arah">Arah pendekatan</label>
+                        <select id="limit-arah" class="input-field">
+                            <option value="+-">Kiri &amp; Kanan (dua sisi)</option>
+                            <option value="+">Kanan saja (+)</option>
+                            <option value="-">Kiri saja (−)</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="hitungLimit()" class="btn-primary" id="btn-limit">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    Hitung Limit
+                </button>
+                <div id="hasil-limit" class="result-box"><span class="result-empty">Hasil limit akan tampil di sini</span></div>
+                <div id="actions-limit" class="hidden actions-row">
+                    <button onclick="copyLatex('limit')" class="btn-secondary">⧉ Copy LaTeX</button>
+                    <div class="dropdown-wrap">
+                        <button onclick="toggleDownloadMenu('limit')" id="btn-download-limit" class="btn-secondary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">⬇ Download <span style="font-size:9px">▼</span></button>
+                        <div id="menu-limit" class="dropdown-menu hidden">
+                            <button onclick="downloadPlotAs('limit','png');toggleDownloadMenu('limit',true)" class="dropdown-item">🖼️ Download PNG</button>
+                            <button onclick="downloadPlotAs('limit','svg');toggleDownloadMenu('limit',true)" class="dropdown-item">📐 Download SVG</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="history-limit" class="hidden history-wrap"></div>
+                <div id="plot-limit" class="hidden plot-container"><img id="plot-limit-img" alt="Grafik Limit" loading="lazy"></div>
+            </div>
+
+            <!-- GRAFIK CARD -->
+            <div class="card hidden" id="form-grafik">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="card-icon">◧</span>
+                        Grafik Interaktif
+                    </h2>
+                    <span class="card-badge">LIVE</span>
+                </div>
+                <div class="card-panduan">
+                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-grafik','pt-grafik')" aria-expanded="false" aria-controls="p-grafik" type="button">
+                        <span class="card-panduan-left">
+                            <span class="card-panduan-icon-wrap">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                                </svg>
+                            </span>
+                            <span class="card-panduan-text">
+                                <span class="card-panduan-main">Cara Pakai Grafik</span>
+                                <span class="card-panduan-sub">Multi-fungsi, zoom, pan &amp; export</span>
+                            </span>
+                        </span>
+                        <span class="card-panduan-badge">
+                            <span class="card-panduan-badge-text">Buka</span>
+                            <svg id="pt-grafik" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
+                        </span>
+                    </button>
+                    <div id="p-grafik" class="card-panduan-body hidden">
+                        <div class="panduan-step"><div class="panduan-step-num">1</div><div class="panduan-step-text">Ketik fungsi di kotak yang tersedia atau klik salah satu preset di bawahnya. Bisa tambah banyak fungsi sekaligus dengan tombol <strong>+ Tambah Fungsi</strong>.</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">2</div><div class="panduan-step-text">Grafik otomatis diperbarui saat mengetik. Tekan <kbd>Enter</kbd> untuk refresh manual.</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">3</div><div class="panduan-step-text"><strong>Navigasi:</strong> <em>drag</em> untuk geser, <em>scroll</em> untuk zoom, tombol <strong>⟲ Reset</strong> untuk kembali ke tampilan awal.</div></div>
+                        <div class="panduan-step"><div class="panduan-step-num">4</div><div class="panduan-step-text">Atur rentang tampilan via kolom <strong>xMin/xMax/yMin/yMax</strong>. Gunakan <code>**</code> atau <code>^</code> untuk pangkat dan <code>*</code> untuk perkalian.</div></div>
+                    </div>
+                </div>
+
+                <!-- Fungsi list -->
+                <div id="grafik-list" style="margin-top:12px"></div>
+                <button onclick="addGrafikRow()" class="btn-secondary" style="width:100%; margin-top:8px; display:flex; align-items:center; justify-content:center; gap:6px; border-style:dashed">
+                    <span style="font-size:16px; line-height:1">+</span> Tambah Fungsi
+                </button>
+                <div class="presets" style="margin-top:8px">
+                    <button onclick="addGrafikPreset('x**2')" class="preset-chip">x²</button>
+                    <button onclick="addGrafikPreset('y**2')" class="preset-chip">y²</button>
+                    <button onclick="addGrafikPreset('sin(x)')" class="preset-chip">sin(x)</button>
+                    <button onclick="addGrafikPreset('sin(y)')" class="preset-chip">sin(y)</button>
+                    <button onclick="addGrafikPreset('sin(x)/x')" class="preset-chip">sin(x)/x</button>
+                    <button onclick="addGrafikPreset('exp(-x**2)')" class="preset-chip">exp(-x²)</button>
+                </div>
+
+                <!-- Rentang -->
+                <div class="grafik-ranges-grid">
+                    <div>
+                        <label class="label" for="grafik-xmin">xMin</label>
+                        <input id="grafik-xmin" type="number" value="-10" step="1" class="input-field" style="text-align:center; padding:8px">
+                    </div>
+                    <div>
+                        <label class="label" for="grafik-xmax">xMax</label>
+                        <input id="grafik-xmax" type="number" value="10" step="1" class="input-field" style="text-align:center; padding:8px">
+                    </div>
+                    <div>
+                        <label class="label" for="grafik-ymin">yMin</label>
+                        <input id="grafik-ymin" type="number" value="-10" step="1" class="input-field" style="text-align:center; padding:8px">
+                    </div>
+                    <div>
+                        <label class="label" for="grafik-ymax">yMax</label>
+                        <input id="grafik-ymax" type="number" value="10" step="1" class="input-field" style="text-align:center; padding:8px">
+                    </div>
+                </div>
+                <label class="check-label">
+                    <input id="grafik-grid" type="checkbox" checked>
+                    <span>Tampilkan grid</span>
+                    <span id="grafik-coords" class="coords-display hidden"></span>
+                </label>
+
+                <!-- Canvas -->
+                <div class="grafik-canvas-wrap" id="grafik-canvas-wrap">
+                    <div id="grafik-canvas" style="width:100%; height:380px; min-height:320px;"></div>
+                    <div id="grafik-empty" class="grafik-empty-state hidden">Tambah fungsi untuk melihat grafik</div>
+                </div>
+                <div id="grafik-error" class="grafik-error hidden"></div>
+
+                <div class="grafik-actions">
+                    <button onclick="resetGrafikView()" class="btn-secondary">⟲ Reset</button>
+                    <button onclick="shareGrafik()" class="btn-secondary">⧉ Share</button>
+                    <div class="dropdown-wrap">
+                        <button onclick="toggleDownloadMenu('grafik')" id="btn-download-grafik" class="btn-secondary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">
+                            ⬇ Download <span style="font-size:9px">▼</span>
+                        </button>
+                        <div id="menu-grafik" class="dropdown-menu hidden">
+                            <button onclick="downloadGrafikAs('png');toggleDownloadMenu('grafik',true)" class="dropdown-item">🖼️ Download PNG</button>
+                            <button onclick="downloadGrafikAs('svg');toggleDownloadMenu('grafik',true)" class="dropdown-item">📐 Download SVG</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /.app-wrapper -->
     </main>
 
-    <footer class="relative z-10 mt-6 border-t border-[#243044] bg-[#0f172a] py-5">
-        <div class="max-w-[720px] mx-auto px-4 flex flex-col sm:flex-row justify-between gap-2 font-mono text-[12px]">
-            <div class="text-slate-400">© 2026 <span class="text-off-white font-semibold">CalcKu</span>
-            <div class="text-slate-500 flex gap-3"><span class="text-crt-green">● ONLINE</span>
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-copy">© 2026 <span>CalcKu</span> — Kalkulator Kalkulus</div>
         </div>
     </footer>
 
     <script>
-        // === cache, debounce, validasi ===
-        const $=id=>document.getElementById(id);
-        const LS_H='calcku-h';
-        const last={};
-        const plotSvgCache={};
-        const debounce=(f,d)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f(...a),d)}};
-        const autoFix=s=>s.replaceAll('^','**').replace(/(\d)([a-zA-Z])/g,'$1*$2').replace(/([xy])\(/g,'$1*(').replace(/\)\(/g,')*(').replace(/\)([a-zA-Z])/g,')*$1').replace(/(\d)\(/g,'$1*(');
-        const hasMissingStar=s=>/(\d[a-zA-Z]|\d\(|[xy]\(|\)[a-zA-Z0-9(])/.test(s);
-        // Tabs efisien
-        document.querySelectorAll('.tab').forEach(tab=>{
-            tab.addEventListener('click', ()=>{
-                document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('tab-active','active');t.classList.add('tab-inactive')});
-                document.querySelectorAll('.card').forEach(c=>c.classList.add('hidden'));
-                tab.classList.remove('tab-inactive');tab.classList.add('tab-active','active');
-                const tb=tab.dataset.tab; $('form-'+tb).classList.remove('hidden');
-                try{renderHistory(tb)}catch(e){}
-                if(tb==='grafik') initGrafik();
+        // ===== THEME TOGGLE =====
+        (function() {
+            const saved = localStorage.getItem('calcku-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+            updateThemeIcons(saved);
+        })();
+
+        function updateThemeIcons(theme) {
+            const moon = document.getElementById('icon-moon');
+            const sun = document.getElementById('icon-sun');
+            if (!moon || !sun) return;
+            if (theme === 'dark') {
+                moon.style.display = 'none';
+                sun.style.display = 'block';
+            } else {
+                moon.style.display = 'block';
+                sun.style.display = 'none';
+            }
+            // Update theme-color meta
+            document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#07090f' : '#ffffff';
+        }
+
+        document.getElementById('theme-toggle-btn').addEventListener('click', function() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme') || 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('calcku-theme', next);
+            updateThemeIcons(next);
+            // Re-render grafik if active
+            try { if (document.querySelector('.tab[data-tab="grafik"].active')) renderGrafik(); } catch(e) {}
+        });
+
+        // ===== UTILITIES =====
+        const $ = id => document.getElementById(id);
+        const LS_H = 'calcku-h';
+        const last = {};
+        const plotSvgCache = {};
+        const debounce = (f, d) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => f(...a), d) } };
+        const autoFix = s => s.replaceAll('^','**').replace(/(\d)([a-zA-Z])/g,'$1*$2').replace(/([xy])\(/g,'$1*(').replace(/\)\(/g,')*(').replace(/\)([a-zA-Z])/g,')*$1').replace(/(\d)\(/g,'$1*(');
+        const hasMissingStar = s => /(\d[a-zA-Z]|\d\(|[xy]\(|\)[a-zA-Z0-9(])/.test(s);
+
+        // ===== TABS =====
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+                document.querySelectorAll('.card').forEach(c => c.classList.add('hidden'));
+                tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+                const tb = tab.dataset.tab;
+                $('form-' + tb).classList.remove('hidden');
+                try { renderHistory(tb) } catch(e) {}
+                if (tb === 'grafik') initGrafik();
             });
         });
-        // helper isi field — DRY untuk fillTurunan/fillIntegral/fillLimit
-        function fillField(id, v){ const el=$(id); if(!el) return; el.value=v; el.dispatchEvent(new Event('input')); el.focus(); }
-        function fillTurunan(v){ fillField('turunan-fungsi', v); }
-        function fillIntegral(v){ fillField('integral-fungsi', v); }
-        function fillLimit(v){ fillField('limit-fungsi', v); }
-        const fillActive=s=>{ 
-            const a=document.querySelector('.tab.active')?.dataset.tab||'turunan';
-            if(a==='grafik'){
-                const inputs=document.querySelectorAll('#grafik-list .grafik-input');
-                let e=document.activeElement && document.activeElement.classList.contains('grafik-input') ? document.activeElement : (inputs[inputs.length-1] || null);
-                if(!e){ addGrafikRow(s, true); saveGrafikState(); renderGrafik(); return; }
-                const i=e.selectionStart||e.value.length, b=e.value.slice(0,i), c=e.value.slice(e.selectionEnd||i), n=b&&/[0-9xy\)]$/.test(b)&&/^[a-zA-Z]/.test(s)?'*':'';
-                e.value=b+n+s+c; e.focus(); e.setSelectionRange(i+s.length+(n?1:0),i+s.length+(n?1:0)); e.dispatchEvent(new Event('input'));
+
+        // ===== FILL HELPERS =====
+        function fillField(id, v) { const el = $(id); if (!el) return; el.value = v; el.dispatchEvent(new Event('input')); el.focus(); }
+        function fillTurunan(v) { fillField('turunan-fungsi', v); }
+        function fillIntegral(v) { fillField('integral-fungsi', v); }
+        function fillLimit(v) { fillField('limit-fungsi', v); }
+        const fillActive = s => {
+            const a = document.querySelector('.tab.active')?.dataset.tab || 'turunan';
+            if (a === 'grafik') {
+                const inputs = document.querySelectorAll('#grafik-list .grafik-input');
+                let e = document.activeElement && document.activeElement.classList.contains('grafik-input') ? document.activeElement : (inputs[inputs.length-1] || null);
+                if (!e) { addGrafikRow(s, true); saveGrafikState(); renderGrafik(); return; }
+                const i = e.selectionStart || e.value.length, b = e.value.slice(0,i), c = e.value.slice(e.selectionEnd||i), n = b && /[0-9xy\)]$/.test(b) && /^[a-zA-Z]/.test(s) ? '*' : '';
+                e.value = b + n + s + c; e.focus(); e.setSelectionRange(i+s.length+(n?1:0), i+s.length+(n?1:0)); e.dispatchEvent(new Event('input'));
                 saveGrafikState(); renderGrafik(); return;
             }
-            const m={turunan:'turunan-fungsi',integral:'integral-fungsi',limit:'limit-fungsi'}, e=$(m[a]); if(!e) return; const i=e.selectionStart||e.value.length, b=e.value.slice(0,i), c=e.value.slice(e.selectionEnd||i), n=b&&/[0-9xy\)]$/.test(b)&&/^[a-zA-Z]/.test(s)?'*':''; e.value=b+n+s+c; e.focus(); e.setSelectionRange(i+s.length+(n?1:0),i+s.length+(n?1:0)); e.dispatchEvent(new Event('input')); };
+            const m = {turunan:'turunan-fungsi', integral:'integral-fungsi', limit:'limit-fungsi'};
+            const e = $(m[a]); if (!e) return;
+            const i = e.selectionStart||e.value.length, b = e.value.slice(0,i), c = e.value.slice(e.selectionEnd||i), n = b && /[0-9xy\)]$/.test(b) && /^[a-zA-Z]/.test(s) ? '*' : '';
+            e.value = b + n + s + c; e.focus(); e.setSelectionRange(i+s.length+(n?1:0), i+s.length+(n?1:0)); e.dispatchEvent(new Event('input'));
+        };
 
-        // === render (cache, fragment) ===
-        function renderLatex(id, latex, isError){
-            const el=$(id); el.classList.remove('justify-center'); el.style.display='block';
-            if(isError){ el.innerHTML='<div class="flex items-center justify-center gap-2 text-tape-red font-mono text-[13px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg> '+latex+'</div>'; }
-            else{ el.innerHTML=''; try{ katex.render(latex, el, {throwOnError:false, displayMode:true}); }catch(e){ el.textContent=latex; } }
+        // ===== RENDER =====
+        function renderLatex(id, latex, isError) {
+            const el = $(id); el.style.display = 'block';
+            el.classList.remove('justify-center');
+            if (isError) {
+                el.innerHTML = '<div class="error-msg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>' + latex + '</div>';
+            } else {
+                el.innerHTML = '';
+                try { katex.render(latex, el, {throwOnError: false, displayMode: true}); } catch(e) { el.textContent = latex; }
+            }
         }
-        const showPlot=(tab,b64)=>{ const c=$('plot-'+tab), img=$('plot-'+tab+'-img'); img.src='data:image/png;base64,'+b64; c.classList.remove('hidden'); img.loading='lazy'; };
-        const hidePlot=tab=>$('plot-'+tab).classList.add('hidden');
-        function renderMultiLine(id, lines){
-            const el=$(id); el.classList.remove('justify-center'); el.style.display='block'; el.innerHTML='';
-            const frag=document.createDocumentFragment();
-            lines.forEach(latex=>{ const d=document.createElement('div'); d.className='py-1'; try{katex.render(latex,d,{throwOnError:false,displayMode:true})}catch(e){d.textContent=latex} frag.appendChild(d); });
+
+        const showPlot = (tab, b64) => { const c = $('plot-' + tab), img = $('plot-' + tab + '-img'); img.src = 'data:image/png;base64,' + b64; c.classList.remove('hidden'); };
+        const hidePlot = tab => $('plot-' + tab).classList.add('hidden');
+
+        function renderMultiLine(id, lines) {
+            const el = $(id); el.style.display = 'block'; el.innerHTML = '';
+            el.classList.remove('justify-center');
+            const frag = document.createDocumentFragment();
+            lines.forEach(latex => {
+                const d = document.createElement('div'); d.className = 'result-line';
+                try { katex.render(latex, d, {throwOnError: false, displayMode: true}); } catch(e) { d.textContent = latex; }
+                frag.appendChild(d);
+            });
             el.appendChild(frag);
         }
-        const setLoading=(btn,loading)=>{ if(loading){btn.dataset.text=btn.innerHTML;btn.innerHTML='⏳ MENGHITUNG...';btn.disabled=true} else{btn.innerHTML=btn.dataset.text||'HITUNG';btn.disabled=false} };
-        // Validasi live — efisien debounce
-        function showValid(tab, msg, fix){
-            const el=$('valid-'+tab); if(!msg){el.classList.add('hidden');el.innerHTML='';return}
+
+        const setLoading = (btn, loading) => {
+            if (loading) { btn.dataset.text = btn.innerHTML; btn.innerHTML = '⏳ Menghitung...'; btn.disabled = true; }
+            else { btn.innerHTML = btn.dataset.text || 'Hitung'; btn.disabled = false; }
+        };
+
+        // ===== VALIDATION =====
+        function showValid(tab, msg, fix) {
+            const el = $('valid-' + tab); if (!msg) { el.classList.add('hidden'); el.innerHTML = ''; return; }
             el.classList.remove('hidden');
-            el.innerHTML='<div class="flex items-center gap-2 bg-amber-500/10 border border-phosphor-amber/30 rounded-[6px] px-2.5 py-2 font-mono text-[12px] text-amber-100"><span>'+msg+'</span>'+(fix?'<button onclick="autoFixAndFocus(\''+tab+'\')" class="ml-auto bg-phosphor-amber text-deep-navy px-2 py-1 rounded font-bold hover:brightness-110 cursor-pointer">Fix → '+fix+'</button>':'')+'</div>';
+            el.innerHTML = '<div class="valid-hint"><span>' + msg + '</span>' + (fix ? '<button onclick="autoFixAndFocus(\'' + tab + '\')" class="fix-btn">Fix → ' + fix + '</button>' : '') + '</div>';
         }
-        function autoFixAndFocus(tab){
-            const map={turunan:'turunan-fungsi',integral:'integral-fungsi',limit:'limit-fungsi'};
-            const id=map[tab], el=$(id), fixed=autoFix(el.value);
-            el.value=fixed; el.dispatchEvent(new Event('input')); el.focus(); showValid(tab,'','');
+
+        function autoFixAndFocus(tab) {
+            const map = {turunan:'turunan-fungsi', integral:'integral-fungsi', limit:'limit-fungsi'};
+            const id = map[tab], el = $(id), fixed = autoFix(el.value);
+            el.value = fixed; el.dispatchEvent(new Event('input')); el.focus(); showValid(tab, '', '');
         }
-        const bindValid=(inputId,tab)=>{ const el=$(inputId); if(!el) return; el.addEventListener('input', debounce(()=>{
-            const v=el.value.trim(); if(!v){showValid(tab,'','');return}
-            if(hasMissingStar(v)){ const f=autoFix(v); showValid(tab,'Terlihat <code class=\"text-tape-red\">'+v+'</code> — mungkin maksud <code class=\"text-crt-green\">'+f+'</code> ?',f); }
-            else showValid(tab,'','');
-        },220)); };
-        bindValid('turunan-fungsi','turunan'); bindValid('integral-fungsi','integral'); bindValid('limit-fungsi','limit');
-        // History + copy — efisien localStorage
-        function loadH(){ try{return JSON.parse(localStorage.getItem(LS_H)||'{}')}catch(e){return{}} }
-        function saveH(o){ localStorage.setItem(LS_H, JSON.stringify(o)); }
-        function pushHistory(tab, input, latex){
-            if(!latex||latex.includes('Gagal')) return;
-            const h=loadH(); h[tab]=h[tab]||[]; h[tab].unshift({input, latex, t:Date.now()}); h[tab]=h[tab].slice(0,5); saveH(h); renderHistory(tab);
+
+        const bindValid = (inputId, tab) => {
+            const el = $(inputId); if (!el) return;
+            el.addEventListener('input', debounce(() => {
+                const v = el.value.trim(); if (!v) { showValid(tab, '', ''); return; }
+                if (hasMissingStar(v)) { const f = autoFix(v); showValid(tab, 'Terlihat <code>' + v + '</code> — mungkin maksud <code>' + f + '</code> ?', f); }
+                else showValid(tab, '', '');
+            }, 220));
+        };
+        bindValid('turunan-fungsi', 'turunan'); bindValid('integral-fungsi', 'integral'); bindValid('limit-fungsi', 'limit');
+
+        // ===== HISTORY =====
+        function loadH() { try { return JSON.parse(localStorage.getItem(LS_H) || '{}') } catch(e) { return {} } }
+        function saveH(o) { localStorage.setItem(LS_H, JSON.stringify(o)); }
+        function pushHistory(tab, input, latex) {
+            if (!latex || latex.includes('Gagal')) return;
+            const h = loadH(); h[tab] = h[tab] || []; h[tab].unshift({input, latex, t: Date.now()}); h[tab] = h[tab].slice(0,5); saveH(h); renderHistory(tab);
         }
-        function renderHistory(tab){
-            const el=$('history-'+tab), h=(loadH()[tab]||[]); if(!h.length){ el.classList.add('hidden'); el.innerHTML=''; return; }
+
+        function renderHistory(tab) {
+            const el = $('history-' + tab), h = (loadH()[tab] || []);
+            if (!h.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
             el.classList.remove('hidden');
-            el.innerHTML='<div class="font-mono text-[11px] tracking-widest text-slate-400 mb-1">RIWAYAT ('+h.length+')</div>';
-            const frag=document.createDocumentFragment();
-            h.forEach((it,i)=>{
-                const b=document.createElement('button');
-                b.className='w-full text-left bg-[#0f172a] hover:bg-[#162032] border border-[#1e293b] hover:border-[#334155] rounded-[6px] px-3 py-2 font-mono text-[12px] text-slate-300 hover:text-off-white flex justify-between gap-2 cursor-pointer';
-                b.innerHTML='<span class=\"truncate\">'+it.input+'</span><span class=\"text-crt-green shrink-0\">↺</span>';
-                b.title='Klik untuk isi lagi';
-                b.addEventListener('click',()=>{ const map={turunan:'turunan-fungsi',integral:'integral-fungsi',limit:'limit-fungsi'}; $(map[tab]).value=it.input; $(map[tab]).dispatchEvent(new Event('input')); });
+            el.innerHTML = '<div class="history-label">Riwayat (' + h.length + ')</div>';
+            const frag = document.createDocumentFragment();
+            h.forEach((it, i) => {
+                const b = document.createElement('button');
+                b.className = 'history-item';
+                b.innerHTML = '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">' + it.input + '</span><span style="flex-shrink:0;color:var(--accent)">↺</span>';
+                b.title = 'Klik untuk isi lagi';
+                b.addEventListener('click', () => { const map = {turunan:'turunan-fungsi', integral:'integral-fungsi', limit:'limit-fungsi'}; $(map[tab]).value = it.input; $(map[tab]).dispatchEvent(new Event('input')); });
                 frag.appendChild(b);
             });
-            // clear btn
-            const clr=document.createElement('button'); clr.className='mt-2 font-mono text-[11px] text-slate-500 hover:text-tape-red cursor-pointer'; clr.textContent='Hapus riwayat';
-            clr.addEventListener('click',()=>{const h=loadH();h[tab]=[];saveH(h);renderHistory(tab)});
-            frag.appendChild(clr); el.appendChild(frag);
+            const clr = document.createElement('button');
+            clr.className = 'history-clear';
+            clr.textContent = 'Hapus riwayat';
+            clr.addEventListener('click', () => { const h = loadH(); h[tab] = []; saveH(h); renderHistory(tab); });
+            frag.appendChild(clr);
+            el.appendChild(frag);
         }
-        function copyLatex(tab){
-            const latex=last[tab]; if(!latex){return}
-            const txt=latex.replace(/<[^>]*>/g,'');
-            navigator.clipboard.writeText(latex).then(()=>{
-                const b=document.querySelector('#actions-'+tab+' button'); if(b){const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>b.textContent=o,1200)}
-            }).catch(()=>{ const ta=document.createElement('textarea'); ta.value=latex; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); });
+
+        // ===== COPY / DOWNLOAD =====
+        function copyLatex(tab) {
+            const latex = last[tab]; if (!latex) return;
+            navigator.clipboard.writeText(latex).then(() => {
+                const b = document.querySelector('#actions-' + tab + ' button');
+                if (b) { const o = b.textContent; b.textContent = '✓ Copied!'; setTimeout(() => b.textContent = o, 1200); }
+            }).catch(() => {
+                const ta = document.createElement('textarea'); ta.value = latex; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+            });
         }
-        function toggleDownloadMenu(tab, forceClose){
-            const menu=$('menu-'+tab);
-            if(!menu) return;
-            if(forceClose){ menu.classList.add('hidden'); return; }
-            const willShow=menu.classList.contains('hidden');
-            // close all menus first
-            document.querySelectorAll('[id^="menu-"]').forEach(m=>m.classList.add('hidden'));
-            if(willShow) menu.classList.remove('hidden');
+
+        function toggleDownloadMenu(tab, forceClose) {
+            const menu = $('menu-' + tab); if (!menu) return;
+            if (forceClose) { menu.classList.add('hidden'); return; }
+            const willShow = menu.classList.contains('hidden');
+            document.querySelectorAll('[id^="menu-"]').forEach(m => m.classList.add('hidden'));
+            if (willShow) menu.classList.remove('hidden');
         }
-        // close menus when clicking outside
-        document.addEventListener('click', e=>{
-            const isBtn=e.target.closest('[onclick*="toggleDownloadMenu"]');
-            const isMenu=e.target.closest('[id^="menu-"]');
-            if(!isBtn && !isMenu){
-                document.querySelectorAll('[id^="menu-"]').forEach(m=>m.classList.add('hidden'));
-            }
+
+        document.addEventListener('click', e => {
+            const isBtn = e.target.closest('[onclick*="toggleDownloadMenu"]');
+            const isMenu = e.target.closest('[id^="menu-"]');
+            if (!isBtn && !isMenu) document.querySelectorAll('[id^="menu-"]').forEach(m => m.classList.add('hidden'));
         });
-        function downloadPlot(tab){
-            // backward compat: default to PNG
-            downloadPlotAs(tab,'png');
-        }
-        function downloadPlotAs(tab, fmt){
-            fmt=(fmt||'png').toLowerCase();
-            if(fmt==='png'){
-                const img=$('plot-'+tab+'-img'); if(!img||!img.src||img.src.includes('data:')===false){alert('Belum ada grafik untuk di-download. Hitung dulu.');return}
-                const a=document.createElement('a'); a.href=img.src; a.download='calcku-'+tab+'-'+Date.now()+'.png'; document.body.appendChild(a); a.click(); a.remove();
-            } else if(fmt==='svg'){
-                const svg=plotSvgCache[tab];
-                if(!svg){ alert('Belum ada grafik SVG. Hitung ulang terlebih dahulu.'); return; }
-                const blob=new Blob([svg], {type:'image/svg+xml;charset=utf-8'});
-                const url=URL.createObjectURL(blob);
-                const a=document.createElement('a'); a.href=url; a.download='calcku-'+tab+'-'+Date.now()+'.svg'; document.body.appendChild(a); a.click(); a.remove();
-                setTimeout(()=>URL.revokeObjectURL(url),1000);
+
+        function downloadPlotAs(tab, fmt) {
+            fmt = (fmt || 'png').toLowerCase();
+            if (fmt === 'png') {
+                const img = $('plot-' + tab + '-img');
+                if (!img || !img.src || !img.src.includes('data:')) { alert('Belum ada grafik. Hitung dulu.'); return; }
+                const a = document.createElement('a'); a.href = img.src; a.download = 'calcku-' + tab + '-' + Date.now() + '.png'; document.body.appendChild(a); a.click(); a.remove();
+            } else if (fmt === 'svg') {
+                const svg = plotSvgCache[tab];
+                if (!svg) { alert('Belum ada grafik SVG. Hitung ulang.'); return; }
+                const blob = new Blob([svg], {type:'image/svg+xml;charset=utf-8'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'calcku-' + tab + '-' + Date.now() + '.svg'; document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
             }
         }
-        // Init render history efisien
-        (()=>{
+
+        // ===== INIT HISTORY =====
+        (() => {
             ['turunan','integral','limit'].forEach(renderHistory);
-            ['turunan-fungsi','integral-fungsi','limit-fungsi'].forEach(id=>{ const el=$(id); if(el&&el.value) el.dispatchEvent(new Event('input')); });
+            ['turunan-fungsi','integral-fungsi','limit-fungsi'].forEach(id => { const el = $(id); if (el && el.value) el.dispatchEvent(new Event('input')); });
         })();
-        // helper DRY untuk semua kalkulasi — loading, fetch, render, history
-        async function calcApi({endpoint, payload, tab, btnSel, resultId, onSuccess}){
-            const btn=document.querySelector(btnSel);
-            hidePlot(tab); setLoading(btn,true);
-            try{
-                const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-                const data=await res.json();
-                if(data.sukses){ onSuccess(data); }
+
+        // ===== API HELPER =====
+        async function calcApi({endpoint, payload, tab, btnId, resultId, onSuccess}) {
+            const btn = $(btnId);
+            hidePlot(tab); setLoading(btn, true);
+            try {
+                const res = await fetch(endpoint, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+                const data = await res.json();
+                if (data.sukses) { onSuccess(data); }
                 else renderLatex(resultId, data.error, true);
-            }catch(e){ renderLatex(resultId,'Gagal menghubungi server — cek koneksi',true); }
-            finally{ setLoading(btn,false); }
+            } catch(e) { renderLatex(resultId, 'Gagal menghubungi server — cek koneksi', true); }
+            finally { setLoading(btn, false); }
         }
-        async function hitungTurunan(){
-            const fungsi=$('turunan-fungsi').value.trim(); if(!fungsi){$('turunan-fungsi').focus();return}
-            const orde=$('turunan-orde').value, titik=$('turunan-titik').value.trim();
+
+        async function hitungTurunan() {
+            const fungsi = $('turunan-fungsi').value.trim(); if (!fungsi) { $('turunan-fungsi').focus(); return; }
+            const orde = $('turunan-orde').value, titik = $('turunan-titik').value.trim();
             await calcApi({
-                endpoint:'/api/turunan', payload:{fungsi, orde, titik: titik||null},
-                tab:'turunan', btnSel:'#form-turunan .btn-primary', resultId:'hasil-turunan',
-                onSuccess:(data)=>{
-                    const lines=[data.notasi+' = '+data.hasil];
-                    if(data.evaluasi) lines.push('f^{'+orde+'}('+data.titik+') = '+data.evaluasi);
-                    renderMultiLine('hasil-turunan', lines); last['turunan']=lines.join(' \\n ');
-                    if(data.plot) showPlot('turunan', data.plot);
-                    if(data.plot_svg) plotSvgCache['turunan']=data.plot_svg;
+                endpoint: '/api/turunan', payload: {fungsi, orde, titik: titik||null},
+                tab: 'turunan', btnId: 'btn-turunan', resultId: 'hasil-turunan',
+                onSuccess: (data) => {
+                    const lines = [data.notasi + ' = ' + data.hasil];
+                    if (data.evaluasi) lines.push('f^{' + orde + '}(' + data.titik + ') = ' + data.evaluasi);
+                    renderMultiLine('hasil-turunan', lines); last['turunan'] = lines.join(' \\n ');
+                    if (data.plot) showPlot('turunan', data.plot);
+                    if (data.plot_svg) plotSvgCache['turunan'] = data.plot_svg;
                     $('actions-turunan').classList.remove('hidden'); pushHistory('turunan', fungsi, last['turunan']);
                 }
             });
         }
-        async function hitungIntegral(){
-            const fungsi=$('integral-fungsi').value.trim(); if(!fungsi){$('integral-fungsi').focus();return}
-            const batas_bawah=$('integral-bawah').value.trim(), batas_atas=$('integral-atas').value.trim();
+
+        async function hitungIntegral() {
+            const fungsi = $('integral-fungsi').value.trim(); if (!fungsi) { $('integral-fungsi').focus(); return; }
+            const batas_bawah = $('integral-bawah').value.trim(), batas_atas = $('integral-atas').value.trim();
             await calcApi({
-                endpoint:'/api/integral', payload:{fungsi,batas_bawah,batas_atas},
-                tab:'integral', btnSel:'#form-integral .btn-primary', resultId:'hasil-integral',
-                onSuccess:(data)=>{
-                    const lines=[]; if(data.tentu) lines.push(data.notasi+' = '+data.tentu); else lines.push(data.notasi+' = '+data.hasil+' + C');
-                    renderMultiLine('hasil-integral', lines); last['integral']=lines.join(' \\n ');
-                    if(data.plot) showPlot('integral', data.plot);
-                    if(data.plot_svg) plotSvgCache['integral']=data.plot_svg;
+                endpoint: '/api/integral', payload: {fungsi, batas_bawah, batas_atas},
+                tab: 'integral', btnId: 'btn-integral', resultId: 'hasil-integral',
+                onSuccess: (data) => {
+                    const lines = []; if (data.tentu) lines.push(data.notasi + ' = ' + data.tentu); else lines.push(data.notasi + ' = ' + data.hasil + ' + C');
+                    renderMultiLine('hasil-integral', lines); last['integral'] = lines.join(' \\n ');
+                    if (data.plot) showPlot('integral', data.plot);
+                    if (data.plot_svg) plotSvgCache['integral'] = data.plot_svg;
                     $('actions-integral').classList.remove('hidden'); pushHistory('integral', fungsi, last['integral']);
                 }
             });
         }
-        async function hitungLimit(){
-            const fungsi=$('limit-fungsi').value.trim(); if(!fungsi){$('limit-fungsi').focus();return}
-            const titik=$('limit-titik').value.trim(), arah=$('limit-arah').value;
+
+        async function hitungLimit() {
+            const fungsi = $('limit-fungsi').value.trim(); if (!fungsi) { $('limit-fungsi').focus(); return; }
+            const titik = $('limit-titik').value.trim(), arah = $('limit-arah').value;
             await calcApi({
-                endpoint:'/api/limit', payload:{fungsi,titik,arah},
-                tab:'limit', btnSel:'#form-limit .btn-primary', resultId:'hasil-limit',
-                onSuccess:(data)=>{
-                    const line=data.notasi+' = '+data.hasil;
-                    renderMultiLine('hasil-limit',[line]); last['limit']=line;
-                    if(data.plot) showPlot('limit', data.plot);
-                    if(data.plot_svg) plotSvgCache['limit']=data.plot_svg;
+                endpoint: '/api/limit', payload: {fungsi, titik, arah},
+                tab: 'limit', btnId: 'btn-limit', resultId: 'hasil-limit',
+                onSuccess: (data) => {
+                    const line = data.notasi + ' = ' + data.hasil;
+                    renderMultiLine('hasil-limit', [line]); last['limit'] = line;
+                    if (data.plot) showPlot('limit', data.plot);
+                    if (data.plot_svg) plotSvgCache['limit'] = data.plot_svg;
                     $('actions-limit').classList.remove('hidden'); pushHistory('limit', fungsi, line);
                 }
             });
         }
-        // === Grafik Desmos-like — simple, client-only, efisien ===
-        const LS_GRAFIK='calcku-grafik-v1';
-        const GRAFIK_COLORS=['#33FF00','#38bdf8','#FFB000','#f87171','#a855f7','#4ade80','#fb7185','#22d3ee'];
-        let grafikInited=false;
-        const toPlotExpr=s=>{
-            if(!s||!s.trim()) return '';
-            let t=s.trim();
-            // dukung "y = ..." atau "x = ..." -> ambil sisi kanan "="
-            if(t.includes('=')){
-                t=t.split('=').pop().trim();
-            }
-            // deteksi variabel y (termasuk "2y") — pakai includes agar "2y" terdeteksi
+
+        // ===== GRAFIK =====
+        const LS_GRAFIK = 'calcku-grafik-v1';
+        const GRAFIK_COLORS = ['#3b82f6','#ef4444','#22c55e','#f59e0b','#8b5cf6','#06b6d4','#ec4899','#14b8a6'];
+        let grafikInited = false;
+
+        const toPlotExpr = s => {
+            if (!s || !s.trim()) return '';
+            let t = s.trim();
+            if (t.includes('=')) t = t.split('=').pop().trim();
             const hasY = t.includes('y');
-            // reuse autoFix for * insertion + ^->** normalization, then convert back for function-plot (^)
-            t=autoFix(t);
-            t=t.replaceAll('**','^');
-            t=t.replace(/\bAbs\b/g,'abs').replace(/\bABS\b/g,'abs');
-            t=t.replace(/\bln\b/g,'log');
-            // function-plot supports log10 via builtIn sampler, keep as is; E -> e
-            t=t.replace(/\bE\b/g,'e');
-            // grafik function-plot hanya support variabel x; jika user ketik y (mis. y^2, sin(y), 2y), konversi y -> x
-            if(hasY){
-                t=t.replace(/\by\b/g,'x');
-            }
-            // sqrt is sqrt, pi is pi — already ok
+            t = autoFix(t);
+            t = t.replaceAll('**', '^');
+            t = t.replace(/\bAbs\b/g,'abs').replace(/\bABS\b/g,'abs');
+            t = t.replace(/\bln\b/g,'log');
+            t = t.replace(/\bE\b/g,'e');
+            if (hasY) t = t.replace(/\by\b/g,'x');
             return t;
         };
-        const getGrafikFns=()=>{
-            const inputs=document.querySelectorAll('#grafik-list .grafik-input');
-            return Array.from(inputs).map(i=>i.value.trim()).filter(Boolean);
-        };
-        const saveGrafikState=()=>{
-            try{
-                const data={
-                    fns: Array.from(document.querySelectorAll('#grafik-list .grafik-input')).map(i=>i.value),
-                    xmin:$('grafik-xmin').value, xmax:$('grafik-xmax').value,
-                    ymin:$('grafik-ymin').value, ymax:$('grafik-ymax').value,
-                    grid:$('grafik-grid').checked
+
+        const getGrafikFns = () => Array.from(document.querySelectorAll('#grafik-list .grafik-input')).map(i => i.value.trim()).filter(Boolean);
+
+        const saveGrafikState = () => {
+            try {
+                const data = {
+                    fns: Array.from(document.querySelectorAll('#grafik-list .grafik-input')).map(i => i.value),
+                    xmin: $('grafik-xmin').value, xmax: $('grafik-xmax').value,
+                    ymin: $('grafik-ymin').value, ymax: $('grafik-ymax').value,
+                    grid: $('grafik-grid').checked
                 };
                 localStorage.setItem(LS_GRAFIK, JSON.stringify(data));
-                // share hash (short)
-                const hash=encodeURIComponent(JSON.stringify(data.fns.filter(Boolean)));
-                if(hash.length<1800) history.replaceState(null,'','#grafik='+hash);
-            }catch(e){}
+                const hash = encodeURIComponent(JSON.stringify(data.fns.filter(Boolean)));
+                if (hash.length < 1800) history.replaceState(null,'','#grafik=' + hash);
+            } catch(e) {}
         };
-        const loadGrafikState=()=>{
-            try{
-                // hash first
-                const m=location.hash.match(/#grafik=([^&]+)/);
-                if(m){
-                    const fns=JSON.parse(decodeURIComponent(m[1]));
-                    if(Array.isArray(fns)&&fns.length) return {fns};
-                }
-                const raw=localStorage.getItem(LS_GRAFIK);
-                if(raw) return JSON.parse(raw);
-            }catch(e){}
+
+        const loadGrafikState = () => {
+            try {
+                const m = location.hash.match(/#grafik=([^&]+)/);
+                if (m) { const fns = JSON.parse(decodeURIComponent(m[1])); if (Array.isArray(fns) && fns.length) return {fns}; }
+                const raw = localStorage.getItem(LS_GRAFIK);
+                if (raw) return JSON.parse(raw);
+            } catch(e) {}
             return null;
         };
-        function addGrafikRow(val='', focus=true){
-            const list=$('grafik-list');
-            const idx=list.children.length;
-            const color=GRAFIK_COLORS[idx % GRAFIK_COLORS.length];
-            const row=document.createElement('div');
-            row.className='grafik-row';
-            row.innerHTML='<span class="grafik-dot" style="background:'+color+';color:'+color+'"></span>'
-                +'<input type="text" placeholder="contoh: x^2, y^2  atau  sin(x)/x" autocomplete="off" spellcheck="false" class="grafik-input" value="'+val.replace(/"/g,'&quot;')+'">'
-                +'<button type="button" class="grafik-del" title="Hapus" aria-label="Hapus">×</button>';
-            const inp=row.querySelector('input');
-            const del=row.querySelector('button');
-            const deb=debounce(()=>{ saveGrafikState(); renderGrafik(); }, 200);
+
+        function addGrafikRow(val='', focus=true) {
+            const list = $('grafik-list');
+            const idx = list.children.length;
+            const color = GRAFIK_COLORS[idx % GRAFIK_COLORS.length];
+            const row = document.createElement('div');
+            row.className = 'grafik-row';
+            row.innerHTML = '<span class="grafik-dot" style="background:' + color + '"></span>'
+                + '<input type="text" placeholder="contoh: x^2, sin(x)/x" autocomplete="off" spellcheck="false" class="grafik-input" value="' + val.replace(/"/g,'&quot;') + '">'
+                + '<button type="button" class="grafik-del" title="Hapus" aria-label="Hapus">×</button>';
+            const inp = row.querySelector('input');
+            const del = row.querySelector('button');
+            const deb = debounce(() => { saveGrafikState(); renderGrafik(); }, 200);
             inp.addEventListener('input', deb);
-            inp.addEventListener('keydown', e=>{
-                if(e.key==='Enter'){ e.preventDefault(); renderGrafik(); saveGrafikState(); }
-                if(e.key==='Escape') inp.blur();
+            inp.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); renderGrafik(); saveGrafikState(); }
+                if (e.key === 'Escape') inp.blur();
             });
-            del.addEventListener('click', ()=>{
+            del.addEventListener('click', () => {
                 row.remove();
-                // recolor remaining dots efficiently
-                document.querySelectorAll('#grafik-list .grafik-dot').forEach((d,i)=>{
-                    const c=GRAFIK_COLORS[i % GRAFIK_COLORS.length];
-                    d.style.background=c; d.style.color=c;
-                });
-                if(!list.children.length) addGrafikRow('', true);
+                document.querySelectorAll('#grafik-list .grafik-dot').forEach((d, i) => { d.style.background = GRAFIK_COLORS[i % GRAFIK_COLORS.length]; });
+                if (!list.children.length) addGrafikRow('', true);
                 saveGrafikState(); renderGrafik();
             });
             list.appendChild(row);
-            if(focus) inp.focus();
+            if (focus) inp.focus();
             return row;
         }
-        function addGrafikPreset(v){ 
-            const list=$('grafik-list');
-            // if last row empty, fill it, else add new
-            const inputs=list.querySelectorAll('.grafik-input');
-            if(inputs.length && !inputs[inputs.length-1].value.trim()){
-                inputs[inputs.length-1].value=v;
+
+        function addGrafikPreset(v) {
+            const list = $('grafik-list');
+            const inputs = list.querySelectorAll('.grafik-input');
+            if (inputs.length && !inputs[inputs.length-1].value.trim()) {
+                inputs[inputs.length-1].value = v;
                 inputs[inputs.length-1].dispatchEvent(new Event('input'));
                 inputs[inputs.length-1].focus();
-            } else {
-                addGrafikRow(v, true);
-            }
-            saveGrafikState(); renderGrafik(); 
+            } else { addGrafikRow(v, true); }
+            saveGrafikState(); renderGrafik();
         }
-        function clearGrafikError(){ const e=$('grafik-error'); e.classList.add('hidden'); e.textContent=''; }
-        function showGrafikError(msg){ const e=$('grafik-error'); e.textContent=msg; e.classList.remove('hidden'); }
-        const renderGrafik=debounce(()=>{
-            const wrap=$('grafik-canvas'), empty=$('grafik-empty');
-            const inputs=document.querySelectorAll('#grafik-list .grafik-input');
-            const rawFns=Array.from(inputs).map(i=>i.value.trim());
-            const fns=rawFns.map(toPlotExpr).filter(Boolean);
-            const xmin=parseFloat($('grafik-xmin').value), xmax=parseFloat($('grafik-xmax').value);
-            const ymin=parseFloat($('grafik-ymin').value), ymax=parseFloat($('grafik-ymax').value);
-            const xDomain=[isFinite(xmin)?xmin:-10, isFinite(xmax)?xmax:10];
-            const yDomain=[isFinite(ymin)?ymin:-10, isFinite(ymax)?ymax:10];
-            const withGrid=$('grafik-grid').checked;
-            if(!fns.length){
-                wrap.innerHTML=''; empty.classList.remove('hidden');
-                clearGrafikError(); return;
-            }
+
+        function clearGrafikError() { const e = $('grafik-error'); e.classList.add('hidden'); e.textContent = ''; }
+        function showGrafikError(msg) { const e = $('grafik-error'); e.textContent = msg; e.classList.remove('hidden'); }
+
+        const renderGrafik = debounce(() => {
+            const wrap = $('grafik-canvas'), empty = $('grafik-empty');
+            const inputs = document.querySelectorAll('#grafik-list .grafik-input');
+            const rawFns = Array.from(inputs).map(i => i.value.trim());
+            const fns = rawFns.map(toPlotExpr).filter(Boolean);
+            const xmin = parseFloat($('grafik-xmin').value), xmax = parseFloat($('grafik-xmax').value);
+            const ymin = parseFloat($('grafik-ymin').value), ymax = parseFloat($('grafik-ymax').value);
+            const xDomain = [isFinite(xmin) ? xmin : -10, isFinite(xmax) ? xmax : 10];
+            const yDomain = [isFinite(ymin) ? ymin : -10, isFinite(ymax) ? ymax : 10];
+            const withGrid = $('grafik-grid').checked;
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (!fns.length) { wrap.innerHTML = ''; empty.classList.remove('hidden'); clearGrafikError(); return; }
             empty.classList.add('hidden'); clearGrafikError();
-            // validate: at least one fn parseable
-            const data=fns.map((fn,i)=>({
-                fn,
-                color: GRAFIK_COLORS[i % GRAFIK_COLORS.length],
-                graphType: 'polyline'
-            }));
-            try{
-                // functionPlot is global from CDN
-                if(typeof functionPlot==='undefined'){
-                    showGrafikError('Library grafik belum termuat. Cek koneksi.');
-                    return;
-                }
-                // ensure width
-                const w=wrap.parentElement.clientWidth || 600;
-                wrap.innerHTML='';
+            const data = fns.map((fn, i) => ({ fn, color: GRAFIK_COLORS[i % GRAFIK_COLORS.length], graphType: 'polyline' }));
+            try {
+                if (typeof functionPlot === 'undefined') { showGrafikError('Library grafik belum termuat. Cek koneksi.'); return; }
+                const w = wrap.parentElement.clientWidth || 600;
+                wrap.innerHTML = '';
                 functionPlot({
                     target: '#grafik-canvas',
-                    width: w,
-                    height: 380,
+                    width: w, height: Math.min(380, Math.max(260, window.innerWidth < 480 ? 280 : 380)),
                     xAxis: { domain: xDomain },
                     yAxis: { domain: yDomain },
                     grid: withGrid,
                     disableZoom: false,
-                    data
+                    data,
+                    background: isDark ? '#1e293b' : '#f8f9fa',
                 });
-                // koordinat hover sederhana via mousemove on svg
-                const svg=wrap.querySelector('svg');
-                if(svg){
-                    const coords=$('grafik-coords');
+                const svg = wrap.querySelector('svg');
+                if (svg) {
+                    const coords = $('grafik-coords');
                     coords.classList.remove('hidden');
-                    svg.addEventListener('mousemove', e=>{
-                        const rect=svg.getBoundingClientRect();
+                    svg.addEventListener('mousemove', e => {
+                        const rect = svg.getBoundingClientRect();
                         const x = xDomain[0] + (e.clientX-rect.left)/rect.width*(xDomain[1]-xDomain[0]);
                         const y = yDomain[1] - (e.clientY-rect.top)/rect.height*(yDomain[1]-yDomain[0]);
-                        coords.textContent='x: '+x.toFixed(2)+'  y: '+y.toFixed(2);
+                        coords.textContent = 'x: ' + x.toFixed(2) + '  y: ' + y.toFixed(2);
                     });
-                    svg.addEventListener('mouseleave', ()=>{ coords.textContent='drag • scroll zoom'; });
-                    coords.textContent='drag • scroll zoom';
+                    svg.addEventListener('mouseleave', () => { coords.textContent = 'drag · scroll zoom'; });
+                    coords.textContent = 'drag · scroll zoom';
                 }
                 saveGrafikState();
-            }catch(err){
-                showGrafikError('Gagal menggambar: '+(err.message||err));
-            }
+            } catch(err) { showGrafikError('Gagal menggambar: ' + (err.message || err)); }
         }, 160);
-        function initGrafik(){
-            if(grafikInited) { renderGrafik(); return; }
-            grafikInited=true;
-            const list=$('grafik-list');
-            list.innerHTML='';
-            const saved=loadGrafikState();
-            if(saved && saved.fns && saved.fns.length){
-                saved.fns.forEach(v=> addGrafikRow(v, false));
-                if(saved.xmin!==undefined) $('grafik-xmin').value=saved.xmin;
-                if(saved.xmax!==undefined) $('grafik-xmax').value=saved.xmax;
-                if(saved.ymin!==undefined) $('grafik-ymin').value=saved.ymin;
-                if(saved.ymax!==undefined) $('grafik-ymax').value=saved.ymax;
-                if(saved.grid!==undefined) $('grafik-grid').checked=!!saved.grid;
+
+        function initGrafik() {
+            if (grafikInited) { renderGrafik(); return; }
+            grafikInited = true;
+            const list = $('grafik-list'); list.innerHTML = '';
+            const saved = loadGrafikState();
+            if (saved && saved.fns && saved.fns.length) {
+                saved.fns.forEach(v => addGrafikRow(v, false));
+                if (saved.xmin !== undefined) $('grafik-xmin').value = saved.xmin;
+                if (saved.xmax !== undefined) $('grafik-xmax').value = saved.xmax;
+                if (saved.ymin !== undefined) $('grafik-ymin').value = saved.ymin;
+                if (saved.ymax !== undefined) $('grafik-ymax').value = saved.ymax;
+                if (saved.grid !== undefined) $('grafik-grid').checked = !!saved.grid;
             }
-            if(!list.children.length){
-                addGrafikRow('x^2', false);
-                addGrafikRow('sin(x)', false);
-            }
-            // bind range changes efficiently
-            ['grafik-xmin','grafik-xmax','grafik-ymin','grafik-ymax'].forEach(id=>{
-                $(id).addEventListener('input', debounce(()=>{ saveGrafikState(); renderGrafik(); }, 300));
+            if (!list.children.length) { addGrafikRow('x^2', false); addGrafikRow('sin(x)', false); }
+            ['grafik-xmin','grafik-xmax','grafik-ymin','grafik-ymax'].forEach(id => {
+                $(id).addEventListener('input', debounce(() => { saveGrafikState(); renderGrafik(); }, 300));
             });
-            $('grafik-grid').addEventListener('change', ()=>{ saveGrafikState(); renderGrafik(); });
-            // resize observer
-            try{
-                const ro=new ResizeObserver(debounce(()=>renderGrafik(), 200));
+            $('grafik-grid').addEventListener('change', () => { saveGrafikState(); renderGrafik(); });
+            try {
+                const ro = new ResizeObserver(debounce(() => renderGrafik(), 200));
                 ro.observe($('grafik-canvas-wrap'));
-            }catch(e){ window.addEventListener('resize', debounce(()=>renderGrafik(), 300)); }
+            } catch(e) { window.addEventListener('resize', debounce(() => renderGrafik(), 300)); }
             renderGrafik();
         }
-        function resetGrafikView(){
-            $('grafik-xmin').value=-10; $('grafik-xmax').value=10;
-            $('grafik-ymin').value=-10; $('grafik-ymax').value=10;
-            $('grafik-grid').checked=true;
+
+        function resetGrafikView() {
+            $('grafik-xmin').value = -10; $('grafik-xmax').value = 10;
+            $('grafik-ymin').value = -10; $('grafik-ymax').value = 10;
+            $('grafik-grid').checked = true;
             saveGrafikState(); renderGrafik();
         }
-        function shareGrafik(){
-            const fns=getGrafikFns();
-            if(!fns.length){ alert('Tambah fungsi dulu.'); return; }
-            const url=location.href;
-            if(navigator.clipboard){
-                navigator.clipboard.writeText(url).then(()=>{
-                    const b=document.querySelector('#form-grafik button[onclick="shareGrafik()"]');
-                    const old=b.textContent; b.textContent='✓ Copied'; setTimeout(()=>b.textContent=old,1200);
+
+        function shareGrafik() {
+            const fns = getGrafikFns(); if (!fns.length) { alert('Tambah fungsi dulu.'); return; }
+            const url = location.href;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => {
+                    const b = document.querySelector('#form-grafik button[onclick="shareGrafik()"]');
+                    const old = b.textContent; b.textContent = '✓ Copied!'; setTimeout(() => b.textContent = old, 1200);
                 });
-            } else {
-                prompt('Copy URL:', url);
-            }
-        }
-        function _getGrafikSvgString(){
-            const wrap=$('grafik-canvas');
-            const svg=wrap.querySelector('svg');
-            if(!svg) return null;
-            const clone=svg.cloneNode(true);
-            clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
-            clone.setAttribute('xmlns:xlink','http://www.w3.org/1999/xlink');
-            // pastikan width/height eksplisit dulu
-            const rectB=svg.getBoundingClientRect();
-            const wAttr=clone.getAttribute('width');
-            const hAttr=clone.getAttribute('height');
-            const w=wAttr ? parseFloat(wAttr) : (rectB.width || wrap.parentElement.clientWidth || 700);
-            const h=hAttr ? parseFloat(hAttr) : (rectB.height || 380);
-            clone.setAttribute('width', w);
-            clone.setAttribute('height', h);
-            clone.setAttribute('viewBox', clone.getAttribute('viewBox') || `0 0 ${w} ${h}`);
-            // background rect dengan ukuran eksplisit (jangan 100% agar png tidak transparan/fail)
-            const bg='#0f172a';
-            const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
-            rect.setAttribute('x','0'); rect.setAttribute('y','0');
-            rect.setAttribute('width', w); rect.setAttribute('height', h);
-            rect.setAttribute('fill', bg);
-            clone.insertBefore(rect, clone.firstChild);
-            // inline style untuk memastikan stroke terlihat (function-plot sudah inline)
-            return {str:new XMLSerializer().serializeToString(clone), svg, w, h};
-        }
-        function downloadGrafik(){
-            downloadGrafikAs('svg');
-        }
-        function downloadGrafikAs(fmt){
-            fmt=(fmt||'svg').toLowerCase();
-            const data=_getGrafikSvgString();
-            if(!data){ alert('Belum ada grafik. Tambah fungsi dulu.'); return; }
-            if(fmt==='svg'){
-                const blob=new Blob([data.str], {type:'image/svg+xml;charset=utf-8'});
-                const url=URL.createObjectURL(blob);
-                const a=document.createElement('a'); a.href=url; a.download='calcku-grafik-'+Date.now()+'.svg';
-                document.body.appendChild(a); a.click(); a.remove();
-                setTimeout(()=>URL.revokeObjectURL(url),1000);
-            } else if(fmt==='png'){
-                // pakai data URL (bukan blob) agar lolos CSP img-src data: dan lebih reliable
-                let svg64;
-                try{
-                    svg64=btoa(unescape(encodeURIComponent(data.str)));
-                }catch(e){
-                    // fallback blob jika btoa gagal (mis. karakter aneh)
-                    const blob=new Blob([data.str], {type:'image/svg+xml;charset=utf-8'});
-                    const url=URL.createObjectURL(blob);
-                    _renderSvgToPng(url, data, true);
-                    return;
-                }
-                const dataUrl='data:image/svg+xml;base64,'+svg64;
-                _renderSvgToPng(dataUrl, data, false);
-            }
-        }
-        function _renderSvgToPng(src, data, isBlob){
-            const img=new Image();
-            // penting: jangan set crossOrigin agar tidak taint canvas
-            img.onload=function(){
-                try{
-                    const w=Math.round(data.w)||800;
-                    const h=Math.round(data.h)||380;
-                    const scale=Math.min(2, window.devicePixelRatio || 2);
-                    const canvas=document.createElement('canvas');
-                    canvas.width=w*scale;
-                    canvas.height=h*scale;
-                    const ctx=canvas.getContext('2d');
-                    ctx.fillStyle='#0f172a';
-                    ctx.fillRect(0,0,canvas.width,canvas.height);
-                    ctx.drawImage(img,0,0,canvas.width,canvas.height);
-                    if(isBlob) URL.revokeObjectURL(src);
-                    if(canvas.toBlob){
-                        canvas.toBlob(function(pngBlob){
-                            if(!pngBlob){ alert('Gagal konversi PNG'); return; }
-                            const pngUrl=URL.createObjectURL(pngBlob);
-                            const a=document.createElement('a'); a.href=pngUrl; a.download='calcku-grafik-'+Date.now()+'.png';
-                            document.body.appendChild(a); a.click(); a.remove();
-                            setTimeout(()=>URL.revokeObjectURL(pngUrl),800);
-                        },'image/png');
-                    } else {
-                        const pngUrl=canvas.toDataURL('image/png');
-                        const a=document.createElement('a'); a.href=pngUrl; a.download='calcku-grafik-'+Date.now()+'.png';
-                        document.body.appendChild(a); a.click(); a.remove();
-                    }
-                }catch(err){
-                    if(isBlob) URL.revokeObjectURL(src);
-                    console.error(err);
-                    alert('Gagal render PNG: '+(err.message||err));
-                }
-            };
-            img.onerror=function(e){
-                if(isBlob) URL.revokeObjectURL(src);
-                console.error('img load error', e);
-                alert('Gagal konversi PNG — coba download SVG. Jika tetap gagal, screenshot manual ya.');
-            };
-            img.src=src;
-        }
-        // auto-init if hash has grafik or user lands via share
-        if(location.hash.includes('grafik=')){
-            // defer until DOM ready
-            setTimeout(()=>{ document.querySelector('[data-tab="grafik"]')?.click(); }, 200);
+            } else { prompt('Copy URL:', url); }
         }
 
-        function togglePanduan(){ $('panduan').classList.toggle('hidden'); }
-        document.querySelectorAll('.card input').forEach(i=>{
-            i.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const card=e.target.closest('.card'); const btn=card && card.querySelector('.btn-primary'); if(btn) btn.click(); }});
+        function _getGrafikSvgString() {
+            const wrap = $('grafik-canvas'), svg = wrap.querySelector('svg');
+            if (!svg) return null;
+            const clone = svg.cloneNode(true);
+            clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+            clone.setAttribute('xmlns:xlink','http://www.w3.org/1999/xlink');
+            const rectB = svg.getBoundingClientRect();
+            const wAttr = clone.getAttribute('width'), hAttr = clone.getAttribute('height');
+            const w = wAttr ? parseFloat(wAttr) : (rectB.width || wrap.parentElement.clientWidth || 700);
+            const h = hAttr ? parseFloat(hAttr) : (rectB.height || 380);
+            clone.setAttribute('width', w); clone.setAttribute('height', h);
+            clone.setAttribute('viewBox', clone.getAttribute('viewBox') || `0 0 ${w} ${h}`);
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const bg = isDark ? '#1e293b' : '#f8f9fa';
+            const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+            rect.setAttribute('x','0'); rect.setAttribute('y','0');
+            rect.setAttribute('width', w); rect.setAttribute('height', h); rect.setAttribute('fill', bg);
+            clone.insertBefore(rect, clone.firstChild);
+            return {str: new XMLSerializer().serializeToString(clone), svg, w, h};
+        }
+
+        function downloadGrafikAs(fmt) {
+            fmt = (fmt || 'svg').toLowerCase();
+            const data = _getGrafikSvgString();
+            if (!data) { alert('Belum ada grafik. Tambah fungsi dulu.'); return; }
+            if (fmt === 'svg') {
+                const blob = new Blob([data.str], {type:'image/svg+xml;charset=utf-8'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'calcku-grafik-' + Date.now() + '.svg';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } else if (fmt === 'png') {
+                let svg64;
+                try { svg64 = btoa(unescape(encodeURIComponent(data.str))); } catch(e) {
+                    const blob = new Blob([data.str], {type:'image/svg+xml;charset=utf-8'});
+                    _renderSvgToPng(URL.createObjectURL(blob), data, true); return;
+                }
+                _renderSvgToPng('data:image/svg+xml;base64,' + svg64, data, false);
+            }
+        }
+
+        function _renderSvgToPng(src, data, isBlob) {
+            const img = new Image();
+            img.onload = function() {
+                try {
+                    const w = Math.round(data.w)||800, h = Math.round(data.h)||380;
+                    const scale = Math.min(2, window.devicePixelRatio || 2);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w*scale; canvas.height = h*scale;
+                    const ctx = canvas.getContext('2d');
+                    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    ctx.fillStyle = isDark ? '#1e293b' : '#f8f9fa';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    if (isBlob) URL.revokeObjectURL(src);
+                    if (canvas.toBlob) {
+                        canvas.toBlob(pngBlob => {
+                            if (!pngBlob) { alert('Gagal konversi PNG'); return; }
+                            const pngUrl = URL.createObjectURL(pngBlob);
+                            const a = document.createElement('a'); a.href = pngUrl; a.download = 'calcku-grafik-' + Date.now() + '.png';
+                            document.body.appendChild(a); a.click(); a.remove();
+                            setTimeout(() => URL.revokeObjectURL(pngUrl), 800);
+                        }, 'image/png');
+                    } else {
+                        const pngUrl = canvas.toDataURL('image/png');
+                        const a = document.createElement('a'); a.href = pngUrl; a.download = 'calcku-grafik-' + Date.now() + '.png';
+                        document.body.appendChild(a); a.click(); a.remove();
+                    }
+                } catch(err) { if (isBlob) URL.revokeObjectURL(src); alert('Gagal render PNG: ' + (err.message || err)); }
+            };
+            img.onerror = function(e) { if (isBlob) URL.revokeObjectURL(src); alert('Gagal konversi PNG — coba download SVG.'); };
+            img.src = src;
+        }
+
+        // ===== PANDUAN =====
+        function togglePanduan() {
+            const el = $('panduan');
+            const txt = $('panduan-toggle-text');
+            const isHidden = el.classList.toggle('hidden');
+            if (txt) txt.innerHTML = (isHidden ? 'Buka' : 'Tutup') + ' <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transform:rotate(' + (isHidden ? '0' : '180') + 'deg);transition:transform 0.2s"><path d="M6 9l6 6 6-6"/></svg>';
+        }
+
+        function toggleCardPanduan(bodyId, iconId) {
+            const body = $(bodyId);
+            const icon = $(iconId);
+            if (!body) return;
+            const isHidden = body.classList.toggle('hidden');
+            if (icon) icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+            const btn = body.previousElementSibling;
+            if (btn && btn.classList.contains('card-panduan-toggle')) {
+                btn.classList.toggle('is-open', !isHidden);
+                btn.setAttribute('aria-expanded', !isHidden);
+                const badgeTxt = btn.querySelector('.card-panduan-badge-text');
+                if (badgeTxt) badgeTxt.textContent = isHidden ? 'Buka' : 'Tutup';
+            }
+        }
+
+
+        // ===== ENTER KEY =====
+        document.querySelectorAll('.card input').forEach(i => {
+            i.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const card = e.target.closest('.card');
+                    const btn = card && card.querySelector('.btn-primary');
+                    if (btn) btn.click();
+                }
+            });
         });
-        $('limit-arah').addEventListener('keydown', e=>{ if(e.key==='Enter') hitungLimit(); });
+        $('limit-arah').addEventListener('keydown', e => { if (e.key === 'Enter') hitungLimit(); });
+
+        // ===== AUTO INIT =====
+        if (location.hash.includes('grafik=')) {
+            setTimeout(() => { document.querySelector('[data-tab="grafik"]')?.click(); }, 200);
+        }
     </script>
 </body>
 </html>

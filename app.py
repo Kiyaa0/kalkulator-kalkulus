@@ -235,14 +235,6 @@ def sympy_to_numpy(expr, var=None):
     return sp.lambdify(var, expr, 'numpy')
 
 
-def fig_to_base64(fig):
-    buf = io.BytesIO()
-    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor=fig.get_facecolor())
-    buf.seek(0)
-    b64 = base64.b64encode(buf.read()).decode('utf-8')
-    plt.close(fig)
-    return b64
-
 
 def fig_to_png_svg(fig):
     """Generate PNG base64 and SVG string from same figure (for download SVG/PNG)."""
