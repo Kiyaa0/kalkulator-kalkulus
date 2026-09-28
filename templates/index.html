@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id" data-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +16,9 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
@@ -23,17 +26,19 @@
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
     <!-- HEADER -->
     <header class="site-header">
         <div class="header-inner">
             <div class="logo">
                 <div class="logo-icon">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 7h16M4 12h16M4 17h16"/>
-                        <circle cx="4" cy="7" r="1.5" fill="currentColor" stroke="none"/>
-                        <circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-                        <circle cx="4" cy="17" r="1.5" fill="currentColor" stroke="none"/>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 7h16M4 12h16M4 17h16" />
+                        <circle cx="4" cy="7" r="1.5" fill="currentColor" stroke="none" />
+                        <circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none" />
+                        <circle cx="4" cy="17" r="1.5" fill="currentColor" stroke="none" />
                     </svg>
                 </div>
                 <div>
@@ -43,20 +48,23 @@
             </div>
             <div class="header-actions">
                 <span class="badge-online" style="display:none" id="badge-status">ONLINE</span>
-                <button id="theme-toggle-btn" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">
-                    <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                <button id="theme-toggle-btn" class="theme-toggle" title="Toggle dark mode"
+                    aria-label="Toggle dark mode">
+                    <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                     </svg>
-                    <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-                        <circle cx="12" cy="12" r="5"/>
-                        <line x1="12" y1="1" x2="12" y2="3"/>
-                        <line x1="12" y1="21" x2="12" y2="23"/>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                        <line x1="1" y1="12" x2="3" y2="12"/>
-                        <line x1="21" y1="12" x2="23" y2="12"/>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                     </svg>
                 </button>
             </div>
@@ -80,14 +88,19 @@
             <div class="panduan-global">
                 <button onclick="togglePanduan()" class="panduan-toggle" id="btn-panduan">
                     <span class="panduan-toggle-label">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 16v-4M12 8h.01" />
                         </svg>
                         Cara Menulis Rumus — Panduan Lengkap
                     </span>
                     <span class="panduan-toggle-icon" id="panduan-toggle-text">
                         Buka
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
                     </span>
                 </button>
                 <div id="panduan" class="panduan-body hidden" style="border-top:1px solid var(--border)">
@@ -97,38 +110,88 @@
                     <div class="panduan-table-wrap">
                         <table>
                             <thead>
-                                <tr><th>Kategori</th><th>Tulis seperti ini</th><th>Artinya</th></tr>
+                                <tr>
+                                    <th>Kategori</th>
+                                    <th>Tulis seperti ini</th>
+                                    <th>Artinya</th>
+                                </tr>
                             </thead>
                             <tbody>
-                                <tr><td>Variabel</td><td><code>x</code></td><td>Gunakan huruf <code>x</code> sebagai variabel utama</td></tr>
-                                <tr><td>Pangkat</td><td><code>x**2</code> atau <code>x^2</code></td><td>x² — tanda <code>^</code> otomatis diubah</td></tr>
-                                <tr><td>Perkalian</td><td><code>2*x</code></td><td>Tanda <code>*</code> wajib — jangan tulis <code>2x</code></td></tr>
-                                <tr><td>Pembagian</td><td><code>1/x</code> atau <code>(x+1)/(x-2)</code></td><td>Gunakan kurung jika lebih dari satu suku</td></tr>
-                                <tr><td>Akar</td><td><code>sqrt(x)</code></td><td>√x</td></tr>
-                                <tr><td>Eksponensial</td><td><code>exp(x)</code></td><td>eˣ</td></tr>
-                                <tr><td>Logaritma</td><td><code>log(x)</code> atau <code>ln(x)</code></td><td>ln(x) — logaritma natural</td></tr>
-                                <tr><td>Trigonometri</td><td><code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code></td><td>Fungsi trig standar</td></tr>
-                                <tr><td>Nilai mutlak</td><td><code>Abs(x)</code></td><td>|x| — huruf A harus kapital</td></tr>
-                                <tr><td>Konstanta</td><td><code>pi</code>, <code>e</code></td><td>π dan bilangan Euler</td></tr>
+                                <tr>
+                                    <td>Variabel</td>
+                                    <td><code>x</code></td>
+                                    <td>Gunakan huruf <code>x</code> sebagai variabel utama</td>
+                                </tr>
+                                <tr>
+                                    <td>Pangkat</td>
+                                    <td><code>x**2</code> atau <code>x^2</code></td>
+                                    <td>x² — tanda <code>^</code> otomatis diubah</td>
+                                </tr>
+                                <tr>
+                                    <td>Perkalian</td>
+                                    <td><code>2*x</code></td>
+                                    <td>Tanda <code>*</code> wajib — jangan tulis <code>2x</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Pembagian</td>
+                                    <td><code>1/x</code> atau <code>(x+1)/(x-2)</code></td>
+                                    <td>Gunakan kurung jika lebih dari satu suku</td>
+                                </tr>
+                                <tr>
+                                    <td>Akar</td>
+                                    <td><code>sqrt(x)</code></td>
+                                    <td>√x</td>
+                                </tr>
+                                <tr>
+                                    <td>Eksponensial</td>
+                                    <td><code>exp(x)</code></td>
+                                    <td>eˣ</td>
+                                </tr>
+                                <tr>
+                                    <td>Logaritma</td>
+                                    <td><code>log(x)</code> atau <code>ln(x)</code></td>
+                                    <td>ln(x) — logaritma natural</td>
+                                </tr>
+                                <tr>
+                                    <td>Trigonometri</td>
+                                    <td><code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code></td>
+                                    <td>Fungsi trig standar</td>
+                                </tr>
+                                <tr>
+                                    <td>Nilai mutlak</td>
+                                    <td><code>Abs(x)</code></td>
+                                    <td>|x| — huruf A harus kapital</td>
+                                </tr>
+                                <tr>
+                                    <td>Konstanta</td>
+                                    <td><code>pi</code>, <code>e</code></td>
+                                    <td>π dan bilangan Euler</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
                     <div>
-                        <div class="panduan-box-title" style="margin-bottom:6px">Contoh Siap Pakai — klik untuk langsung isi:</div>
+                        <div class="panduan-box-title" style="margin-bottom:6px">Contoh Siap Pakai — klik untuk langsung
+                            isi:</div>
                         <div class="example-chips">
                             <button onclick="fillTurunan('x**3 - 2*x + 1')" class="example-chip">x**3 - 2*x + 1</button>
                             <button onclick="fillLimit('sin(x)/x')" class="example-chip">sin(x)/x → limit</button>
                             <button onclick="fillTurunan('exp(-x**2)')" class="example-chip">exp(-x**2)</button>
                             <button onclick="fillTurunan('log(x**2 + 1)')" class="example-chip">log(x**2 + 1)</button>
-                            <button onclick="fillTurunan('(x**2 + 1)/(x - 3)')" class="example-chip">(x^2+1)/(x-3)</button>
+                            <button onclick="fillTurunan('(x**2 + 1)/(x - 3)')"
+                                class="example-chip">(x^2+1)/(x-3)</button>
                         </div>
                     </div>
                     <div class="warning-box">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                            <path d="M12 9v4"/><path d="M12 17h.01"/>
-                            <path d="M10.3 3.3L3.6 14a2 2 0 001.7 3h13.4a2 2 0 001.7-3L13.7 3.3a2 2 0 00-3.4 0z"/>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round">
+                            <path d="M12 9v4" />
+                            <path d="M12 17h.01" />
+                            <path d="M10.3 3.3L3.6 14a2 2 0 001.7 3h13.4a2 2 0 001.7-3L13.7 3.3a2 2 0 00-3.4 0z" />
                         </svg>
-                        <p><b style="color:var(--text)">Perhatian:</b> Tanda <code>*</code> untuk perkalian wajib ditulis. Contoh salah: <code>2x</code> — benar: <code>2*x</code>. Jika muncul error, klik tombol <em>Fix</em> yang tampil otomatis.</p>
+                        <p><b style="color:var(--text)">Perhatian:</b> Tanda <code>*</code> untuk perkalian wajib
+                            ditulis. Contoh salah: <code>2x</code> — benar: <code>2*x</code>. Jika muncul error, klik
+                            tombol <em>Fix</em> yang tampil otomatis.</p>
                     </div>
                 </div>
             </div>
@@ -163,11 +226,14 @@
                     <span class="card-badge">READY</span>
                 </div>
                 <div class="card-panduan">
-                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-turunan','pt-turunan')" aria-expanded="false" aria-controls="p-turunan" type="button">
+                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-turunan','pt-turunan')"
+                        aria-expanded="false" aria-controls="p-turunan" type="button">
                         <span class="card-panduan-left">
                             <span class="card-panduan-icon-wrap">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M12 16v-4M12 8h.01" />
                                 </svg>
                             </span>
                             <span class="card-panduan-text">
@@ -177,19 +243,42 @@
                         </span>
                         <span class="card-panduan-badge">
                             <span class="card-panduan-badge-text">Buka</span>
-                            <svg id="pt-turunan" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
+                            <svg id="pt-turunan" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path d="M6 9l6 6 6-6" />
+                            </svg>
                         </span>
                     </button>
                     <div id="p-turunan" class="card-panduan-body hidden">
-                        <div class="panduan-step"><div class="panduan-step-num">1</div><div class="panduan-step-text">Ketik fungsi di kolom <strong>Fungsi f(x)</strong>, misal: <code>x**2 + 3*x</code> atau <code>sin(x)</code>.</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">2</div><div class="panduan-step-text"><strong>Orde turunan</strong>: isi <code>1</code> untuk turunan pertama (f'), <code>2</code> untuk turunan kedua (f''), dst. (maks. 10).</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">3</div><div class="panduan-step-text"><strong>Titik evaluasi</strong> (opsional): isi angka, misal <code>2</code>, untuk menghitung nilai f'(2). Kosongkan jika tidak perlu.</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">4</div><div class="panduan-step-text">Tekan <strong>Hitung Turunan</strong> atau tekan <kbd>Enter</kbd>. Grafik otomatis muncul.</div></div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">1</div>
+                            <div class="panduan-step-text">Ketik fungsi di kolom <strong>Fungsi f(x)</strong>, misal:
+                                <code>x**2 + 3*x</code> atau <code>sin(x)</code>.
+                            </div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">2</div>
+                            <div class="panduan-step-text"><strong>Orde turunan</strong>: isi <code>1</code> untuk
+                                turunan pertama (f'), <code>2</code> untuk turunan kedua (f''), dst. (maks. 10).</div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">3</div>
+                            <div class="panduan-step-text"><strong>Titik evaluasi</strong> (opsional): isi angka, misal
+                                <code>2</code>, untuk menghitung nilai f'(2). Kosongkan jika tidak perlu.
+                            </div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">4</div>
+                            <div class="panduan-step-text">Tekan <strong>Hitung Turunan</strong> atau tekan
+                                <kbd>Enter</kbd>. Grafik otomatis muncul.
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group" style="margin-top:16px">
                     <label class="label" for="turunan-fungsi">Fungsi f(x)</label>
-                    <input id="turunan-fungsi" type="text" placeholder="Contoh: x**3 + 2*x" autocomplete="off" class="input-field">
+                    <input id="turunan-fungsi" type="text" placeholder="Contoh: x**3 + 2*x" autocomplete="off"
+                        class="input-field">
                     <div id="valid-turunan" class="hidden"></div>
                     <div class="presets">
                         <button onclick="fillTurunan('x**3 + 2*x')" class="preset-chip">x³+2x</button>
@@ -200,7 +289,8 @@
                 <div class="form-grid-2">
                     <div>
                         <label class="label" for="turunan-orde">Orde turunan</label>
-                        <input id="turunan-orde" type="number" value="1" min="1" max="10" class="input-field" style="text-align:center; font-weight:600">
+                        <input id="turunan-orde" type="number" value="1" min="1" max="10" class="input-field"
+                            style="text-align:center; font-weight:600">
                         <div class="help" style="text-align:center">1 = f' &nbsp; 2 = f'' &nbsp; dst.</div>
                     </div>
                     <div>
@@ -210,22 +300,31 @@
                     </div>
                 </div>
                 <button onclick="hitungTurunan()" class="btn-primary" id="btn-turunan">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.2">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
                     Hitung Turunan
                 </button>
-                <div id="hasil-turunan" class="result-box"><span class="result-empty">Hasil akan tampil di sini</span></div>
+                <div id="hasil-turunan" class="result-box"><span class="result-empty">Hasil akan tampil di sini</span>
+                </div>
                 <div id="actions-turunan" class="hidden actions-row">
                     <button onclick="copyLatex('turunan')" class="btn-secondary">⧉ Copy LaTeX</button>
                     <div class="dropdown-wrap">
-                        <button onclick="toggleDownloadMenu('turunan')" id="btn-download-turunan" class="btn-secondary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">⬇ Download <span style="font-size:9px">▼</span></button>
+                        <button onclick="toggleDownloadMenu('turunan')" id="btn-download-turunan" class="btn-secondary"
+                            style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">⬇
+                            Download <span style="font-size:9px">▼</span></button>
                         <div id="menu-turunan" class="dropdown-menu hidden">
-                            <button onclick="downloadPlotAs('turunan','png');toggleDownloadMenu('turunan',true)" class="dropdown-item">🖼️ Download PNG</button>
-                            <button onclick="downloadPlotAs('turunan','svg');toggleDownloadMenu('turunan',true)" class="dropdown-item">📐 Download SVG</button>
+                            <button onclick="downloadPlotAs('turunan','png');toggleDownloadMenu('turunan',true)"
+                                class="dropdown-item"> Download PNG</button>
+                            <button onclick="downloadPlotAs('turunan','svg');toggleDownloadMenu('turunan',true)"
+                                class="dropdown-item"> Download SVG</button>
                         </div>
                     </div>
                 </div>
                 <div id="history-turunan" class="hidden history-wrap"></div>
-                <div id="plot-turunan" class="hidden plot-container"><img id="plot-turunan-img" alt="Grafik Turunan" loading="lazy"></div>
+                <div id="plot-turunan" class="hidden plot-container"><img id="plot-turunan-img" alt="Grafik Turunan"
+                        loading="lazy"></div>
             </div>
 
             <!-- INTEGRAL CARD -->
@@ -238,11 +337,14 @@
                     <span class="card-badge">READY</span>
                 </div>
                 <div class="card-panduan">
-                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-integral','pt-integral')" aria-expanded="false" aria-controls="p-integral" type="button">
+                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-integral','pt-integral')"
+                        aria-expanded="false" aria-controls="p-integral" type="button">
                         <span class="card-panduan-left">
                             <span class="card-panduan-icon-wrap">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M12 16v-4M12 8h.01" />
                                 </svg>
                             </span>
                             <span class="card-panduan-text">
@@ -252,19 +354,41 @@
                         </span>
                         <span class="card-panduan-badge">
                             <span class="card-panduan-badge-text">Buka</span>
-                            <svg id="pt-integral" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
+                            <svg id="pt-integral" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path d="M6 9l6 6 6-6" />
+                            </svg>
                         </span>
                     </button>
                     <div id="p-integral" class="card-panduan-body hidden">
-                        <div class="panduan-step"><div class="panduan-step-num">1</div><div class="panduan-step-text">Ketik fungsi di kolom <strong>Fungsi f(x)</strong>, misal: <code>x**2 + 1</code>.</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">2</div><div class="panduan-step-text"><strong>Integral tak tentu</strong>: kosongkan batas bawah dan atas. Hasil berupa fungsi + C.</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">3</div><div class="panduan-step-text"><strong>Integral tentu</strong> (luas area): isi <strong>batas bawah</strong> dan <strong>batas atas</strong>, misal <code>0</code> dan <code>1</code>. Hasilnya angka.</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">4</div><div class="panduan-step-text">Tekan tombol <strong>Hitung Integral</strong>.</div></div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">1</div>
+                            <div class="panduan-step-text">Ketik fungsi di kolom <strong>Fungsi f(x)</strong>, misal:
+                                <code>x**2 + 1</code>.
+                            </div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">2</div>
+                            <div class="panduan-step-text"><strong>Integral tak tentu</strong>: kosongkan batas bawah
+                                dan atas. Hasil berupa fungsi + C.</div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">3</div>
+                            <div class="panduan-step-text"><strong>Integral tentu</strong> (luas area): isi
+                                <strong>batas bawah</strong> dan <strong>batas atas</strong>, misal <code>0</code> dan
+                                <code>1</code>. Hasilnya angka.
+                            </div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">4</div>
+                            <div class="panduan-step-text">Tekan tombol <strong>Hitung Integral</strong>.</div>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group" style="margin-top:16px">
                     <label class="label" for="integral-fungsi">Fungsi f(x)</label>
-                    <input id="integral-fungsi" type="text" placeholder="Contoh: x**2 + 1" autocomplete="off" class="input-field">
+                    <input id="integral-fungsi" type="text" placeholder="Contoh: x**2 + 1" autocomplete="off"
+                        class="input-field">
                     <div id="valid-integral" class="hidden"></div>
                     <div class="presets">
                         <button onclick="fillIntegral('x**2 + 1')" class="preset-chip">x²+1</button>
@@ -274,7 +398,8 @@
                 </div>
                 <div class="form-grid-2">
                     <div>
-                        <label class="label" for="integral-bawah">Batas bawah <small>opsional untuk tentu</small></label>
+                        <label class="label" for="integral-bawah">Batas bawah <small>opsional untuk
+                                tentu</small></label>
                         <input id="integral-bawah" type="text" placeholder="0" class="input-field">
                     </div>
                     <div>
@@ -282,24 +407,35 @@
                         <input id="integral-atas" type="text" placeholder="1" class="input-field">
                     </div>
                 </div>
-                <div class="help">Isi keduanya → integral tentu (angka). Kosongkan → integral tak tentu (fungsi + C).</div>
+                <div class="help">Isi keduanya → integral tentu (angka). Kosongkan → integral tak tentu (fungsi + C).
+                </div>
                 <button onclick="hitungIntegral()" class="btn-primary" id="btn-integral">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.2">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
                     Hitung Integral
                 </button>
-                <div id="hasil-integral" class="result-box"><span class="result-empty">Hasil integral akan tampil di sini</span></div>
+                <div id="hasil-integral" class="result-box"><span class="result-empty">Hasil integral akan tampil di
+                        sini</span></div>
                 <div id="actions-integral" class="hidden actions-row">
                     <button onclick="copyLatex('integral')" class="btn-secondary">⧉ Copy LaTeX</button>
                     <div class="dropdown-wrap">
-                        <button onclick="toggleDownloadMenu('integral')" id="btn-download-integral" class="btn-secondary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">⬇ Download <span style="font-size:9px">▼</span></button>
+                        <button onclick="toggleDownloadMenu('integral')" id="btn-download-integral"
+                            class="btn-secondary"
+                            style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">⬇
+                            Download <span style="font-size:9px">▼</span></button>
                         <div id="menu-integral" class="dropdown-menu hidden">
-                            <button onclick="downloadPlotAs('integral','png');toggleDownloadMenu('integral',true)" class="dropdown-item">🖼️ Download PNG</button>
-                            <button onclick="downloadPlotAs('integral','svg');toggleDownloadMenu('integral',true)" class="dropdown-item">📐 Download SVG</button>
+                            <button onclick="downloadPlotAs('integral','png');toggleDownloadMenu('integral',true)"
+                                class="dropdown-item">🖼️ Download PNG</button>
+                            <button onclick="downloadPlotAs('integral','svg');toggleDownloadMenu('integral',true)"
+                                class="dropdown-item">📐 Download SVG</button>
                         </div>
                     </div>
                 </div>
                 <div id="history-integral" class="hidden history-wrap"></div>
-                <div id="plot-integral" class="hidden plot-container"><img id="plot-integral-img" alt="Grafik Integral" loading="lazy"></div>
+                <div id="plot-integral" class="hidden plot-container"><img id="plot-integral-img" alt="Grafik Integral"
+                        loading="lazy"></div>
             </div>
 
             <!-- LIMIT CARD -->
@@ -312,11 +448,14 @@
                     <span class="card-badge">READY</span>
                 </div>
                 <div class="card-panduan">
-                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-limit','pt-limit')" aria-expanded="false" aria-controls="p-limit" type="button">
+                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-limit','pt-limit')"
+                        aria-expanded="false" aria-controls="p-limit" type="button">
                         <span class="card-panduan-left">
                             <span class="card-panduan-icon-wrap">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M12 16v-4M12 8h.01" />
                                 </svg>
                             </span>
                             <span class="card-panduan-text">
@@ -326,19 +465,42 @@
                         </span>
                         <span class="card-panduan-badge">
                             <span class="card-panduan-badge-text">Buka</span>
-                            <svg id="pt-limit" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
+                            <svg id="pt-limit" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path d="M6 9l6 6 6-6" />
+                            </svg>
                         </span>
                     </button>
                     <div id="p-limit" class="card-panduan-body hidden">
-                        <div class="panduan-step"><div class="panduan-step-num">1</div><div class="panduan-step-text">Ketik fungsi, misal: <code>sin(x)/x</code> atau <code>(x**2-1)/(x-1)</code>.</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">2</div><div class="panduan-step-text">Isi <strong>Mendekati x =</strong> dengan nilai yang dituju. Contoh: <code>0</code> artinya x → 0.</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">3</div><div class="panduan-step-text"><strong>Arah</strong>: pilih <em>Kiri & Kanan</em> (default), <em>Kanan (+)</em> jika dari kanan, atau <em>Kiri (−)</em> jika dari kiri.</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">4</div><div class="panduan-step-text">Tekan <strong>Hitung Limit</strong>. Contoh: <code>sin(x)/x</code> saat x→0 hasilnya <strong>1</strong>.</div></div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">1</div>
+                            <div class="panduan-step-text">Ketik fungsi, misal: <code>sin(x)/x</code> atau
+                                <code>(x**2-1)/(x-1)</code>.
+                            </div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">2</div>
+                            <div class="panduan-step-text">Isi <strong>Mendekati x =</strong> dengan nilai yang dituju.
+                                Contoh: <code>0</code> artinya x → 0.</div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">3</div>
+                            <div class="panduan-step-text"><strong>Arah</strong>: pilih <em>Kiri & Kanan</em> (default),
+                                <em>Kanan (+)</em> jika dari kanan, atau <em>Kiri (−)</em> jika dari kiri.
+                            </div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">4</div>
+                            <div class="panduan-step-text">Tekan <strong>Hitung Limit</strong>. Contoh:
+                                <code>sin(x)/x</code> saat x→0 hasilnya <strong>1</strong>.
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group" style="margin-top:16px">
                     <label class="label" for="limit-fungsi">Fungsi f(x)</label>
-                    <input id="limit-fungsi" type="text" placeholder="Contoh: sin(x)/x" autocomplete="off" class="input-field">
+                    <input id="limit-fungsi" type="text" placeholder="Contoh: sin(x)/x" autocomplete="off"
+                        class="input-field">
                     <div id="valid-limit" class="hidden"></div>
                     <div class="presets">
                         <button onclick="fillLimit('sin(x)/x')" class="preset-chip">sin(x)/x</button>
@@ -348,7 +510,8 @@
                 <div class="form-grid-2 form-grid-limit">
                     <div>
                         <label class="label" for="limit-titik">Mendekati x =</label>
-                        <input id="limit-titik" type="text" value="0" class="input-field" style="text-align:center; font-weight:600">
+                        <input id="limit-titik" type="text" value="0" class="input-field"
+                            style="text-align:center; font-weight:600">
                     </div>
                     <div>
                         <label class="label" for="limit-arah">Arah pendekatan</label>
@@ -360,22 +523,31 @@
                     </div>
                 </div>
                 <button onclick="hitungLimit()" class="btn-primary" id="btn-limit">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.2">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
                     Hitung Limit
                 </button>
-                <div id="hasil-limit" class="result-box"><span class="result-empty">Hasil limit akan tampil di sini</span></div>
+                <div id="hasil-limit" class="result-box"><span class="result-empty">Hasil limit akan tampil di
+                        sini</span></div>
                 <div id="actions-limit" class="hidden actions-row">
                     <button onclick="copyLatex('limit')" class="btn-secondary">⧉ Copy LaTeX</button>
                     <div class="dropdown-wrap">
-                        <button onclick="toggleDownloadMenu('limit')" id="btn-download-limit" class="btn-secondary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">⬇ Download <span style="font-size:9px">▼</span></button>
+                        <button onclick="toggleDownloadMenu('limit')" id="btn-download-limit" class="btn-secondary"
+                            style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">⬇
+                            Download <span style="font-size:9px">▼</span></button>
                         <div id="menu-limit" class="dropdown-menu hidden">
-                            <button onclick="downloadPlotAs('limit','png');toggleDownloadMenu('limit',true)" class="dropdown-item">🖼️ Download PNG</button>
-                            <button onclick="downloadPlotAs('limit','svg');toggleDownloadMenu('limit',true)" class="dropdown-item">📐 Download SVG</button>
+                            <button onclick="downloadPlotAs('limit','png');toggleDownloadMenu('limit',true)"
+                                class="dropdown-item">🖼️ Download PNG</button>
+                            <button onclick="downloadPlotAs('limit','svg');toggleDownloadMenu('limit',true)"
+                                class="dropdown-item">📐 Download SVG</button>
                         </div>
                     </div>
                 </div>
                 <div id="history-limit" class="hidden history-wrap"></div>
-                <div id="plot-limit" class="hidden plot-container"><img id="plot-limit-img" alt="Grafik Limit" loading="lazy"></div>
+                <div id="plot-limit" class="hidden plot-container"><img id="plot-limit-img" alt="Grafik Limit"
+                        loading="lazy"></div>
             </div>
 
             <!-- GRAFIK CARD -->
@@ -388,19 +560,24 @@
                     <span class="card-badge">LIVE</span>
                 </div>
                 <div class="grafik-disclaimer">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="disclaimer-icon">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                        <line x1="8" y1="21" x2="16" y2="21"/>
-                        <line x1="12" y1="17" x2="12" y2="21"/>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" class="disclaimer-icon">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
                     </svg>
-                    <span><strong>Tips:</strong> Fitur grafik interaktif lebih direkomendasikan dibuka di <strong>komputer atau laptop</strong> untuk kenyamanan navigasi (drag &amp; scroll zoom).</span>
+                    <span><strong>Tips:</strong> Fitur grafik interaktif lebih direkomendasikan dibuka di
+                        <strong>komputer atau laptop</strong> untuk kenyamanan navigasi (drag &amp; scroll zoom).</span>
                 </div>
                 <div class="card-panduan">
-                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-grafik','pt-grafik')" aria-expanded="false" aria-controls="p-grafik" type="button">
+                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-grafik','pt-grafik')"
+                        aria-expanded="false" aria-controls="p-grafik" type="button">
                         <span class="card-panduan-left">
                             <span class="card-panduan-icon-wrap">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M12 16v-4M12 8h.01" />
                                 </svg>
                             </span>
                             <span class="card-panduan-text">
@@ -410,20 +587,46 @@
                         </span>
                         <span class="card-panduan-badge">
                             <span class="card-panduan-badge-text">Buka</span>
-                            <svg id="pt-grafik" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
+                            <svg id="pt-grafik" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path d="M6 9l6 6 6-6" />
+                            </svg>
                         </span>
                     </button>
                     <div id="p-grafik" class="card-panduan-body hidden">
-                        <div class="panduan-step"><div class="panduan-step-num">1</div><div class="panduan-step-text">Ketik fungsi di kotak yang tersedia atau klik salah satu preset di bawahnya. Bisa tambah banyak fungsi sekaligus dengan tombol <strong>+ Tambah Fungsi</strong>.</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">2</div><div class="panduan-step-text">Grafik otomatis diperbarui saat mengetik. Tekan <kbd>Enter</kbd> untuk refresh manual.</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">3</div><div class="panduan-step-text"><strong>Navigasi:</strong> <em>drag</em> untuk geser, <em>scroll</em> untuk zoom, tombol <strong>⟲ Reset</strong> untuk kembali ke tampilan awal.</div></div>
-                        <div class="panduan-step"><div class="panduan-step-num">4</div><div class="panduan-step-text">Atur rentang tampilan via kolom <strong>xMin/xMax/yMin/yMax</strong>. Gunakan <code>**</code> atau <code>^</code> untuk pangkat dan <code>*</code> untuk perkalian.</div></div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">1</div>
+                            <div class="panduan-step-text">Ketik fungsi di kotak yang tersedia atau klik salah satu
+                                preset di bawahnya. Bisa tambah banyak fungsi sekaligus dengan tombol <strong>+ Tambah
+                                    Fungsi</strong>.</div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">2</div>
+                            <div class="panduan-step-text">Grafik otomatis diperbarui saat mengetik. Tekan
+                                <kbd>Enter</kbd> untuk refresh manual.
+                            </div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">3</div>
+                            <div class="panduan-step-text"><strong>Navigasi:</strong> <em>drag</em> untuk geser,
+                                <em>scroll</em> untuk zoom, tombol <strong>⟲ Reset</strong> untuk kembali ke tampilan
+                                awal.
+                            </div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">4</div>
+                            <div class="panduan-step-text">Atur rentang tampilan via kolom
+                                <strong>xMin/xMax/yMin/yMax</strong>. Gunakan <code>**</code> atau <code>^</code> untuk
+                                pangkat dan <code>*</code> untuk perkalian.
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Fungsi list -->
                 <div id="grafik-list" style="margin-top:12px"></div>
-                <button onclick="addGrafikRow()" class="btn-secondary" style="width:100%; margin-top:8px; display:flex; align-items:center; justify-content:center; gap:6px; border-style:dashed">
+                <button onclick="addGrafikRow()" class="btn-secondary"
+                    style="width:100%; margin-top:8px; display:flex; align-items:center; justify-content:center; gap:6px; border-style:dashed">
                     <span style="font-size:16px; line-height:1">+</span> Tambah Fungsi
                 </button>
                 <div class="presets" style="margin-top:8px">
@@ -439,19 +642,23 @@
                 <div class="grafik-ranges-grid">
                     <div>
                         <label class="label" for="grafik-xmin">xMin</label>
-                        <input id="grafik-xmin" type="number" value="-10" step="1" class="input-field" style="text-align:center; padding:8px">
+                        <input id="grafik-xmin" type="number" value="-10" step="1" class="input-field"
+                            style="text-align:center; padding:8px">
                     </div>
                     <div>
                         <label class="label" for="grafik-xmax">xMax</label>
-                        <input id="grafik-xmax" type="number" value="10" step="1" class="input-field" style="text-align:center; padding:8px">
+                        <input id="grafik-xmax" type="number" value="10" step="1" class="input-field"
+                            style="text-align:center; padding:8px">
                     </div>
                     <div>
                         <label class="label" for="grafik-ymin">yMin</label>
-                        <input id="grafik-ymin" type="number" value="-10" step="1" class="input-field" style="text-align:center; padding:8px">
+                        <input id="grafik-ymin" type="number" value="-10" step="1" class="input-field"
+                            style="text-align:center; padding:8px">
                     </div>
                     <div>
                         <label class="label" for="grafik-ymax">yMax</label>
-                        <input id="grafik-ymax" type="number" value="10" step="1" class="input-field" style="text-align:center; padding:8px">
+                        <input id="grafik-ymax" type="number" value="10" step="1" class="input-field"
+                            style="text-align:center; padding:8px">
                     </div>
                 </div>
                 <label class="check-label">
@@ -471,12 +678,15 @@
                     <button onclick="resetGrafikView()" class="btn-secondary">⟲ Reset</button>
                     <button onclick="shareGrafik()" class="btn-secondary">⧉ Share</button>
                     <div class="dropdown-wrap">
-                        <button onclick="toggleDownloadMenu('grafik')" id="btn-download-grafik" class="btn-secondary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">
+                        <button onclick="toggleDownloadMenu('grafik')" id="btn-download-grafik" class="btn-secondary"
+                            style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">
                             ⬇ Download <span style="font-size:9px">▼</span>
                         </button>
                         <div id="menu-grafik" class="dropdown-menu hidden">
-                            <button onclick="downloadGrafikAs('png');toggleDownloadMenu('grafik',true)" class="dropdown-item">🖼️ Download PNG</button>
-                            <button onclick="downloadGrafikAs('svg');toggleDownloadMenu('grafik',true)" class="dropdown-item">📐 Download SVG</button>
+                            <button onclick="downloadGrafikAs('png');toggleDownloadMenu('grafik',true)"
+                                class="dropdown-item">🖼️ Download PNG</button>
+                            <button onclick="downloadGrafikAs('svg');toggleDownloadMenu('grafik',true)"
+                                class="dropdown-item">📐 Download SVG</button>
                         </div>
                     </div>
                 </div>
@@ -494,4 +704,5 @@
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
+
 </html>
