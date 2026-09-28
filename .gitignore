@@ -4,7 +4,6 @@ __pycache__/
 .env
 venv/
 .venv/
-DESIGN.md
 index_backup.html
 .omo/
 server_*.log

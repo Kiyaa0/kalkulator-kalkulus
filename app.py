@@ -554,6 +554,7 @@ def turunan():
             'sukses': True,
             'hasil': sp.latex(derivative_expr),
             'hasil_str': str(derivative_expr),
+            'fungsi_str': expr_str,
             'variabel': var_name,
         }
         if orde == 1:
@@ -629,6 +630,7 @@ def integral():
             'sukses': True,
             'hasil': sp.latex(indef_expr),
             'hasil_str': str(indef_expr),
+            'fungsi_str': expr_str,
             'notasi': f"\\int {latex_input}\\,d{var_name}",
             'variabel': var_name,
         }
@@ -711,6 +713,7 @@ def limit():
             'sukses': True,
             'hasil': sp.latex(limit_val),
             'hasil_str': str(limit_val),
+            'fungsi_str': expr_str,
             'notasi': f"\\lim_{{{var_name} \\to {sp.latex(point_sym)}{dir_label}}} {sp.latex(f_expr)}",
             'variabel': var_name,
         }
