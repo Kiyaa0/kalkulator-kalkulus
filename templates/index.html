@@ -24,7 +24,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/function-plot@1.14.0/dist/function-plot.js"></script>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.4">
 </head>
 
 <body>
@@ -78,7 +78,7 @@
             <!-- Hero -->
             <div class="hero">
                 <h1 class="hero-title">Kalkulator <span>Kalkulus</span></h1>
-                <p class="hero-sub">Turunan · Integral · Limit · Grafik</p>
+                <p class="hero-sub">Turunan · Integral · Limit · Matriks · Grafik</p>
                 <div class="hero-formulas" aria-hidden="true">
                     <div class="hero-formulas-track" id="hero-formulas-track"></div>
                 </div>
@@ -209,6 +209,10 @@
                 <button class="tab" data-tab="limit" role="tab" aria-selected="false">
                     <span class="tab-icon">lim</span>
                     <span>Limit</span>
+                </button>
+                <button class="tab" data-tab="matriks" role="tab" aria-selected="false">
+                    <span class="tab-icon">⊞</span>
+                    <span>Matriks</span>
                 </button>
                 <button class="tab" data-tab="grafik" role="tab" aria-selected="false">
                     <span class="tab-icon">◧</span>
@@ -550,6 +554,205 @@
                         loading="lazy"></div>
             </div>
 
+            <!-- MATRIKS CARD -->
+            <div class="card hidden" id="form-matriks">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="card-icon" style="font-size:15px; font-weight:700">⊞</span>
+                        Kalkulator Matriks
+                    </h2>
+                    <span class="card-badge">PRO</span>
+                </div>
+
+                <!-- Panduan Matriks -->
+                <div class="card-panduan">
+                    <button class="card-panduan-toggle" onclick="toggleCardPanduan('p-matriks','pt-matriks')"
+                        aria-expanded="false" aria-controls="p-matriks" type="button">
+                        <span class="card-panduan-left">
+                            <span class="card-panduan-icon-wrap">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M12 16v-4M12 8h.01" />
+                                </svg>
+                            </span>
+                            <span class="card-panduan-text">
+                                <span class="card-panduan-main">Cara Pakai Kalkulator Matriks</span>
+                                <span class="card-panduan-sub">Variabel fleksibel, operasi (+, −, ×, ÷), &amp; asisten otomatis</span>
+                            </span>
+                        </span>
+                        <span class="card-panduan-badge">
+                            <span class="card-panduan-badge-text">Buka</span>
+                            <svg id="pt-matriks" class="card-panduan-arrow" width="14" height="14" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path d="M6 9l6 6 6-6" />
+                            </svg>
+                        </span>
+                    </button>
+                    <div id="p-matriks" class="card-panduan-body hidden">
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">1</div>
+                            <div class="panduan-step-text"><strong>Atur Baris &amp; Kolom:</strong> Setiap matriks ukurannya bebas diatur (1×1 s/d 8×8) dengan tombol <code>+</code> / <code>−</code> atau tombol cepat (2×2, 3×3, 2×3, dsb). Klik <strong>+ Tambah Matriks</strong> jika butuh variabel baru (A, B, C, ...).</div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">2</div>
+                            <div class="panduan-step-text"><strong>Isi Elemen:</strong> Ketik angka pada kotak sel. Mendukung bilangan bulat, negatif (<code>-5</code>), desimal (<code>0.5</code>), maupun pecahan (<code>1/3</code>). Kotak kosong otomatis bernilai <code>0</code>. Gunakan tombol panah <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> untuk pindah sel dengan cepat.</div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">3</div>
+                            <div class="panduan-step-text"><strong>Pilih Operasi:</strong> Pilih <strong>Penjumlahan</strong>, <strong>Pengurangan</strong>, <strong>Perkalian</strong>, atau <strong>Pembagian</strong> (A × B⁻¹). Tersedia juga Invers, Determinan, Transpose, dan Perkalian Skalar.</div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">4</div>
+                            <div class="panduan-step-text"><strong>Fitur Foolproof (Asisten Otomatis):</strong> Kotak asisten di bawah akan langsung memberi tahu apakah kedua matriks cocok. Jika ukurannya belum cocok, cukup klik tombol <em>Perbaiki Otomatis</em> sekali klik!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contoh Soal Cepat -->
+                <div style="margin-top:12px">
+                    <div class="matrix-section-title">Contoh Soal Cepat — klik untuk langsung isi:</div>
+                    <div class="example-chips" style="margin-top:6px">
+                        <button type="button" onclick="loadMatrixPreset('tambah2x2')" class="preset-chip">➕ Penjumlahan 2×2</button>
+                        <button type="button" onclick="loadMatrixPreset('kurang2x2')" class="preset-chip">➖ Pengurangan 2×2</button>
+                        <button type="button" onclick="loadMatrixPreset('kali2x3_3x2')" class="preset-chip">✖️ Perkalian 2×3 &amp; 3×2</button>
+                        <button type="button" onclick="loadMatrixPreset('bagi2x2')" class="preset-chip">➗ Pembagian 2×2</button>
+                        <button type="button" onclick="loadMatrixPreset('ordo3x3')" class="preset-chip">📐 Matriks 3×3</button>
+                    </div>
+                </div>
+
+                <!-- Header Variabel Matriks -->
+                <div class="matrix-variables-header">
+                    <div class="matrix-header-left">
+                        <span class="matrix-var-title">Daftar Variabel Matriks</span>
+                        <span class="matrix-count-badge" id="matrix-count-badge">2 Matriks</span>
+                    </div>
+                    <button type="button" onclick="addMatrixVariable()" class="btn-secondary matrix-add-btn" id="btn-add-matrix">
+                        <span style="font-weight:700; font-size:15px; line-height:1">+</span> Tambah Matriks
+                    </button>
+                </div>
+
+                <!-- Dynamic Matrix Cards List -->
+                <div id="matrix-cards-container" class="matrix-cards-container"></div>
+
+                <!-- Panel Operasi -->
+                <div class="matrix-operation-panel">
+                    <div class="matrix-op-title">Pilih Operasi Perhitungan:</div>
+                    
+                    <!-- 4 Operasi Utama: Tambah, Kurang, Kali, Bagi -->
+                    <div class="matrix-quick-ops">
+                        <button type="button" class="matrix-op-btn active" data-op="tambah" onclick="selectMatrixOp('tambah')">
+                            <span class="op-symbol">➕</span>
+                            <span class="op-label">Penjumlahan</span>
+                        </button>
+                        <button type="button" class="matrix-op-btn" data-op="kurang" onclick="selectMatrixOp('kurang')">
+                            <span class="op-symbol">➖</span>
+                            <span class="op-label">Pengurangan</span>
+                        </button>
+                        <button type="button" class="matrix-op-btn" data-op="kali" onclick="selectMatrixOp('kali')">
+                            <span class="op-symbol">✖️</span>
+                            <span class="op-label">Perkalian</span>
+                        </button>
+                        <button type="button" class="matrix-op-btn" data-op="bagi" onclick="selectMatrixOp('bagi')">
+                            <span class="op-symbol">➗</span>
+                            <span class="op-label">Pembagian (A × B⁻¹)</span>
+                        </button>
+                    </div>
+
+                    <!-- Pemilih Operan Matriks -->
+                    <div class="matrix-operand-selector" id="matrix-binary-selector">
+                        <div class="operand-col">
+                            <label class="label" for="matrix-op-a">Matriks Pertama</label>
+                            <select id="matrix-op-a" class="input-field matrix-select" onchange="onMatrixOperandChange()"></select>
+                        </div>
+                        <div class="operand-sign" id="matrix-active-sign">+</div>
+                        <div class="operand-col">
+                            <label class="label" for="matrix-op-b">Matriks Kedua (Pembagi/Pengurang)</label>
+                            <select id="matrix-op-b" class="input-field matrix-select" onchange="onMatrixOperandChange()"></select>
+                        </div>
+                    </div>
+
+                    <!-- Operasi Tunggal Tambahan -->
+                    <div class="matrix-unary-bar">
+                        <span class="matrix-unary-label">Operasi Lainnya:</span>
+                        <div class="matrix-unary-chips">
+                            <button type="button" onclick="runUnaryMatrixOp('invers')" class="preset-chip">Invers (M⁻¹)</button>
+                            <button type="button" onclick="runUnaryMatrixOp('determinan')" class="preset-chip">Determinan (|M|)</button>
+                            <button type="button" onclick="runUnaryMatrixOp('transpose')" class="preset-chip">Transpose (Mᵀ)</button>
+                            <button type="button" onclick="toggleScalarInput()" class="preset-chip" id="btn-scalar-toggle">Skalar (k · M)</button>
+                        </div>
+                    </div>
+
+                    <!-- Input Skalar (bisa dibuka/tutup) -->
+                    <div id="matrix-scalar-wrap" class="matrix-scalar-wrap hidden">
+                        <div class="form-grid-2">
+                            <div>
+                                <label class="label" for="matrix-scalar-k">Nilai Skalar (k)</label>
+                                <input id="matrix-scalar-k" type="text" value="2" class="input-field" placeholder="misal: 2, -3, 1/2">
+                            </div>
+                            <div>
+                                <label class="label" for="matrix-scalar-target">Pilih Matriks</label>
+                                <select id="matrix-scalar-target" class="input-field matrix-select"></select>
+                            </div>
+                        </div>
+                        <button type="button" onclick="runScalarOp()" class="btn-secondary" style="margin-top:8px; width:100%">Hitung Perkalian Skalar</button>
+                    </div>
+
+                    <!-- Asisten Otomatis (Foolproof Box) -->
+                    <div id="matrix-assistant" class="matrix-assistant-box valid">
+                        <div class="assistant-content">
+                            <span class="assistant-icon" id="assistant-icon">✓</span>
+                            <div class="assistant-text-wrap">
+                                <div class="assistant-title" id="assistant-title">Ukuran Sesuai (Siap Dihitung)</div>
+                                <div class="assistant-desc" id="assistant-desc">Kedua matriks memiliki ukuran yang sesuai untuk operasi ini.</div>
+                            </div>
+                        </div>
+                        <div id="assistant-action-wrap" class="assistant-action-wrap hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Tombol Hitung -->
+                <button onclick="hitungMatriks()" class="btn-primary" id="btn-matrix" style="margin-top:14px">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                    Hitung Matriks
+                </button>
+
+                <!-- Box Hasil -->
+                <div id="hasil-matriks" class="result-box">
+                    <span class="result-empty">Hasil perhitungan matriks akan tampil di sini</span>
+                </div>
+
+                <!-- Aksi Hasil -->
+                <div id="actions-matriks" class="hidden actions-row">
+                    <button onclick="copyMatrixLatex()" class="btn-secondary">⧉ Copy LaTeX</button>
+                    <button onclick="copyMatrixPlainText()" class="btn-secondary">📋 Copy Angka</button>
+                    <button onclick="saveResultAsNewMatrix()" class="btn-secondary" title="Tambahkan hasil ini sebagai variabel matriks baru">💾 Buat Matriks Baru</button>
+                    <div class="dropdown-wrap">
+                        <button onclick="toggleMatrixStoreMenu()" id="btn-store-matrix" class="btn-secondary"
+                            style="display:flex; align-items:center; justify-content:center; gap:4px">
+                            Salin Hasil Ke <span style="font-size:9px">▼</span>
+                        </button>
+                        <div id="menu-store-matrix" class="dropdown-menu hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Langkah-Langkah Penyelesaian -->
+                <div id="steps-matriks-wrap" class="hidden matrix-steps-wrap">
+                    <button type="button" class="steps-header" onclick="toggleMatrixSteps()">
+                        <span class="steps-header-title">
+                            <svg id="steps-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                            Langkah-Langkah Penyelesaian (Cara Kerja)
+                        </span>
+                        <span class="steps-badge" id="steps-badge-count">Rincian Lengkap</span>
+                    </button>
+                    <div id="steps-matriks-body" class="steps-body"></div>
+                </div>
+            </div>
+
             <!-- GRAFIK CARD -->
             <div class="card hidden" id="form-grafik">
                 <div class="card-header">
@@ -630,40 +833,54 @@
                     <span style="font-size:16px; line-height:1">+</span> Tambah Fungsi
                 </button>
                 <div class="presets" style="margin-top:8px">
-                    <button onclick="addGrafikPreset('x**2')" class="preset-chip">x²</button>
-                    <button onclick="addGrafikPreset('y**2')" class="preset-chip">y²</button>
-                    <button onclick="addGrafikPreset('sin(x)')" class="preset-chip">sin(x)</button>
-                    <button onclick="addGrafikPreset('sin(y)')" class="preset-chip">sin(y)</button>
-                    <button onclick="addGrafikPreset('sin(x)/x')" class="preset-chip">sin(x)/x</button>
-                    <button onclick="addGrafikPreset('exp(-x**2)')" class="preset-chip">exp(-x²)</button>
+                    <button type="button" onclick="addGrafikPreset('x**2')" class="preset-chip">x²</button>
+                    <button type="button" onclick="addGrafikPreset('sin(x)')" class="preset-chip">sin(x)</button>
+                    <button type="button" onclick="addGrafikPreset('cos(x)')" class="preset-chip">cos(x)</button>
+                    <button type="button" onclick="addGrafikPreset('tan(x)')" class="preset-chip">tan(x)</button>
+                    <button type="button" onclick="addGrafikPreset('1/x')" class="preset-chip">1/x</button>
+                    <button type="button" onclick="addGrafikPreset('sin(x)/x')" class="preset-chip">sin(x)/x</button>
+                    <button type="button" onclick="addGrafikPreset('exp(-x**2)')" class="preset-chip">exp(-x²)</button>
+                    <button type="button" onclick="addGrafikPreset('sqrt(x)')" class="preset-chip">√x</button>
                 </div>
 
-                <!-- Rentang -->
+                <!-- Rentang Axis -->
                 <div class="grafik-ranges-grid">
                     <div>
                         <label class="label" for="grafik-xmin">xMin</label>
-                        <input id="grafik-xmin" type="number" value="-10" step="1" class="input-field"
-                            style="text-align:center; padding:8px">
+                        <input id="grafik-xmin" type="number" value="-10" step="any" class="input-field"
+                            style="text-align:center; padding:8px" title="Batas minimum sumbu X">
                     </div>
                     <div>
                         <label class="label" for="grafik-xmax">xMax</label>
-                        <input id="grafik-xmax" type="number" value="10" step="1" class="input-field"
-                            style="text-align:center; padding:8px">
+                        <input id="grafik-xmax" type="number" value="10" step="any" class="input-field"
+                            style="text-align:center; padding:8px" title="Batas maksimum sumbu X">
                     </div>
                     <div>
                         <label class="label" for="grafik-ymin">yMin</label>
-                        <input id="grafik-ymin" type="number" value="-10" step="1" class="input-field"
-                            style="text-align:center; padding:8px">
+                        <input id="grafik-ymin" type="number" value="-10" step="any" class="input-field"
+                            style="text-align:center; padding:8px" title="Batas minimum sumbu Y">
                     </div>
                     <div>
                         <label class="label" for="grafik-ymax">yMax</label>
-                        <input id="grafik-ymax" type="number" value="10" step="1" class="input-field"
-                            style="text-align:center; padding:8px">
+                        <input id="grafik-ymax" type="number" value="10" step="any" class="input-field"
+                            style="text-align:center; padding:8px" title="Batas maksimum sumbu Y">
                     </div>
                 </div>
-                <label class="check-label">
+
+                <!-- Quick Range Presets -->
+                <div class="grafik-range-presets">
+                    <span class="grafik-range-label">Rentang:</span>
+                    <button type="button" onclick="setGrafikRange(-10, 10, -10, 10)" class="preset-chip" title="Batas standar -10 sampai 10">[-10, 10]</button>
+                    <button type="button" onclick="setGrafikRange(-5, 5, -5, 5)" class="preset-chip" title="Fokus dekat -5 sampai 5">[-5, 5]</button>
+                    <button type="button" onclick="setGrafikRange(-20, 20, -20, 20)" class="preset-chip" title="Tampilan lebar -20 sampai 20">[-20, 20]</button>
+                    <button type="button" onclick="setGrafikRange(-6.28, 6.28, -2, 2)" class="preset-chip" title="Rentang trigonometri 2 periode">[-2π, 2π]</button>
+                    <button type="button" onclick="setGrafikRange(0, 10, 0, 50)" class="preset-chip" title="Hanya kuadran pertama positif">[0, 10]</button>
+                </div>
+                <div id="grafik-range-warning" class="grafik-range-warning hidden"></div>
+
+                <label class="check-label" style="margin-top:10px">
                     <input id="grafik-grid" type="checkbox" checked>
-                    <span>Tampilkan grid</span>
+                    <span>Tampilkan grid koordinat</span>
                     <span id="grafik-coords" class="coords-display hidden"></span>
                 </label>
 
@@ -702,7 +919,7 @@
         </div>
     </footer>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=1.4"></script>
 </body>
 
 </html>
