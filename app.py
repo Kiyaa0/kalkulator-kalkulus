@@ -507,7 +507,7 @@ def _matrix_op_tambah(A, B, nameA, nameB):
     rA, cA = A.shape
     rB, cB = B.shape
     if rA != rB or cA != cB:
-        raise ValueError(f'Ukuran tidak cocok! Penjumlahan mensyaratkan kedua matriks berukuran sama persis. Matriks {nameA} berukuran {rA}×{cA}, sedangkan Matriks {nameB} berukuran {rB}×{cB}.')
+        raise ValueError(f'Ukuran tidak cocok! Penjumlahan mensyaratkan kedua matriks berukuran sama persis atau tidak terdefinisi. Matriks {nameA} berukuran {rA}×{cA}, sedangkan Matriks {nameB} berukuran {rB}×{cB}.')
 
     inter_rows = []
     for i in range(rA):
@@ -537,7 +537,7 @@ def _matrix_op_kurang(A, B, nameA, nameB):
     rA, cA = A.shape
     rB, cB = B.shape
     if rA != rB or cA != cB:
-        raise ValueError(f'Ukuran tidak cocok! Pengurangan mensyaratkan kedua matriks berukuran sama persis. Matriks {nameA} berukuran {rA}×{cA}, sedangkan Matriks {nameB} berukuran {rB}×{cB}.')
+        raise ValueError(f'Ukuran tidak cocok! Pengurangan mensyaratkan kedua matriks berukuran sama persis atau tidak terdefinisi. Matriks {nameA} berukuran {rA}×{cA}, sedangkan Matriks {nameB} berukuran {rB}×{cB}.')
 
     inter_rows = []
     for i in range(rA):
@@ -567,7 +567,7 @@ def _matrix_op_kali(A, B, nameA, nameB):
     rA, cA = A.shape
     rB, cB = B.shape
     if cA != rB:
-        raise ValueError(f'Ukuran tidak cocok untuk perkalian! Jumlah Kolom Matriks {nameA} ({cA}) harus sama dengan Jumlah Baris Matriks {nameB} ({rB}). (Syarat: perkalian matriks {rA}×{cA} dengan {rB}×{cB} hanya bisa jika {cA} = {rB}).')
+        raise ValueError(f'Ukuran tidak cocok untuk perkalian atau tidak terdefinisi! Jumlah Kolom Matriks {nameA} ({cA}) harus sama dengan Jumlah Baris Matriks {nameB} ({rB}). (Syarat: perkalian matriks {rA}×{cA} dengan {rB}×{cB} hanya bisa jika {cA} = {rB}).')
 
     calc_items = []
     for i in range(rA):
@@ -603,14 +603,14 @@ def _matrix_op_bagi(A, B, nameA, nameB):
     rA, cA = A.shape
     rB, cB = B.shape
     if rB != cB:
-        raise ValueError(f'Matriks pembagi ({nameB}) harus berupa matriks persegi (bujursangkar, ordo n×n) agar memiliki invers. Saat ini {nameB} berukuran {rB}×{cB}.')
+        raise ValueError(f'Matriks pembagi ({nameB}) harus berupa matriks persegi (bujursangkar, ordo n×n) agar memiliki invers atau tidak terdefinisi. Saat ini {nameB} berukuran {rB}×{cB}.')
 
     det_B = B.det()
     if det_B == 0:
         raise ValueError(f'Matriks pembagi ({nameB}) memiliki determinan = 0 (matriks singular). Matriks yang determinannya 0 tidak memiliki invers, sehingga operasi pembagian tidak terdefinisi.')
 
     if cA != rB:
-        raise ValueError(f'Kolom Matriks {nameA} ({cA}) tidak sama dengan baris Matriks {nameB} ({rB}). Perkalian {nameA} \\times {nameB}^{{-1}} memerlukan Kolom {nameA} = Baris {nameB}.')
+        raise ValueError(f'Kolom Matriks {nameA} ({cA}) tidak sama dengan baris Matriks {nameB} ({rB}) atau tidak terdefinisi. Perkalian {nameA} \\times {nameB}^{{-1}} memerlukan Kolom {nameA} = Baris {nameB}.')
 
     det_latex = sp.latex(det_B)
     steps = [
@@ -656,10 +656,10 @@ def _matrix_op_bagi(A, B, nameA, nameB):
 def _matrix_op_invers(A, nameA):
     rA, cA = A.shape
     if rA != cA:
-        raise ValueError(f'Matriks {nameA} harus berupa matriks persegi (ordo n×n) untuk mencari invers. Saat ini berukuran {rA}×{cA}.')
+        raise ValueError(f'Matriks {nameA} harus berupa matriks persegi (ordo n×n) untuk mencari invers atau tidak terdefinisi. Saat ini berukuran {rA}×{cA}.')
     det_A = A.det()
     if det_A == 0:
-        raise ValueError(f'Matriks {nameA} memiliki determinan = 0 (matriks singular). Matriks singular tidak memiliki invers.')
+        raise ValueError(f'Matriks {nameA} memiliki determinan = 0 (matriks singular). Matriks singular tidak memiliki invers atau tidak terdefinisi.')
     A_inv = A.inv()
     steps = [
         {'judul': '1. Periksa Syarat Invers', 'teks': f'Matriks {nameA} adalah matriks persegi {rA} \\times {cA}. Determinan \\det({nameA}) = {sp.latex(det_A)} \\neq 0, maka invers ada.'},
@@ -675,7 +675,7 @@ def _matrix_op_invers(A, nameA):
 def _matrix_op_determinan(A, nameA):
     rA, cA = A.shape
     if rA != cA:
-        raise ValueError(f'Determinan hanya dapat dihitung untuk matriks persegi (n×n). Matriks {nameA} berukuran {rA}×{cA}.')
+        raise ValueError(f'Determinan hanya dapat dihitung untuk matriks persegi (n×n) atau tidak terdefinisi. Matriks {nameA} berukuran {rA}×{cA}.')
     det_A = A.det()
     steps = [
         {'judul': '1. Ordo Matriks', 'teks': f'Matriks {nameA} adalah matriks persegi {rA} \\times {cA}.'}

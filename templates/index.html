@@ -25,6 +25,12 @@
     <script src="https://cdn.jsdelivr.net/npm/function-plot@1.14.0/dist/function-plot.js"></script>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.4">
+
+    <!-- Vercel Web Analytics -->
+    <script>
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
 </head>
 
 <body>
@@ -688,7 +694,7 @@
                         <div class="form-grid-2">
                             <div>
                                 <label class="label" for="matrix-scalar-k">Nilai Skalar (k)</label>
-                                <input id="matrix-scalar-k" type="text" value="2" class="input-field" placeholder="misal: 2, -3, 1/2">
+                                <input id="matrix-scalar-k" type="text" inputmode="decimal" value="2" class="input-field" placeholder="misal: 2, -3, 1/2">
                             </div>
                             <div>
                                 <label class="label" for="matrix-scalar-target">Pilih Matriks</label>

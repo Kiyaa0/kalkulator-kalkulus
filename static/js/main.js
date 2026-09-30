@@ -1403,7 +1403,8 @@ function renderMatrixGrid(key) {
         for (let c = 0; c < mat.cols; c++) {
             const input = document.createElement('input');
             input.type = 'text';
-            input.inputMode = 'text';
+            input.inputMode = 'decimal';
+            input.setAttribute('inputmode', 'decimal');
             input.autocomplete = 'off';
             input.className = 'matrix-cell-input';
             input.dataset.matrix = key;
@@ -1412,8 +1413,37 @@ function renderMatrixGrid(key) {
             input.placeholder = `${key.toLowerCase()}${r + 1}${c + 1}`;
             input.value = (mat.data && mat.data[r] && mat.data[r][c] !== undefined) ? mat.data[r][c] : '';
 
+            // Saat sel diklik atau difokuskan: langsung blok teks (termasuk jika 0) agar langsung terganti saat mengetik
+            input.addEventListener('focus', () => {
+                setTimeout(() => {
+                    try { input.select(); } catch (err) {}
+                }, 50);
+            });
+            input.addEventListener('click', () => {
+                if (input.value === '0') {
+                    try { input.select(); } catch (err) {}
+                }
+            });
+
+            // Jika isi sel adalah '0' dan user mengetik angka/simbol baru (selain desimal/pecahan), langsung hapus '0'
+            input.addEventListener('beforeinput', (e) => {
+                if (input.value === '0' && e.data && !['.', ',', '/'].includes(e.data)) {
+                    input.value = '';
+                }
+            });
+
             input.addEventListener('input', (e) => {
-                mat.data[r][c] = e.target.value.trim();
+                let val = e.target.value;
+                // Jika diawali 0 lalu diikuti angka atau tanda minus (misal '05' atau '0-3') dan bukan desimal/pecahan
+                if (/^0[0-9\-]/.test(val)) {
+                    if (/^0+$/.test(val)) {
+                        val = '0';
+                    } else {
+                        val = val.replace(/^0+(?=[1-9\-])/, '');
+                    }
+                    e.target.value = val;
+                }
+                mat.data[r][c] = val.trim();
                 saveMatrixState();
             });
 
@@ -1663,7 +1693,7 @@ function checkMatrixCompatibility() {
             box.className = 'matrix-assistant-box warning';
             icon.textContent = '!';
             title.textContent = `Ukuran Belum Sesuai untuk ${opName}`;
-            desc.textContent = `${opName} mensyaratkan kedua matriks berukuran sama persis. (Saat ini Matriks ${keyA}: ${rA}×${cA}, Matriks ${keyB}: ${rB}×${cB}).`;
+            desc.textContent = `${opName} mensyaratkan kedua matriks berukuran sama persis atau tidak terdefinisi. (Saat ini Matriks ${keyA}: ${rA}×${cA}, Matriks ${keyB}: ${rB}×${cB}).`;
 
             actionWrap.classList.remove('hidden');
             const fixBtn = document.createElement('button');
@@ -1683,7 +1713,7 @@ function checkMatrixCompatibility() {
             box.className = 'matrix-assistant-box warning';
             icon.textContent = '!';
             title.textContent = `Syarat Perkalian Belum Terpenuhi`;
-            desc.textContent = `Perkalian ${keyA} × ${keyB} mensyaratkan Kolom Matriks ${keyA} (${cA}) = Baris Matriks ${keyB} (saat ini ${rB}).`;
+            desc.textContent = `Perkalian ${keyA} × ${keyB} mensyaratkan Kolom Matriks ${keyA} (${cA}) = Baris Matriks ${keyB} (saat ini ${rB}) atau tidak terdefinisi.`;
 
             actionWrap.classList.remove('hidden');
             const fixBtn = document.createElement('button');
@@ -1698,7 +1728,7 @@ function checkMatrixCompatibility() {
             box.className = 'matrix-assistant-box warning';
             icon.textContent = '!';
             title.textContent = `Matriks Pembagi (${keyB}) Harus Persegi`;
-            desc.textContent = `Pembagian ${keyA} ÷ ${keyB} dihitung sebagai ${keyA} × ${keyB}⁻¹. Matriks pembagi harus berupa matriks persegi (ordo n×n) agar memiliki invers. (Saat ini ${keyB} berordo ${rB}×${cB}).`;
+            desc.textContent = `Pembagian ${keyA} ÷ ${keyB} dihitung sebagai ${keyA} × ${keyB}⁻¹. Matriks pembagi harus berupa matriks persegi (ordo n×n) agar memiliki invers atau tidak terdefinisi. (Saat ini ${keyB} berordo ${rB}×${cB}).`;
 
             actionWrap.classList.remove('hidden');
             const fixBtn = document.createElement('button');
@@ -1711,7 +1741,7 @@ function checkMatrixCompatibility() {
             box.className = 'matrix-assistant-box warning';
             icon.textContent = '!';
             title.textContent = `Dimensi Pengali Belum Cocok`;
-            desc.textContent = `Kolom Matriks ${keyA} (${cA}) harus sama dengan ordo invers ${keyB} (${rB}).`;
+            desc.textContent = `Kolom Matriks ${keyA} (${cA}) harus sama dengan ordo invers ${keyB} (${rB}) atau tidak terdefinisi.`;
 
             actionWrap.classList.remove('hidden');
             const fixBtn = document.createElement('button');
