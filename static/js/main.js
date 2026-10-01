@@ -32,6 +32,20 @@ const $ = (id) => document.getElementById(id);
 const LS_H = 'calcku-h';
 const last = {};
 const plotSvgCache = {};
+let currentAbortController = null;
+
+/**
+ * Batalkan request API aktif ke server untuk mencegah pemborosan beban server/CPU.
+ */
+function abortActiveRequests() {
+    if (currentAbortController) {
+        try {
+            currentAbortController.abort();
+        } catch (e) { }
+        currentAbortController = null;
+    }
+}
+
 
 /**
  * Higher-order debounce helper to rate-limit input event handlers.
@@ -44,25 +58,62 @@ function debounce(fn, delay) {
     };
 }
 
+const SUPERSCRIPTS_MAP = {
+    '⁰': '^0', '¹': '^1', '²': '^2', '³': '^3', '⁴': '^4',
+    '⁵': '^5', '⁶': '^6', '⁷': '^7', '⁸': '^8', '⁹': '^9',
+    '⁻': '^-', '⁺': '^+'
+};
+
 /**
- * Auto-correct common mathematical input typos (e.g., missing '*' before variables/brackets).
+ * Auto-correct common mathematical input typos (e.g., missing '*' before variables/brackets, unicode superscripts, commas).
  */
 function autoFix(str) {
     if (!str) return '';
-    return str
+    let s = str;
+    // Hapus awalan penamaan fungsi (f(x) =, y =, dll.)
+    s = s.replace(/^\s*[a-zA-Z]\s*\([a-zA-Z]\)\s*=\s*/, '');
+    s = s.replace(/^\s*[yY]\s*=\s*/, '');
+
+    // Normalisasi simbol matematika unicode
+    s = s.replace(/[−–—]/g, '-').replace(/[×·•]/g, '*').replace(/÷/g, '/').replace(/[πΠ]/g, 'pi');
+    s = s.replace(/\[/g, '(').replace(/\]/g, ')').replace(/\{/g, '(').replace(/\}/g, ')');
+
+    // Superskrip angka
+    for (const [sup, norm] of Object.entries(SUPERSCRIPTS_MAP)) {
+        s = s.replaceAll(sup, norm);
+    }
+    s = s.replace(/\^(-|\+)\^(\d+)/g, '^($1$2)').replace(/\^(\d+)\^(\d+)/g, '^$1$2');
+
+    // Simbol akar
+    s = s.replace(/√\s*\(([^)]+)\)/g, 'sqrt($1)');
+    s = s.replace(/√\s*([a-zA-Z0-9_]+)/g, 'sqrt($1)');
+    s = s.replaceAll('√', 'sqrt');
+
+    // Koma desimal Indonesia: 2,5 -> 2.5
+    s = s.replace(/(\d+),(\d+)/g, '$1.$2');
+
+    // Nilai mutlak: |x| -> abs(x)
+    s = s.replace(/\|([^|]+)\|/g, 'abs($1)');
+
+    // Sinonim trigonometri
+    s = s.replace(/\btg\b/gi, 'tan').replace(/\bctg\b/gi, 'cot').replace(/\bcotan\b/gi, 'cot');
+
+    // Perkalian implisit
+    return s
         .replaceAll('^', '**')
-        .replace(/(\d)([a-zA-Z])/g, '$1*$2')
-        .replace(/([xy])\(/g, '$1*(')
-        .replace(/\)\(/g, ')*(')
-        .replace(/\)([a-zA-Z])/g, ')*$1')
-        .replace(/(\d)\(/g, '$1*(');
+        .replace(/(\d)\s*([a-zA-Z])/g, '$1*$2')
+        .replace(/(\d)\s*\(/g, '$1*(')
+        .replace(/([xyzt])\s*\(/gi, '$1*(')
+        .replace(/\)\s*\(/g, ')*(')
+        .replace(/\)\s*([a-zA-Z])/g, ')*$1')
+        .replace(/\)\s*(\d)/g, ')*$1');
 }
 
 /**
  * Checks if string likely contains missing multiplication operators.
  */
 function hasMissingStar(str) {
-    return /(\d[a-zA-Z]|\d\(|[xy]\(|\)[a-zA-Z0-9(])/.test(str);
+    return /(\d[a-zA-Z]|\d\(|[xyzt]\(|\)[a-zA-Z0-9(]|[²³⁴]|√|[0-9],[0-9])/.test(str);
 }
 
 /**
@@ -566,11 +617,16 @@ async function calcApi({ endpoint, payload, tab, btnId, resultId, onSuccess }) {
         resultEl.innerHTML = '<div class="skeleton-wrap"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div>';
     }
 
+    // Batalkan kalkulasi sebelumnya jika ada yang masih berlangsung
+    abortActiveRequests();
+    currentAbortController = new AbortController();
+
     try {
         const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: currentAbortController.signal
         });
         const data = await res.json();
         if (data.sukses) {
@@ -579,6 +635,12 @@ async function calcApi({ endpoint, payload, tab, btnId, resultId, onSuccess }) {
             renderLatex(resultId, data.error, true);
         }
     } catch (e) {
+        if (e.name === 'AbortError') {
+            if (resultEl && resultEl.innerHTML.includes('skeleton')) {
+                resultEl.innerHTML = '';
+            }
+            return;
+        }
         renderLatex(resultId, 'Gagal menghubungi server — cek koneksi atau server aktif', true);
     } finally {
         setLoading(btn, false);
@@ -688,6 +750,16 @@ const GRAFIK_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#
 let grafikInited = false;
 let isZoomingPlot = false;
 let activePlotInstance = null;
+let zoomResampleTimer = null;
+let lastNaturalDomainData = null;
+let derivativeOverlayFn = null;
+let isDerivativeOverlayActive = false;
+let currentGrafikDomain = {
+    xmin: -10,
+    xmax: 10,
+    ymin: -10,
+    ymax: 10
+};
 
 function getGrafikFns() {
     return Array.from(document.querySelectorAll('#grafik-list .grafik-input'))
@@ -699,10 +771,10 @@ function saveGrafikState() {
     try {
         const data = {
             fns: Array.from(document.querySelectorAll('#grafik-list .grafik-input')).map((i) => i.value),
-            xmin: $('grafik-xmin') ? $('grafik-xmin').value : '-10',
-            xmax: $('grafik-xmax') ? $('grafik-xmax').value : '10',
-            ymin: $('grafik-ymin') ? $('grafik-ymin').value : '-10',
-            ymax: $('grafik-ymax') ? $('grafik-ymax').value : '10',
+            xmin: currentGrafikDomain.xmin,
+            xmax: currentGrafikDomain.xmax,
+            ymin: currentGrafikDomain.ymin,
+            ymax: currentGrafikDomain.ymax,
             grid: $('grafik-grid') ? $('grafik-grid').checked : true
         };
         localStorage.setItem(LS_GRAFIK, JSON.stringify(data));
@@ -735,6 +807,14 @@ function loadGrafikState() {
             }
         }
     } catch (e) { }
+
+    if (state) {
+        if (Number.isFinite(Number(state.xmin))) currentGrafikDomain.xmin = Number(state.xmin);
+        if (Number.isFinite(Number(state.xmax))) currentGrafikDomain.xmax = Number(state.xmax);
+        if (Number.isFinite(Number(state.ymin))) currentGrafikDomain.ymin = Number(state.ymin);
+        if (Number.isFinite(Number(state.ymax))) currentGrafikDomain.ymax = Number(state.ymax);
+    }
+
     return state;
 }
 
@@ -797,52 +877,31 @@ function addGrafikPreset(val) {
 }
 
 function setGrafikRange(xmin, xmax, ymin, ymax) {
-    const xminEl = $('grafik-xmin');
-    const xmaxEl = $('grafik-xmax');
-    const yminEl = $('grafik-ymin');
-    const ymaxEl = $('grafik-ymax');
-    if (xminEl) xminEl.value = xmin;
-    if (xmaxEl) xmaxEl.value = xmax;
-    if (yminEl && ymin !== undefined) yminEl.value = ymin;
-    if (ymaxEl && ymax !== undefined) ymaxEl.value = ymax;
+    if (Number.isFinite(Number(xmin)) && Number.isFinite(Number(xmax)) && Number(xmin) < Number(xmax)) {
+        currentGrafikDomain.xmin = Number(xmin);
+        currentGrafikDomain.xmax = Number(xmax);
+    }
+    if (ymin !== undefined && ymax !== undefined && Number.isFinite(Number(ymin)) && Number.isFinite(Number(ymax)) && Number(ymin) < Number(ymax)) {
+        currentGrafikDomain.ymin = Number(ymin);
+        currentGrafikDomain.ymax = Number(ymax);
+    }
     saveGrafikState();
     renderGrafik();
 }
 
 function getValidDomains() {
-    let xmin = parseFloat($('grafik-xmin')?.value);
-    let xmax = parseFloat($('grafik-xmax')?.value);
-    let ymin = parseFloat($('grafik-ymin')?.value);
-    let ymax = parseFloat($('grafik-ymax')?.value);
-
-    const warnEl = $('grafik-range-warning');
-    let warnings = [];
+    let xmin = currentGrafikDomain.xmin;
+    let xmax = currentGrafikDomain.xmax;
+    let ymin = currentGrafikDomain.ymin;
+    let ymax = currentGrafikDomain.ymax;
 
     if (!isFinite(xmin)) xmin = -10;
     if (!isFinite(xmax)) xmax = 10;
     if (!isFinite(ymin)) ymin = -10;
     if (!isFinite(ymax)) ymax = 10;
 
-    if (xmin >= xmax) {
-        warnings.push(`xMin (${xmin}) harus lebih kecil dari xMax (${xmax}).`);
-        // Clamp for rendering so function-plot never crashes on division by zero
-        xmax = xmin + 2;
-    }
-    if (ymin >= ymax) {
-        warnings.push(`yMin (${ymin}) harus lebih kecil dari yMax (${ymax}).`);
-        // Clamp for rendering so function-plot never crashes
-        ymax = ymin + 2;
-    }
-
-    if (warnEl) {
-        if (warnings.length) {
-            warnEl.innerHTML = `⚠️ <span>${warnings.join(' ')}</span>`;
-            warnEl.classList.remove('hidden');
-        } else {
-            warnEl.innerHTML = '';
-            warnEl.classList.add('hidden');
-        }
-    }
+    if (xmin >= xmax) xmax = xmin + 2;
+    if (ymin >= ymax) ymax = ymin + 2;
 
     return {
         xDomain: [xmin, xmax],
@@ -906,9 +965,25 @@ const renderGrafik = debounce(() => {
         validData.push({
             fn: clean,
             color: GRAFIK_COLORS[idx % GRAFIK_COLORS.length],
-            graphType: 'polyline'
+            graphType: 'polyline',
+            sampler: 'builtIn',
+            nSamples: 1200
         });
     });
+
+    // Optional: First derivative overlay curve
+    if (isDerivativeOverlayActive && derivativeOverlayFn) {
+        const cleanDeriv = toPlotExpr(derivativeOverlayFn);
+        if (isValidPlotExpr(cleanDeriv)) {
+            validData.push({
+                fn: cleanDeriv,
+                color: '#a855f7',
+                graphType: 'polyline',
+                sampler: 'builtIn',
+                nSamples: 1200
+            });
+        }
+    }
 
     if (!hasValidFns) {
         wrap.innerHTML = '';
@@ -946,31 +1021,25 @@ const renderGrafik = debounce(() => {
 
         activePlotInstance = instance;
 
-        // 5. Real-time bi-directional zoom & pan synchronization
+        // 5. Real-time bi-directional zoom & pan synchronization with auto re-sampling
         try {
             instance.on('all:zoom', (xScale, yScale) => {
                 isZoomingPlot = true;
                 const xd = xScale.domain();
                 const yd = yScale.domain();
-                const xminEl = $('grafik-xmin');
-                const xmaxEl = $('grafik-xmax');
-                const yminEl = $('grafik-ymin');
-                const ymaxEl = $('grafik-ymax');
-
-                if (xminEl && document.activeElement !== xminEl) {
-                    xminEl.value = Math.round(xd[0] * 100) / 100;
-                }
-                if (xmaxEl && document.activeElement !== xmaxEl) {
-                    xmaxEl.value = Math.round(xd[1] * 100) / 100;
-                }
-                if (yminEl && document.activeElement !== yminEl) {
-                    yminEl.value = Math.round(yd[0] * 100) / 100;
-                }
-                if (ymaxEl && document.activeElement !== ymaxEl) {
-                    ymaxEl.value = Math.round(yd[1] * 100) / 100;
-                }
+                currentGrafikDomain.xmin = Number(xd[0].toFixed(3));
+                currentGrafikDomain.xmax = Number(xd[1].toFixed(3));
+                currentGrafikDomain.ymin = Number(yd[0].toFixed(3));
+                currentGrafikDomain.ymax = Number(yd[1].toFixed(3));
                 debouncedSaveGrafikState();
-                setTimeout(() => { isZoomingPlot = false; }, 200);
+
+                // Re-sample 1200 points on current visible viewport when user finishes zooming/panning
+                clearTimeout(zoomResampleTimer);
+                zoomResampleTimer = setTimeout(() => {
+                    isZoomingPlot = false;
+                    saveGrafikState();
+                    renderGrafik();
+                }, 220);
             });
         } catch (e) { }
 
@@ -1000,6 +1069,552 @@ const renderGrafik = debounce(() => {
     }
 }, 160);
 
+// Zooming controls (+ / -)
+function zoomGrafik(factor) {
+    const { xDomain, yDomain } = getValidDomains();
+    const xCenter = (xDomain[0] + xDomain[1]) / 2;
+    const yCenter = (yDomain[0] + yDomain[1]) / 2;
+    const xHalf = ((xDomain[1] - xDomain[0]) / 2) * factor;
+    const yHalf = ((yDomain[1] - yDomain[0]) / 2) * factor;
+    setGrafikRange(
+        Number((xCenter - xHalf).toFixed(3)),
+        Number((xCenter + xHalf).toFixed(3)),
+        Number((yCenter - yHalf).toFixed(3)),
+        Number((yCenter + yHalf).toFixed(3))
+    );
+}
+
+// Helper: Ambil fungsi grafik yang sedang aktif
+function getActiveGrafikFn() {
+    const inputs = Array.from(document.querySelectorAll('#grafik-list .grafik-input'));
+    const focused = document.activeElement;
+    if (focused && focused.classList && focused.classList.contains('grafik-input') && focused.value.trim()) {
+        return focused.value.trim();
+    }
+    const found = inputs.find(i => i.value.trim());
+    return found ? found.value.trim() : '';
+}
+
+// Analisis Fungsi & Penentuan Domain Alami Otomatis
+async function analyzeActiveGrafik() {
+    const targetVal = getActiveGrafikFn();
+
+    if (!targetVal) {
+        showGrafikError('Masukkan fungsi terlebih dahulu pada kotak fungsi.');
+        return;
+    }
+
+    const card = $('grafik-analysis-card');
+    const loading = $('grafik-analysis-loading');
+    const body = $('grafik-analysis-body');
+    if (!card || !loading || !body) return;
+
+    card.classList.remove('hidden');
+    loading.classList.remove('hidden');
+    body.innerHTML = '';
+    clearGrafikError();
+
+    try {
+        const res = await fetch('/api/natural-domain', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fungsi: targetVal })
+        });
+        const data = await res.json();
+        loading.classList.add('hidden');
+
+        if (!data.sukses) {
+            body.innerHTML = `<div class="grafik-error" style="margin-top:0">${data.error || 'Gagal menganalisis fungsi'}</div>`;
+            return;
+        }
+
+        lastNaturalDomainData = data;
+        derivativeOverlayFn = data.turunan_str || null;
+
+        renderNaturalDomainAnalysis(data);
+    } catch (err) {
+        loading.classList.add('hidden');
+        body.innerHTML = `<div class="grafik-error" style="margin-top:0">Terjadi kesalahan: ${err.message || err}</div>`;
+    }
+}
+
+function renderNaturalDomainAnalysis(data) {
+    const body = $('grafik-analysis-body');
+    if (!body) return;
+
+    let html = `
+        <div class="grafik-domain-box">
+            <div class="grafik-domain-label">Daerah Asal Alami (Natural Domain $D_f$)</div>
+            <div class="grafik-domain-val" id="g-domain-math"></div>
+            ${data.domain_himpunan ? `<div class="grafik-domain-sub" id="g-domain-set"></div>` : ''}
+        </div>
+    `;
+
+    // Syarat-syarat pembatas
+    if (data.syarat && data.syarat.length) {
+        html += `
+            <div class="grafik-syarat-box">
+                <div class="grafik-syarat-title">Syarat-syarat Pembatas Definisi:</div>
+                <div class="grafik-syarat-list">
+                    ${data.syarat.map((s, idx) => `
+                        <div style="margin-bottom:6px">
+                            <strong>${idx + 1}. ${s.jenis}:</strong>
+                            <div class="g-syarat-math" style="margin-top:2px" data-math="${s.teks.replace(/"/g, '&quot;')}"></div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="grafik-syarat-box">
+                <div class="grafik-syarat-title">Tidak Ada Batasan Aljabar:</div>
+                <div style="font-size:12px; color:var(--text-muted)">
+                    Fungsi polinomial/kontinu ini terdefinisi pada seluruh garis bilangan riil tanpa pembagian dengan nol atau akar bilangan negatif.
+                </div>
+            </div>
+        `;
+    }
+
+    // Karakteristik kurva
+    html += `
+        <div class="grafik-features-grid">
+            <div class="grafik-feature-card">
+                <div class="grafik-feature-title">Titik Potong X (Akar)</div>
+                <div class="grafik-feature-val" id="g-feat-roots"></div>
+            </div>
+            <div class="grafik-feature-card">
+                <div class="grafik-feature-title">Titik Potong Y (f(0))</div>
+                <div class="grafik-feature-val" id="g-feat-yint"></div>
+            </div>
+            <div class="grafik-feature-card">
+                <div class="grafik-feature-title">Asimtot Tegak</div>
+                <div class="grafik-feature-val" id="g-feat-vasymp"></div>
+            </div>
+            <div class="grafik-feature-card">
+                <div class="grafik-feature-title">Asimtot Datar</div>
+                <div class="grafik-feature-val" id="g-feat-hasymp"></div>
+            </div>
+            <div class="grafik-feature-card">
+                <div class="grafik-feature-title">Titik Stasioner (f'(x)=0)</div>
+                <div class="grafik-feature-val" id="g-feat-crit"></div>
+            </div>
+            <div class="grafik-feature-card">
+                <div class="grafik-feature-title">Simetri Fungsi</div>
+                <div class="grafik-feature-val" id="g-feat-sym" style="font-size:11px"></div>
+            </div>
+            ${data.asimtot_miring ? `
+            <div class="grafik-feature-card">
+                <div class="grafik-feature-title">Asimtot Miring</div>
+                <div class="grafik-feature-val" id="g-feat-slant"></div>
+            </div>
+            ` : ''}
+        </div>
+    `;
+
+    // Turunan Pertama f'(x) Card - BESAR, JELAS & MENONJOL
+    const derivActive = isDerivativeOverlayActive ? 'active' : '';
+    const derivBtnLabel = isDerivativeOverlayActive ? 'Kurva Aktif di Grafik' : 'Tampilkan Kurva di Grafik';
+
+    html += `
+        <div class="grafik-deriv-card">
+            <div class="grafik-deriv-header">
+                <div class="grafik-deriv-title">
+                    <span>Turunan Pertama: <strong style="color:var(--accent)">f'(x)</strong></span>
+                </div>
+                <button type="button" onclick="toggleDerivativeFromAnalysis()" class="grafik-deriv-plot-btn ${derivActive}" id="btn-plot-deriv-card" title="Tampilkan atau sembunyikan grafik turunan f'(x)">
+                    <span id="btn-plot-deriv-label">${derivBtnLabel}</span>
+                </button>
+            </div>
+            <div class="grafik-deriv-math-wrap">
+                <div id="g-feat-deriv" class="grafik-deriv-math"></div>
+            </div>
+        </div>
+
+        <!-- Tombol Buka Tabel Nilai Evaluasi -->
+        <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border)">
+            <button type="button" onclick="openValuesTableDirect()" class="btn-secondary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:600">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <line x1="3" y1="15" x2="21" y2="15"></line>
+                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                    <line x1="15" y1="3" x2="15" y2="21"></line>
+                </svg>
+                <span>Buka Tabel Nilai Evaluasi Lengkap</span>
+            </button>
+        </div>
+    `;
+
+    body.innerHTML = html;
+
+    // Render KaTeX expressions
+    if (typeof katex !== 'undefined') {
+        const mathDomEl = $('g-domain-math');
+        if (mathDomEl && data.domain_latex) {
+            katex.render(`D_f = ${data.domain_latex}`, mathDomEl, { throwOnError: false, displayMode: true });
+        }
+        const setDomEl = $('g-domain-set');
+        if (setDomEl && data.domain_himpunan) {
+            katex.render(`\\text{Notasi Himpunan: } ${data.domain_himpunan}`, setDomEl, { throwOnError: false, displayMode: false });
+        }
+        document.querySelectorAll('.g-syarat-math').forEach(el => {
+            const m = el.getAttribute('data-math') || '';
+            if (m.includes('$$')) {
+                const parts = m.split('$$');
+                el.innerHTML = parts.map((part, i) => {
+                    if (i % 2 === 1) {
+                        return katex.renderToString(part, { throwOnError: false, displayMode: true });
+                    }
+                    return part;
+                }).join('');
+            } else {
+                katex.render(m, el, { throwOnError: false, displayMode: false });
+            }
+        });
+
+        const rootsEl = $('g-feat-roots');
+        if (rootsEl) {
+            if (data.akar && data.akar.length) {
+                katex.render(`x \\in \\{${data.akar.join(', ')}\\}`, rootsEl, { throwOnError: false, displayMode: false });
+            } else {
+                rootsEl.textContent = 'Tidak ada';
+            }
+        }
+
+        const yintEl = $('g-feat-yint');
+        if (yintEl) {
+            if (data.potong_y) {
+                katex.render(`(0, ${data.potong_y})`, yintEl, { throwOnError: false, displayMode: false });
+            } else {
+                yintEl.textContent = 'Tidak ada';
+            }
+        }
+
+        const vasympEl = $('g-feat-vasymp');
+        if (vasympEl) {
+            if (data.asimtot_tegak && data.asimtot_tegak.length) {
+                katex.render(`x = ${data.asimtot_tegak.join(', ')}`, vasympEl, { throwOnError: false, displayMode: false });
+            } else {
+                vasympEl.textContent = 'Tidak ada';
+            }
+        }
+
+        const hasympEl = $('g-feat-hasymp');
+        if (hasympEl) {
+            if (data.asimtot_datar && data.asimtot_datar.length) {
+                katex.render(`y = ${data.asimtot_datar.join(', ')}`, hasympEl, { throwOnError: false, displayMode: false });
+            } else {
+                hasympEl.textContent = 'Tidak ada';
+            }
+        }
+
+        const critEl = $('g-feat-crit');
+        if (critEl) {
+            if (data.titik_stasioner && data.titik_stasioner.length) {
+                const ptsStr = data.titik_stasioner.map(p => `(${p.x}, ${p.y})`).join(', ');
+                katex.render(ptsStr, critEl, { throwOnError: false, displayMode: false });
+            } else {
+                critEl.textContent = 'Tidak ada';
+            }
+        }
+
+        const symEl = $('g-feat-sym');
+        if (symEl) {
+            symEl.textContent = data.simetri || 'Bukan keduanya';
+        }
+
+        const slantEl = $('g-feat-slant');
+        if (slantEl && data.asimtot_miring) {
+            katex.render(`y = ${data.asimtot_miring}`, slantEl, { throwOnError: false, displayMode: false });
+        }
+
+        const derivEl = $('g-feat-deriv');
+        if (derivEl && data.turunan_latex) {
+            katex.render(`f'(x) = ${data.turunan_latex}`, derivEl, { throwOnError: false, displayMode: true });
+        }
+    }
+}
+
+function applyDomainToGraph() {
+    if (!lastNaturalDomainData || !lastNaturalDomainData.rentang) {
+        analyzeActiveGrafik().then(() => {
+            if (lastNaturalDomainData && lastNaturalDomainData.rentang) {
+                applyDomainToGraph();
+            }
+        });
+        return;
+    }
+    const r = lastNaturalDomainData.rentang;
+    setGrafikRange(r.xmin, r.xmax, r.ymin, r.ymax);
+
+    const btn = document.querySelector('.grafik-analysis-actions button');
+    if (btn) {
+        const oldText = btn.textContent;
+        btn.textContent = 'Diterapkan!';
+        setTimeout(() => { btn.textContent = oldText; }, 1200);
+    }
+}
+
+function toggleDerivativeOverlay() {
+    const cb = $('grafik-toggle-deriv');
+    isDerivativeOverlayActive = !!(cb && cb.checked);
+    updateDerivativeCardButton();
+
+    if (isDerivativeOverlayActive && !derivativeOverlayFn) {
+        analyzeActiveGrafik().then(() => {
+            renderGrafik();
+            updateDerivativeCardButton();
+        });
+        return;
+    }
+    renderGrafik();
+}
+
+function toggleDerivativeFromAnalysis() {
+    const cb = $('grafik-toggle-deriv');
+    if (cb) {
+        cb.checked = !cb.checked;
+        toggleDerivativeOverlay();
+    } else {
+        isDerivativeOverlayActive = !isDerivativeOverlayActive;
+        updateDerivativeCardButton();
+        renderGrafik();
+    }
+}
+
+function updateDerivativeCardButton() {
+    const btn = $('btn-plot-deriv-card');
+    const lbl = $('btn-plot-deriv-label');
+    if (!btn) return;
+    if (isDerivativeOverlayActive) {
+        btn.classList.add('active');
+        if (lbl) lbl.textContent = 'Kurva Aktif di Grafik';
+    } else {
+        btn.classList.remove('active');
+        if (lbl) lbl.textContent = 'Tampilkan Kurva di Grafik';
+    }
+}
+
+// =============================================================================
+// EVALUASI TITIK & TABEL NILAI MATEMATIS
+// =============================================================================
+function evaluateMathPoint(exprStr, xVal) {
+    if (!exprStr || !exprStr.trim()) {
+        return { x: xVal, y: 'Tak terdefinisi', terdefinisi: false };
+    }
+    try {
+        let clean = toPlotExpr(exprStr);
+        if (!isValidPlotExpr(clean)) {
+            return { x: xVal, y: 'Format tidak valid', terdefinisi: false };
+        }
+        clean = clean.replaceAll('^', '**');
+
+        const mathFuncs = [
+            'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
+            'sinh', 'cosh', 'tanh', 'sqrt', 'cbrt', 'exp',
+            'log10', 'log', 'abs'
+        ];
+        for (const fn of mathFuncs) {
+            const regex = new RegExp(`\\b${fn}\\b`, 'g');
+            clean = clean.replace(regex, `Math.${fn}`);
+        }
+        clean = clean.replace(/\bPI\b/g, 'Math.PI');
+
+        const evalFn = new Function('x', 'Math', `"use strict"; return (${clean});`);
+        const res = evalFn(xVal, Math);
+
+        if (typeof res !== 'number' || isNaN(res) || !isFinite(res)) {
+            return { x: xVal, y: 'Tak terdefinisi', terdefinisi: false };
+        }
+        const rounded = Math.abs(res) < 1e-12 ? 0 : Number(res.toFixed(4));
+        return { x: xVal, y: rounded, terdefinisi: true };
+    } catch (e) {
+        return { x: xVal, y: 'Tak terdefinisi', terdefinisi: false };
+    }
+}
+
+function openValuesTableDirect() {
+    const fn = getActiveGrafikFn();
+    const card = $('grafik-values-card');
+    if (!card) return;
+
+    if (!fn) {
+        showGrafikError('Ketik fungsi terlebih dahulu pada kolom fungsi di atas.');
+        return;
+    }
+    clearGrafikError();
+
+    const titleEl = $('val-table-title');
+    if (titleEl) {
+        titleEl.textContent = `Tabel Nilai Evaluasi: f(x) = ${fn}`;
+    }
+
+    const evalRes = $('val-eval-result');
+    if (evalRes) evalRes.classList.add('hidden');
+    const evalInp = $('val-eval-x');
+    if (evalInp && !evalInp.value) evalInp.value = '2';
+
+    const activeChip = $('chip-tbl-5');
+    generateValuesTableRange(-5, 5, 1, activeChip);
+
+    card.classList.remove('hidden');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeValuesTableCard() {
+    const card = $('grafik-values-card');
+    if (card) card.classList.add('hidden');
+}
+
+function generateValuesTableRange(start, end, step, clickedBtn) {
+    const fn = getActiveGrafikFn();
+    const tbody = $('val-table-tbody');
+    if (!tbody) return;
+
+    if (clickedBtn) {
+        document.querySelectorAll('.val-chip').forEach(b => b.classList.remove('active'));
+        clickedBtn.classList.add('active');
+    }
+
+    if (!fn) {
+        tbody.innerHTML = `<tr><td colspan="3" style="color:var(--text-muted); padding:16px;">Ketik fungsi di atas untuk melihat tabel nilai.</td></tr>`;
+        return;
+    }
+
+    const points = [];
+    const s = Math.max(0.01, Number(step) || 1);
+    let curr = Number(start);
+    const maxCount = 60;
+    let count = 0;
+
+    while (curr <= end + 1e-9 && count < maxCount) {
+        const xVal = Number(curr.toFixed(3));
+        points.push(evaluateMathPoint(fn, xVal));
+        curr += s;
+        count++;
+    }
+
+    renderValuesTableRows(points);
+}
+
+function renderValuesTableRows(points) {
+    const tbody = $('val-table-tbody');
+    if (!tbody) return;
+    if (!points || !points.length) {
+        tbody.innerHTML = `<tr><td colspan="3" style="color:var(--text-muted); padding:16px;">Tidak ada titik evaluasi.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = points.map(pt => `
+        <tr>
+            <td style="font-weight:600">${pt.x}</td>
+            <td style="${pt.terdefinisi ? 'color:var(--text); font-weight:600' : 'color:var(--error)'}">${pt.y}</td>
+            <td>
+                <span class="val-status-pill ${pt.terdefinisi ? 'val-status-ok' : 'val-status-err'}">
+                    ${pt.terdefinisi ? 'Terdefinisi' : 'Diluar Domain'}
+                </span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function evalSinglePoint() {
+    const fn = getActiveGrafikFn();
+    const inp = $('val-eval-x');
+    const resBox = $('val-eval-result');
+    if (!inp || !resBox) return;
+
+    if (!fn) {
+        resBox.textContent = 'Masukkan fungsi terlebih dahulu pada kolom fungsi.';
+        resBox.classList.remove('hidden');
+        return;
+    }
+
+    const rawX = inp.value.trim();
+    if (!rawX) {
+        resBox.textContent = 'Masukkan nilai titik x, misal: 2 atau -1.5';
+        resBox.classList.remove('hidden');
+        return;
+    }
+
+    let numX = parseFloat(rawX);
+    if (rawX.toLowerCase() === 'pi') numX = Math.PI;
+    else if (rawX.toLowerCase() === 'e') numX = Math.E;
+    else if (rawX.includes('/')) {
+        const p = rawX.split('/');
+        if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) && Number(p[1]) !== 0) {
+            numX = Number(p[0]) / Number(p[1]);
+        }
+    }
+
+    if (isNaN(numX)) {
+        resBox.textContent = `Titik x "${rawX}" bukan angka valid.`;
+        resBox.classList.remove('hidden');
+        return;
+    }
+
+    const pt = evaluateMathPoint(fn, Number(numX.toFixed(4)));
+    resBox.innerHTML = `<strong>Hasil Evaluasi:</strong> f(${pt.x}) = <strong style="color:${pt.terdefinisi ? 'var(--accent)' : 'var(--error)'}">${pt.y}</strong> <span class="val-status-pill ${pt.terdefinisi ? 'val-status-ok' : 'val-status-err'}" style="margin-left:6px">${pt.terdefinisi ? 'Terdefinisi' : 'Diluar Domain'}</span>`;
+    resBox.classList.remove('hidden');
+
+    const tbody = $('val-table-tbody');
+    if (tbody) {
+        const existingRow = tbody.querySelector('.highlight-point');
+        if (existingRow) existingRow.remove();
+
+        const newRow = document.createElement('tr');
+        newRow.className = 'highlight-point';
+        newRow.innerHTML = `
+            <td style="font-weight:700">${pt.x} *</td>
+            <td style="${pt.terdefinisi ? 'color:var(--text); font-weight:700' : 'color:var(--error)'}">${pt.y}</td>
+            <td>
+                <span class="val-status-pill ${pt.terdefinisi ? 'val-status-ok' : 'val-status-err'}">
+                    ${pt.terdefinisi ? 'Terdefinisi' : 'Diluar Domain'}
+                </span>
+            </td>
+        `;
+        tbody.insertBefore(newRow, tbody.firstChild);
+    }
+}
+
+function copyValuesTable() {
+    const fn = getActiveGrafikFn();
+    const tbody = $('val-table-tbody');
+    const btnText = $('val-copy-btn-text');
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if (!rows.length) return;
+
+    let lines = [`Tabel Evaluasi f(x) = ${fn || ''}`, '----------------------------------', 'x\tf(x)\tStatus'];
+    rows.forEach(tr => {
+        const cells = tr.querySelectorAll('td');
+        if (cells.length >= 3) {
+            const x = cells[0].innerText.replace('*', '').trim();
+            const y = cells[1].innerText.trim();
+            const st = cells[2].innerText.trim();
+            lines.push(`${x}\t${y}\t${st}`);
+        }
+    });
+
+    const text = lines.join('\n');
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            if (btnText) {
+                const old = btnText.textContent;
+                btnText.textContent = 'Tersalin!';
+                setTimeout(() => { btnText.textContent = old; }, 1500);
+            }
+        });
+    }
+}
+
+function closeGrafikAnalysis() {
+    const card = $('grafik-analysis-card');
+    if (card) card.classList.add('hidden');
+}
+
 function initGrafik() {
     if (grafikInited) {
         renderGrafik();
@@ -1013,10 +1628,6 @@ function initGrafik() {
     const saved = loadGrafikState();
     if (saved && saved.fns && saved.fns.length) {
         saved.fns.forEach((v) => addGrafikRow(v, false));
-        if (saved.xmin !== undefined && $('grafik-xmin')) $('grafik-xmin').value = saved.xmin;
-        if (saved.xmax !== undefined && $('grafik-xmax')) $('grafik-xmax').value = saved.xmax;
-        if (saved.ymin !== undefined && $('grafik-ymin')) $('grafik-ymin').value = saved.ymin;
-        if (saved.ymax !== undefined && $('grafik-ymax')) $('grafik-ymax').value = saved.ymax;
         if (saved.grid !== undefined && $('grafik-grid')) $('grafik-grid').checked = !!saved.grid;
     }
     if (!list.children.length) {
@@ -1024,23 +1635,15 @@ function initGrafik() {
         addGrafikRow('sin(x)', false);
     }
 
-    ['grafik-xmin', 'grafik-xmax', 'grafik-ymin', 'grafik-ymax'].forEach((id) => {
-        const el = $(id);
-        if (!el) return;
-        el.addEventListener('input', debounce(() => {
-            if (!isZoomingPlot) {
-                saveGrafikState();
-                renderGrafik();
-            }
-        }, 220));
-        el.addEventListener('keydown', (e) => {
+    const evalInp = $('val-eval-x');
+    if (evalInp) {
+        evalInp.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                saveGrafikState();
-                renderGrafik();
+                evalSinglePoint();
             }
         });
-    });
+    }
 
     const gridEl = $('grafik-grid');
     if (gridEl) {
@@ -1065,7 +1668,9 @@ function initGrafik() {
 }
 
 function resetGrafikView() {
-    setGrafikRange(-10, 10, -10, 10);
+    currentGrafikDomain = { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
+    saveGrafikState();
+    renderGrafik();
 }
 
 function shareGrafik() {
@@ -1255,7 +1860,7 @@ function loadMatrixState() {
 
 function initMatrixTab() {
     loadMatrixState();
-    if (!matrixState.order || matrixState.order.length < 2) {
+    if (!matrixState.order || matrixState.order.length < 1) {
         matrixState.order = ['A', 'B'];
         matrixState.matrices = {
             'A': { name: 'A', rows: 2, cols: 2, data: [['1', '2'], ['3', '4']] },
@@ -1290,12 +1895,17 @@ function updateMatrixDropdowns() {
     };
 
     if (!matrixState.order.includes(matrixState.opA)) matrixState.opA = matrixState.order[0] || 'A';
-    if (!matrixState.order.includes(matrixState.opB)) matrixState.opB = matrixState.order[1] || matrixState.order[0] || 'B';
+    if (!matrixState.order.includes(matrixState.opB)) matrixState.opB = matrixState.order[1] || matrixState.order[0] || 'A';
     if (!matrixState.order.includes(matrixState.scalarTarget)) matrixState.scalarTarget = matrixState.order[0] || 'A';
 
     selA.innerHTML = buildOptions(matrixState.opA);
     selB.innerHTML = buildOptions(matrixState.opB);
     if (selScalar) selScalar.innerHTML = buildOptions(matrixState.scalarTarget);
+    try {
+        if (typeof updateObeRowOptions === 'function') {
+            updateObeRowOptions();
+        }
+    } catch (e) { }
 }
 
 function onMatrixOperandChange() {
@@ -1304,6 +1914,15 @@ function onMatrixOperandChange() {
     if (selA) matrixState.opA = selA.value;
     if (selB) matrixState.opB = selB.value;
     saveMatrixState();
+    updateMatrixOpUI();
+    checkMatrixCompatibility();
+}
+
+function onScalarTargetChange() {
+    const selScalar = $('matrix-scalar-target');
+    if (selScalar) matrixState.scalarTarget = selScalar.value;
+    saveMatrixState();
+    updateMatrixOpUI();
     checkMatrixCompatibility();
 }
 
@@ -1312,15 +1931,107 @@ function selectMatrixOp(op) {
     updateMatrixOpUI();
     saveMatrixState();
     checkMatrixCompatibility();
+
+    // Auto-run secara mulus jika format sudah sesuai dan bukan form konfigurasi (skalar/obe)
+    if (!['skalar', 'obe_manual'].includes(op)) {
+        const matA = matrixState.matrices[matrixState.opA];
+        if (matA) {
+            const isSingleMatrix = ['determinan', 'invers', 'transpose', 'eselon', 'eselon_tereduksi', 'spl_augmented'].includes(op);
+            if (isSingleMatrix) {
+                if (['determinan', 'invers'].includes(op) && matA.rows !== matA.cols) {
+                    return; // Biarkan asisten menawarkan tombol 'Perbaiki Otomatis'
+                }
+                if (op === 'spl_augmented' && matA.cols < 2) {
+                    return; // Biarkan asisten menawarkan tombol 'Tambah Kolom b'
+                }
+                hitungMatriks();
+            } else {
+                if (matrixState.order.length >= 2) {
+                    const matB = matrixState.matrices[matrixState.opB];
+                    if (matB) {
+                        if ((op === 'tambah' || op === 'kurang') && (matA.rows === matB.rows && matA.cols === matB.cols)) {
+                            hitungMatriks();
+                        } else if (op === 'kali' && matA.cols === matB.rows) {
+                            hitungMatriks();
+                        } else if (op === 'augmented' && matA.rows === matB.rows) {
+                            hitungMatriks();
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 function updateMatrixOpUI() {
-    const signs = { tambah: '+', kurang: '−', kali: '×', bagi: '÷' };
-    document.querySelectorAll('.matrix-op-btn').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.op === matrixState.currentOp);
+    const op = matrixState.currentOp || 'tambah';
+    const signs = { tambah: '+', kurang: '−', kali: '×', bagi: '÷', augmented: '|', spl_augmented: '|' };
+
+    // Update active class on quick ops, unary grid, and advanced buttons
+    document.querySelectorAll('.matrix-op-btn, .matrix-advanced-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.op === op);
     });
+
     const signEl = $('matrix-active-sign');
-    if (signEl) signEl.textContent = signs[matrixState.currentOp] || '+';
+    const binarySelector = $('matrix-binary-selector');
+    const colB = $('col-matrix-op-b');
+    const labelA = $('label-matrix-op-a');
+    const scalarWrap = $('matrix-scalar-wrap');
+    const obeWrap = $('matrix-obe-wrap');
+    const btnText = $('btn-matrix-text');
+
+    const isSingleMatrix = ['determinan', 'invers', 'transpose', 'eselon', 'eselon_tereduksi', 'spl_augmented'].includes(op);
+    const isScalar = op === 'skalar';
+    const isObe = op === 'obe_manual';
+
+    if (scalarWrap) scalarWrap.classList.toggle('hidden', !isScalar);
+    if (obeWrap) {
+        obeWrap.classList.toggle('hidden', !isObe);
+        if (isObe) {
+            updateObeRowOptions();
+            onObeTypeChange();
+        }
+    }
+
+    if (isScalar || isObe) {
+        if (binarySelector) binarySelector.classList.add('hidden');
+    } else {
+        if (binarySelector) binarySelector.classList.remove('hidden');
+        if (isSingleMatrix) {
+            if (colB) colB.classList.add('hidden');
+            if (signEl) signEl.classList.add('hidden');
+            if (labelA) labelA.textContent = 'Pilih Matriks Target';
+        } else {
+            if (colB) colB.classList.remove('hidden');
+            if (signEl) {
+                signEl.classList.remove('hidden');
+                signEl.textContent = signs[op] || '+';
+            }
+            if (labelA) labelA.textContent = 'Matriks Pertama';
+        }
+    }
+
+    // Update text on main button
+    if (btnText) {
+        const a = matrixState.opA || 'A';
+        const b = matrixState.opB || 'B';
+        const opLabels = {
+            tambah: `Hitung Penjumlahan (${a} + ${b})`,
+            kurang: `Hitung Pengurangan (${a} − ${b})`,
+            kali: `Hitung Perkalian (${a} × ${b})`,
+            bagi: `Hitung Pembagian (${a} × ${b}⁻¹)`,
+            augmented: `Gabungkan Matriks [${a} | ${b}]`,
+            determinan: `Hitung Determinan (|${a}|)`,
+            invers: `Hitung Invers Matriks (${a}⁻¹)`,
+            transpose: `Hitung Transpose Matriks (${a}ᵀ)`,
+            skalar: `Hitung Perkalian Skalar (k · ${matrixState.scalarTarget || a})`,
+            eselon: `Hitung Eselon Gauss (REF ${a})`,
+            eselon_tereduksi: `Hitung Eselon Tereduksi (RREF ${a})`,
+            spl_augmented: `Selesaikan SPL [${a} | b]`,
+            obe_manual: `Terapkan Operasi Baris (OBE)`
+        };
+        btnText.textContent = opLabels[op] || 'Hitung Matriks';
+    }
 }
 
 function renderMatrixCards() {
@@ -1336,7 +2047,7 @@ function renderMatrixCards() {
         card.className = 'matrix-card-item';
         card.id = `matrix-card-${key}`;
 
-        const canDelete = matrixState.order.length > 2;
+        const canDelete = matrixState.order.length > 1;
 
         card.innerHTML = `
             <div class="matrix-card-top">
@@ -1349,7 +2060,7 @@ function renderMatrixCards() {
                     <button type="button" onclick="fillMatrixZeros('${key}')" class="matrix-tool-btn" title="Isi semua dengan angka 0">Nol</button>
                     <button type="button" onclick="fillMatrixRandom('${key}')" class="matrix-tool-btn" title="Isi angka acak">Acak</button>
                     <button type="button" onclick="clearMatrix('${key}')" class="matrix-tool-btn" title="Kosongkan sel">Bersihkan</button>
-                    ${canDelete ? `<button type="button" onclick="removeMatrixVariable('${key}')" class="matrix-tool-btn danger" title="Hapus matriks ini">🗑 Hapus</button>` : ''}
+                    ${canDelete ? `<button type="button" onclick="removeMatrixVariable('${key}')" class="matrix-tool-btn danger" title="Hapus matriks ini">Hapus</button>` : ''}
                 </div>
             </div>
 
@@ -1636,20 +2347,39 @@ function addMatrixVariable() {
 }
 
 function removeMatrixVariable(key) {
-    if (matrixState.order.length <= 2) {
-        alert('Minimal harus ada 2 variabel matriks.');
+    if (matrixState.order.length <= 1) {
+        alert('Minimal harus ada 1 variabel matriks.');
         return;
     }
     matrixState.order = matrixState.order.filter((k) => k !== key);
     delete matrixState.matrices[key];
 
-    if (matrixState.opA === key) matrixState.opA = matrixState.order[0];
-    if (matrixState.opB === key) matrixState.opB = matrixState.order[1] || matrixState.order[0];
-    if (matrixState.scalarTarget === key) matrixState.scalarTarget = matrixState.order[0];
+    if (matrixState.opA === key) matrixState.opA = matrixState.order[0] || 'A';
+    if (matrixState.opB === key) matrixState.opB = matrixState.order[1] || matrixState.order[0] || 'A';
+    if (matrixState.scalarTarget === key) matrixState.scalarTarget = matrixState.order[0] || 'A';
 
     renderMatrixCards();
     updateMatrixDropdowns();
+    updateMatrixOpUI();
     saveMatrixState();
+    checkMatrixCompatibility();
+}
+
+function addMatrixBAuto() {
+    addMatrixVariable();
+    if (matrixState.order.length >= 2) {
+        matrixState.opB = matrixState.order[1];
+        const matA = matrixState.matrices[matrixState.opA];
+        if (matA) {
+            if (matrixState.currentOp === 'kali') {
+                setMatrixDimensions(matrixState.opB, matA.cols, matA.rows);
+            } else {
+                setMatrixDimensions(matrixState.opB, matA.rows, matA.cols);
+            }
+        }
+    }
+    updateMatrixDropdowns();
+    updateMatrixOpUI();
     checkMatrixCompatibility();
 }
 
@@ -1666,21 +2396,125 @@ function checkMatrixCompatibility() {
     const actionWrap = $('assistant-action-wrap');
     if (!box || !title || !desc || !icon || !actionWrap) return;
 
-    const keyA = matrixState.opA;
-    const keyB = matrixState.opB;
-    const matA = matrixState.matrices[keyA];
-    const matB = matrixState.matrices[keyB];
-    const op = matrixState.currentOp;
+    actionWrap.innerHTML = '';
+    actionWrap.classList.add('hidden');
 
-    if (!matA || !matB) return;
+    const op = matrixState.currentOp || 'tambah';
+    const keyA = matrixState.opA || matrixState.order[0] || 'A';
+    const matA = matrixState.matrices[keyA];
+
+    if (!matA) return;
 
     const rA = matA.rows;
     const cA = matA.cols;
+
+    const isSingleMatrix = ['determinan', 'invers', 'transpose', 'eselon', 'eselon_tereduksi', 'spl_augmented'].includes(op);
+
+    // KASUS OPERASI SATU MATRIKS (UNARY / LANJUTAN)
+    if (isSingleMatrix) {
+        if (op === 'determinan' || op === 'invers') {
+            const opName = op === 'determinan' ? 'Determinan (|A|)' : 'Invers Matriks (A⁻¹)';
+            if (rA === cA) {
+                box.className = 'matrix-assistant-box valid';
+                icon.textContent = '✓';
+                title.textContent = `Matriks Persegi (${rA}×${cA}) Siap Dihitung`;
+                desc.textContent = `Matriks ${keyA} adalah matriks bujur sangkar (persegi). Syarat perhitungan ${opName.toLowerCase()} terpenuhi.`;
+            } else {
+                box.className = 'matrix-assistant-box warning';
+                icon.textContent = '!';
+                title.textContent = `${opName} Mensyaratkan Matriks Persegi`;
+                desc.textContent = `${opName} hanya dapat dihitung pada matriks persegi (jumlah baris = jumlah kolom). Saat ini Matriks ${keyA} berordo ${rA}×${cA}.`;
+
+                actionWrap.classList.remove('hidden');
+                const fixBtn = document.createElement('button');
+                fixBtn.type = 'button';
+                fixBtn.className = 'matrix-fix-btn';
+                fixBtn.textContent = `Perbaiki: Ubah Matriks ${keyA} Menjadi Persegi (${rA}×${rA})`;
+                fixBtn.onclick = () => autoFixDimensions(keyA, rA, rA);
+                actionWrap.appendChild(fixBtn);
+            }
+        } else if (op === 'transpose') {
+            box.className = 'matrix-assistant-box valid';
+            icon.textContent = '✓';
+            title.textContent = `Transpose Siap Dihitung (${rA}×${cA} → ${cA}×${rA})`;
+            desc.textContent = `Baris akan ditukar menjadi kolom. Matriks hasil akan berordo ${cA} × ${rA}.`;
+        } else if (op === 'eselon') {
+            box.className = 'matrix-assistant-box valid';
+            icon.textContent = '✓';
+            title.textContent = `Eliminasi Gauss (REF) Siap Dijalankan`;
+            desc.textContent = `Akan dibentuk matriks eselon baris segitiga atas dengan 1 utama bertingkat beserta langkah perhitungan per elemen.`;
+        } else if (op === 'eselon_tereduksi') {
+            box.className = 'matrix-assistant-box valid';
+            icon.textContent = '✓';
+            title.textContent = `Eliminasi Gauss-Jordan (RREF) Siap Dijalankan`;
+            desc.textContent = `Akan dibentuk matriks eselon baris tereduksi (RREF) di mana elemen di atas dan di bawah 1 utama bernilai 0.`;
+        } else if (op === 'spl_augmented') {
+            if (cA >= 2) {
+                box.className = 'matrix-assistant-box valid';
+                icon.textContent = '✓';
+                title.textContent = `Format SPL Augmented Sesuai: ${rA} Persamaan, ${cA - 1} Variabel`;
+                desc.textContent = `Kolom 1 s/d ${cA - 1} adalah koefisien variabel, dan kolom ke-${cA} adalah nilai konstanta b. Siap dianalisis.`;
+            } else {
+                box.className = 'matrix-assistant-box warning';
+                icon.textContent = '!';
+                title.textContent = `Matriks Augmented Butuh Minimal 2 Kolom`;
+                desc.textContent = `SPL augmented [A|b] membutuhkan minimal 1 kolom variabel dan 1 kolom konstanta b (minimal 2 kolom). Saat ini Matriks ${keyA} hanya memiliki ${cA} kolom.`;
+
+                actionWrap.classList.remove('hidden');
+                const fixBtn = document.createElement('button');
+                fixBtn.type = 'button';
+                fixBtn.className = 'matrix-fix-btn';
+                fixBtn.textContent = `Perbaiki: Tambah Kolom Matriks ${keyA} Menjadi ${Math.max(2, rA + 1)} Kolom`;
+                fixBtn.onclick = () => autoFixDimensions(keyA, rA, Math.max(2, rA + 1));
+                actionWrap.appendChild(fixBtn);
+            }
+        }
+        return;
+    }
+
+    if (op === 'skalar') {
+        const target = matrixState.scalarTarget || keyA;
+        const matTarget = matrixState.matrices[target] || matA;
+        box.className = 'matrix-assistant-box valid';
+        icon.textContent = '✓';
+        title.textContent = `Perkalian Skalar Siap Dihitung (k · Matriks ${target})`;
+        desc.textContent = `Seluruh ${matTarget.rows * matTarget.cols} elemen pada Matriks ${target} (${matTarget.rows}×${matTarget.cols}) akan dikalikan dengan skalar k.`;
+        return;
+    }
+
+    if (op === 'obe_manual') {
+        box.className = 'matrix-assistant-box valid';
+        icon.textContent = '✓';
+        title.textContent = `Mode Tool OBE Manual Aktif`;
+        desc.textContent = `Pilih operasi baris di atas (tukar, skalar, atau eliminasi penjumlahan) lalu klik "Terapkan OBE".`;
+        return;
+    }
+
+    // KASUS OPERASI DUA MATRIKS (TAMBAH, KURANG, KALI, BAGI, AUGMENTED)
+    if (matrixState.order.length < 2) {
+        box.className = 'matrix-assistant-box warning';
+        icon.textContent = '!';
+        const opNames = { tambah: 'Penjumlahan', kurang: 'Pengurangan', kali: 'Perkalian', bagi: 'Pembagian', augmented: 'Gabung Augmented' };
+        const opName = opNames[op] || 'Operasi 2 matriks';
+        title.textContent = `${opName} Memerlukan 2 Variabel Matriks`;
+        desc.textContent = `Saat ini Anda hanya memiliki 1 variabel matriks (Matriks ${keyA}). Klik tombol di bawah untuk menambahkan Matriks B secara instan.`;
+
+        actionWrap.classList.remove('hidden');
+        const fixBtn = document.createElement('button');
+        fixBtn.type = 'button';
+        fixBtn.className = 'matrix-fix-btn';
+        fixBtn.textContent = `+ Tambah Matriks B Otomatis`;
+        fixBtn.onclick = () => addMatrixBAuto();
+        actionWrap.appendChild(fixBtn);
+        return;
+    }
+
+    const keyB = matrixState.opB;
+    const matB = matrixState.matrices[keyB];
+    if (!matB) return;
+
     const rB = matB.rows;
     const cB = matB.cols;
-
-    actionWrap.innerHTML = '';
-    actionWrap.classList.add('hidden');
 
     if (op === 'tambah' || op === 'kurang') {
         const opName = op === 'tambah' ? 'Penjumlahan' : 'Pengurangan';
@@ -1693,13 +2527,13 @@ function checkMatrixCompatibility() {
             box.className = 'matrix-assistant-box warning';
             icon.textContent = '!';
             title.textContent = `Ukuran Belum Sesuai untuk ${opName}`;
-            desc.textContent = `${opName} mensyaratkan kedua matriks berukuran sama persis atau tidak terdefinisi. (Saat ini Matriks ${keyA}: ${rA}×${cA}, Matriks ${keyB}: ${rB}×${cB}).`;
+            desc.textContent = `${opName} mensyaratkan kedua matriks berukuran sama persis. (Saat ini Matriks ${keyA}: ${rA}×${cA}, Matriks ${keyB}: ${rB}×${cB}).`;
 
             actionWrap.classList.remove('hidden');
             const fixBtn = document.createElement('button');
             fixBtn.type = 'button';
             fixBtn.className = 'matrix-fix-btn';
-            fixBtn.innerHTML = `👉 Samakan Matriks ${keyB} Menjadi ${rA}×${cA}`;
+            fixBtn.textContent = `Perbaiki: Samakan Matriks ${keyB} Menjadi ${rA}×${cA}`;
             fixBtn.onclick = () => autoFixDimensions(keyB, rA, cA);
             actionWrap.appendChild(fixBtn);
         }
@@ -1713,13 +2547,13 @@ function checkMatrixCompatibility() {
             box.className = 'matrix-assistant-box warning';
             icon.textContent = '!';
             title.textContent = `Syarat Perkalian Belum Terpenuhi`;
-            desc.textContent = `Perkalian ${keyA} × ${keyB} mensyaratkan Kolom Matriks ${keyA} (${cA}) = Baris Matriks ${keyB} (saat ini ${rB}) atau tidak terdefinisi.`;
+            desc.textContent = `Perkalian ${keyA} × ${keyB} mensyaratkan Kolom Matriks ${keyA} (${cA}) = Baris Matriks ${keyB} (saat ini ${rB}).`;
 
             actionWrap.classList.remove('hidden');
             const fixBtn = document.createElement('button');
             fixBtn.type = 'button';
             fixBtn.className = 'matrix-fix-btn';
-            fixBtn.innerHTML = `👉 Ubah Baris Matriks ${keyB} Menjadi ${cA}`;
+            fixBtn.textContent = `Perbaiki: Ubah Baris Matriks ${keyB} Menjadi ${cA}`;
             fixBtn.onclick = () => autoFixDimensions(keyB, cA, cB);
             actionWrap.appendChild(fixBtn);
         }
@@ -1728,26 +2562,26 @@ function checkMatrixCompatibility() {
             box.className = 'matrix-assistant-box warning';
             icon.textContent = '!';
             title.textContent = `Matriks Pembagi (${keyB}) Harus Persegi`;
-            desc.textContent = `Pembagian ${keyA} ÷ ${keyB} dihitung sebagai ${keyA} × ${keyB}⁻¹. Matriks pembagi harus berupa matriks persegi (ordo n×n) agar memiliki invers atau tidak terdefinisi. (Saat ini ${keyB} berordo ${rB}×${cB}).`;
+            desc.textContent = `Pembagian ${keyA} ÷ ${keyB} dihitung sebagai ${keyA} × ${keyB}⁻¹. Matriks pembagi harus berupa matriks persegi (ordo n×n) agar memiliki invers. (Saat ini ${keyB} berordo ${rB}×${cB}).`;
 
             actionWrap.classList.remove('hidden');
             const fixBtn = document.createElement('button');
             fixBtn.type = 'button';
             fixBtn.className = 'matrix-fix-btn';
-            fixBtn.innerHTML = `👉 Ubah Matriks ${keyB} Menjadi Persegi (${rB}×${rB})`;
+            fixBtn.textContent = `Perbaiki: Ubah Matriks ${keyB} Menjadi Persegi (${rB}×${rB})`;
             fixBtn.onclick = () => autoFixDimensions(keyB, rB, rB);
             actionWrap.appendChild(fixBtn);
         } else if (cA !== rB) {
             box.className = 'matrix-assistant-box warning';
             icon.textContent = '!';
             title.textContent = `Dimensi Pengali Belum Cocok`;
-            desc.textContent = `Kolom Matriks ${keyA} (${cA}) harus sama dengan ordo invers ${keyB} (${rB}) atau tidak terdefinisi.`;
+            desc.textContent = `Kolom Matriks ${keyA} (${cA}) harus sama dengan ordo invers ${keyB} (${rB}).`;
 
             actionWrap.classList.remove('hidden');
             const fixBtn = document.createElement('button');
             fixBtn.type = 'button';
             fixBtn.className = 'matrix-fix-btn';
-            fixBtn.innerHTML = `👉 Sesuaikan Kolom Matriks ${keyA} Menjadi ${rB}`;
+            fixBtn.textContent = `Perbaiki: Sesuaikan Kolom Matriks ${keyA} Menjadi ${rB}`;
             fixBtn.onclick = () => autoFixDimensions(keyA, rA, rB);
             actionWrap.appendChild(fixBtn);
         } else {
@@ -1756,10 +2590,51 @@ function checkMatrixCompatibility() {
             title.textContent = `Pembagian Valid (${keyA} × ${keyB}⁻¹)`;
             desc.textContent = `Matriks pembagi ${keyB} berordo persegi (${rB}×${cB}) dan dimensi pengali cocok. Siap dihitung.`;
         }
+    } else if (op === 'augmented') {
+        if (rA === rB) {
+            box.className = 'matrix-assistant-box valid';
+            icon.textContent = '✓';
+            title.textContent = `Ukuran Sesuai untuk Matriks Augmented [${keyA}|${keyB}]`;
+            desc.textContent = `Kedua matriks memiliki jumlah baris yang sama (${rA} baris). Hasil penggabungan berukuran ${rA} × ${cA + cB}.`;
+        } else {
+            box.className = 'matrix-assistant-box warning';
+            icon.textContent = '!';
+            title.textContent = 'Jumlah Baris Belum Sama';
+            desc.textContent = `Penggabungan augmented [${keyA}|${keyB}] mensyaratkan jumlah baris sama persis. (Matriks ${keyA}: ${rA} baris, Matriks ${keyB}: ${rB} baris).`;
+
+            actionWrap.classList.remove('hidden');
+            const fixBtn = document.createElement('button');
+            fixBtn.type = 'button';
+            fixBtn.className = 'matrix-fix-btn';
+            fixBtn.textContent = `Perbaiki: Samakan Baris Matriks ${keyB} Menjadi ${rA}`;
+            fixBtn.onclick = () => autoFixDimensions(keyB, rA, cB);
+            actionWrap.appendChild(fixBtn);
+        }
     }
 }
 
 async function hitungMatriks() {
+    const op = matrixState.currentOp || 'tambah';
+
+    if (op === 'skalar') {
+        return runScalarOp();
+    }
+    if (op === 'obe_manual') {
+        return runManualObe(false);
+    }
+    if (['determinan', 'invers', 'transpose', 'eselon', 'eselon_tereduksi'].includes(op)) {
+        return runUnaryMatrixOp(op);
+    }
+    if (op === 'spl_augmented') {
+        return runSplAugmentedOp();
+    }
+
+    // Operasi 2 matriks
+    if (matrixState.order.length < 2) {
+        addMatrixBAuto();
+        return;
+    }
+
     const btn = $('btn-matrix');
     const resultEl = $('hasil-matriks');
     const keyA = matrixState.opA;
@@ -1778,16 +2653,20 @@ async function hitungMatriks() {
     $('steps-matriks-wrap').classList.add('hidden');
 
     const payload = {
-        operasi: matrixState.currentOp,
+        operasi: op,
         matriks_a: { nama: keyA, data: matA.data },
         matriks_b: { nama: keyB, data: matB.data }
     };
+
+    abortActiveRequests();
+    currentAbortController = new AbortController();
 
     try {
         const res = await fetch('/api/matrix', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: currentAbortController.signal
         });
         const data = await res.json();
 
@@ -1797,6 +2676,12 @@ async function hitungMatriks() {
             renderMatrixErrorResult(data.error);
         }
     } catch (e) {
+        if (e.name === 'AbortError') {
+            if (resultEl && resultEl.innerHTML.includes('skeleton')) {
+                resultEl.innerHTML = '';
+            }
+            return;
+        }
         renderMatrixErrorResult('Gagal menghubungi server. Pastikan koneksi atau server aktif.');
     } finally {
         setLoading(btn, false);
@@ -1831,8 +2716,62 @@ function renderMatrixSuccessResult(data) {
     const infoPill = document.createElement('div');
     infoPill.className = 'matrix-ordo-pill';
     infoPill.style.margin = '4px auto 0';
-    infoPill.textContent = `Ordo Hasil: ${data.baris} × ${data.kolom}`;
+    let pillText = `Ordo Hasil: ${data.baris} × ${data.kolom}`;
+    if (data.is_augmented && data.split_col) {
+        pillText += ` (Augmented: ${data.baris}×${data.split_col} | ${data.baris}×${data.kolom - data.split_col})`;
+    }
+    if (data.rank !== undefined) {
+        pillText += ` • Rank: ${data.rank}`;
+    }
+    infoPill.textContent = pillText;
     wrap.appendChild(infoPill);
+
+    if (data.spl_info) {
+        const spl = data.spl_info;
+        const splCard = document.createElement('div');
+        splCard.className = `spl-callout-card ${spl.status}`;
+
+        const header = document.createElement('div');
+        header.className = 'spl-card-header';
+
+        const title = document.createElement('div');
+        title.className = 'spl-card-title';
+        title.textContent = spl.judul || 'Analisis Sistem Persamaan Linear';
+
+        const badge = document.createElement('span');
+        badge.className = `spl-status-badge ${spl.status}`;
+        badge.textContent = spl.status === 'solusi_tunggal' ? 'Solusi Tunggal (Unik)' :
+            (spl.status === 'tidak_ada_solusi' ? 'Tidak Ada Solusi' : 'Tak Hingga Solusi');
+
+        header.appendChild(title);
+        header.appendChild(badge);
+        splCard.appendChild(header);
+
+        if (spl.teks) {
+            const desc = document.createElement('div');
+            desc.className = 'spl-card-desc';
+            desc.textContent = spl.teks;
+            splCard.appendChild(desc);
+        }
+
+        if (Array.isArray(spl.solusi) && spl.solusi.length) {
+            const solGrid = document.createElement('div');
+            solGrid.className = 'spl-solution-grid';
+            spl.solusi.forEach((solStr) => {
+                const chip = document.createElement('div');
+                chip.className = 'spl-solution-chip';
+                try {
+                    katex.render(solStr, chip, { throwOnError: false, displayMode: false });
+                } catch (err) {
+                    chip.textContent = solStr;
+                }
+                solGrid.appendChild(chip);
+            });
+            splCard.appendChild(solGrid);
+        }
+
+        wrap.appendChild(splCard);
+    }
 
     resultEl.appendChild(wrap);
 
@@ -1937,6 +2876,9 @@ async function runUnaryMatrixOp(op) {
     $('actions-matriks').classList.add('hidden');
     $('steps-matriks-wrap').classList.add('hidden');
 
+    abortActiveRequests();
+    currentAbortController = new AbortController();
+
     try {
         const res = await fetch('/api/matrix', {
             method: 'POST',
@@ -1944,7 +2886,8 @@ async function runUnaryMatrixOp(op) {
             body: JSON.stringify({
                 operasi: op,
                 matriks_a: { nama: targetKey, data: mat.data }
-            })
+            }),
+            signal: currentAbortController.signal
         });
         const data = await res.json();
         if (data.sukses) {
@@ -1953,6 +2896,12 @@ async function runUnaryMatrixOp(op) {
             renderMatrixErrorResult(data.error);
         }
     } catch (e) {
+        if (e.name === 'AbortError') {
+            if (resultEl && resultEl.innerHTML.includes('skeleton')) {
+                resultEl.innerHTML = '';
+            }
+            return;
+        }
         renderMatrixErrorResult('Gagal menghitung operasi unary matriks.');
     } finally {
         setLoading(btn, false);
@@ -1977,6 +2926,9 @@ async function runScalarOp() {
     $('actions-matriks').classList.add('hidden');
     $('steps-matriks-wrap').classList.add('hidden');
 
+    abortActiveRequests();
+    currentAbortController = new AbortController();
+
     try {
         const res = await fetch('/api/matrix', {
             method: 'POST',
@@ -1985,7 +2937,8 @@ async function runScalarOp() {
                 operasi: 'skalar',
                 skalar: k,
                 matriks_a: { nama: targetKey, data: mat.data }
-            })
+            }),
+            signal: currentAbortController.signal
         });
         const data = await res.json();
         if (data.sukses) {
@@ -1994,7 +2947,203 @@ async function runScalarOp() {
             renderMatrixErrorResult(data.error);
         }
     } catch (e) {
+        if (e.name === 'AbortError') {
+            if (resultEl && resultEl.innerHTML.includes('skeleton')) {
+                resultEl.innerHTML = '';
+            }
+            return;
+        }
         renderMatrixErrorResult('Gagal menghitung perkalian skalar.');
+    } finally {
+        setLoading(btn, false);
+    }
+}
+
+async function runSplAugmentedOp() {
+    const targetKey = matrixState.opA || matrixState.order[0];
+    const mat = matrixState.matrices[targetKey];
+    if (!mat) return;
+
+    if (mat.cols < 2) {
+        alert('Matriks augmented untuk SPL membutuhkan minimal 2 kolom (minimal 1 kolom variabel dan 1 kolom konstanta b). Silakan tambah kolom matriks.');
+        return;
+    }
+
+    const btn = $('btn-matrix');
+    const resultEl = $('hasil-matriks');
+    setLoading(btn, true);
+    resultEl.innerHTML = '<div class="skeleton-wrap"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div>';
+    $('actions-matriks').classList.add('hidden');
+    $('steps-matriks-wrap').classList.add('hidden');
+
+    abortActiveRequests();
+    currentAbortController = new AbortController();
+
+    try {
+        const res = await fetch('/api/matrix', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                operasi: 'spl_augmented',
+                matriks_a: { nama: targetKey, data: mat.data },
+                is_augmented: true,
+                split_col: mat.cols - 1
+            }),
+            signal: currentAbortController.signal
+        });
+        const data = await res.json();
+        if (data.sukses) {
+            renderMatrixSuccessResult(data);
+        } else {
+            renderMatrixErrorResult(data.error);
+        }
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            if (resultEl && resultEl.innerHTML.includes('skeleton')) {
+                resultEl.innerHTML = '';
+            }
+            return;
+        }
+        renderMatrixErrorResult('Gagal menyelesaikan SPL dari matriks augmented.');
+    } finally {
+        setLoading(btn, false);
+    }
+}
+
+function runBinaryOpDirect(op) {
+    matrixState.currentOp = op;
+    updateMatrixOpUI();
+    checkMatrixCompatibility();
+    hitungMatriks();
+}
+
+function toggleObeManualInput() {
+    const wrap = $('matrix-obe-wrap');
+    if (!wrap) return;
+    const isHidden = wrap.classList.toggle('hidden');
+    if (!isHidden) {
+        updateObeRowOptions();
+        onObeTypeChange();
+    }
+}
+
+function onObeTypeChange() {
+    const type = $('matrix-obe-type')?.value || 'tukar';
+    const fieldK = $('obe-field-k');
+    const fieldRowJ = $('obe-field-row-j');
+    const labelRowI = $('label-obe-row-i');
+
+    if (type === 'tukar') {
+        if (fieldK) fieldK.classList.add('hidden');
+        if (fieldRowJ) fieldRowJ.classList.remove('hidden');
+        if (labelRowI) labelRowI.textContent = 'Baris Pertama (Ri)';
+    } else if (type === 'skalar') {
+        if (fieldK) fieldK.classList.remove('hidden');
+        if (fieldRowJ) fieldRowJ.classList.add('hidden');
+        if (labelRowI) labelRowI.textContent = 'Baris yang Dikalikan (Ri)';
+    } else if (type === 'tambah') {
+        if (fieldK) fieldK.classList.remove('hidden');
+        if (fieldRowJ) fieldRowJ.classList.remove('hidden');
+        if (labelRowI) labelRowI.textContent = 'Baris Target (Ri)';
+    }
+}
+
+function updateObeRowOptions() {
+    const targetSelect = $('matrix-obe-target');
+    const rowISelect = $('matrix-obe-row-i');
+    const rowJSelect = $('matrix-obe-row-j');
+    if (!targetSelect || !rowISelect || !rowJSelect) return;
+
+    const curTarget = targetSelect.value || matrixState.opA || matrixState.order[0];
+    targetSelect.innerHTML = matrixState.order.map((key) => {
+        return `<option value="${key}" ${key === curTarget ? 'selected' : ''}>Matriks ${key}</option>`;
+    }).join('');
+
+    const activeTarget = targetSelect.value || matrixState.order[0];
+    const mat = matrixState.matrices[activeTarget];
+    if (!mat) return;
+
+    const curRowI = parseInt(rowISelect.value, 10) || 1;
+    const curRowJ = parseInt(rowJSelect.value, 10) || (mat.rows > 1 ? 2 : 1);
+
+    let optionsHtml = '';
+    for (let r = 1; r <= mat.rows; r++) {
+        optionsHtml += `<option value="${r}">Baris ke-${r} (R${r})</option>`;
+    }
+    rowISelect.innerHTML = optionsHtml;
+    rowJSelect.innerHTML = optionsHtml;
+
+    rowISelect.value = String(Math.min(mat.rows, curRowI));
+    rowJSelect.value = String(Math.min(mat.rows, curRowJ));
+}
+
+async function runManualObe(saveBackToMatrix = false) {
+    const targetKey = $('matrix-obe-target')?.value || matrixState.opA || matrixState.order[0];
+    const mat = matrixState.matrices[targetKey];
+    if (!mat) return;
+
+    const obeType = $('matrix-obe-type')?.value || 'tukar';
+    const rowI = parseInt($('matrix-obe-row-i')?.value, 10) || 1;
+    const rowJ = parseInt($('matrix-obe-row-j')?.value, 10) || 1;
+    const kVal = $('matrix-obe-k')?.value.trim() || '1';
+    const isAugmented = !!$('matrix-obe-is-augmented')?.checked;
+
+    if (obeType === 'tukar' && rowI === rowJ) {
+        alert('Untuk menukar baris, pilih dua baris yang berbeda!');
+        return;
+    }
+    if (obeType === 'tambah' && rowI === rowJ) {
+        alert('Baris target dan baris sumber harus berbeda!');
+        return;
+    }
+
+    const btn = $('btn-matrix');
+    const resultEl = $('hasil-matriks');
+    setLoading(btn, true);
+    resultEl.innerHTML = '<div class="skeleton-wrap"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div>';
+    $('actions-matriks').classList.add('hidden');
+    $('steps-matriks-wrap').classList.add('hidden');
+
+    abortActiveRequests();
+    currentAbortController = new AbortController();
+
+    try {
+        const res = await fetch('/api/matrix', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                operasi: 'manual_obe',
+                matriks_a: { nama: targetKey, data: mat.data },
+                obe_params: {
+                    tipe: obeType,
+                    row_i: rowI,
+                    row_j: rowJ,
+                    k: kVal
+                },
+                is_augmented: isAugmented,
+                split_col: isAugmented ? mat.cols - 1 : null
+            }),
+            signal: currentAbortController.signal
+        });
+        const data = await res.json();
+        if (data.sukses) {
+            if (saveBackToMatrix && data.hasil_grid) {
+                mat.data = JSON.parse(JSON.stringify(data.hasil_grid));
+                renderMatrixGrid(targetKey);
+                saveMatrixState();
+            }
+            renderMatrixSuccessResult(data);
+        } else {
+            renderMatrixErrorResult(data.error);
+        }
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            if (resultEl && resultEl.innerHTML.includes('skeleton')) {
+                resultEl.innerHTML = '';
+            }
+            return;
+        }
+        renderMatrixErrorResult('Gagal menerapkan operasi baris elementer.');
     } finally {
         setLoading(btn, false);
     }
@@ -2046,6 +3195,102 @@ function loadMatrixPreset(type) {
         matrixState.currentOp = 'kali';
         matrixState.opA = 'A';
         matrixState.opB = 'B';
+    } else if (type === 'gauss3x3') {
+        matrixState.order = ['A', 'B'];
+        matrixState.matrices = {
+            'A': { name: 'A', rows: 3, cols: 3, data: [['1', '2', '-1'], ['2', '3', '1'], ['-1', '1', '2']] },
+            'B': { name: 'B', rows: 3, cols: 3, data: [['1', '0', '0'], ['0', '1', '0'], ['0', '0', '1']] }
+        };
+        matrixState.currentOp = 'eselon';
+        matrixState.opA = 'A';
+        matrixState.opB = 'B';
+        renderMatrixCards();
+        updateMatrixDropdowns();
+        updateMatrixOpUI();
+        saveMatrixState();
+        checkMatrixCompatibility();
+        hitungMatriks();
+        return;
+    } else if (type === 'rref3x3') {
+        matrixState.order = ['A', 'B'];
+        matrixState.matrices = {
+            'A': { name: 'A', rows: 3, cols: 3, data: [['1', '2', '-1'], ['2', '3', '1'], ['-1', '1', '2']] },
+            'B': { name: 'B', rows: 3, cols: 3, data: [['1', '0', '0'], ['0', '1', '0'], ['0', '0', '1']] }
+        };
+        matrixState.currentOp = 'eselon_tereduksi';
+        matrixState.opA = 'A';
+        matrixState.opB = 'B';
+        renderMatrixCards();
+        updateMatrixDropdowns();
+        updateMatrixOpUI();
+        saveMatrixState();
+        checkMatrixCompatibility();
+        hitungMatriks();
+        return;
+    } else if (type === 'spl3x4') {
+        matrixState.order = ['A', 'B'];
+        matrixState.matrices = {
+            'A': { name: 'A', rows: 3, cols: 4, data: [['1', '2', '-1', '4'], ['2', '3', '1', '3'], ['-1', '1', '2', '1']] },
+            'B': { name: 'B', rows: 3, cols: 1, data: [['4'], ['3'], ['1']] }
+        };
+        matrixState.currentOp = 'spl_augmented';
+        matrixState.opA = 'A';
+        matrixState.opB = 'B';
+        renderMatrixCards();
+        updateMatrixDropdowns();
+        updateMatrixOpUI();
+        saveMatrixState();
+        checkMatrixCompatibility();
+        hitungMatriks();
+        return;
+    } else if (type === 'spl2x3') {
+        matrixState.order = ['A', 'B'];
+        matrixState.matrices = {
+            'A': { name: 'A', rows: 2, cols: 3, data: [['2', '1', '5'], ['1', '-1', '1']] },
+            'B': { name: 'B', rows: 2, cols: 1, data: [['5'], ['1']] }
+        };
+        matrixState.currentOp = 'spl_augmented';
+        matrixState.opA = 'A';
+        matrixState.opB = 'B';
+        renderMatrixCards();
+        updateMatrixDropdowns();
+        updateMatrixOpUI();
+        saveMatrixState();
+        checkMatrixCompatibility();
+        hitungMatriks();
+        return;
+    } else if (type === 'spl_inconsistent') {
+        matrixState.order = ['A', 'B'];
+        matrixState.matrices = {
+            'A': { name: 'A', rows: 3, cols: 4, data: [['1', '1', '1', '3'], ['1', '2', '3', '0'], ['1', '3', '5', '1']] },
+            'B': { name: 'B', rows: 3, cols: 1, data: [['3'], ['0'], ['1']] }
+        };
+        matrixState.currentOp = 'spl_augmented';
+        matrixState.opA = 'A';
+        matrixState.opB = 'B';
+        renderMatrixCards();
+        updateMatrixDropdowns();
+        updateMatrixOpUI();
+        saveMatrixState();
+        checkMatrixCompatibility();
+        hitungMatriks();
+        return;
+    } else if (type === 'augmented_ab') {
+        matrixState.order = ['A', 'B'];
+        matrixState.matrices = {
+            'A': { name: 'A', rows: 3, cols: 3, data: [['1', '2', '0'], ['3', '4', '1'], ['0', '1', '5']] },
+            'B': { name: 'B', rows: 3, cols: 1, data: [['7'], ['2'], ['9']] }
+        };
+        matrixState.currentOp = 'augmented';
+        matrixState.opA = 'A';
+        matrixState.opB = 'B';
+        renderMatrixCards();
+        updateMatrixDropdowns();
+        updateMatrixOpUI();
+        saveMatrixState();
+        checkMatrixCompatibility();
+        hitungMatriks();
+        return;
     }
 
     renderMatrixCards();
@@ -2244,6 +3489,12 @@ window.addGrafikRow = addGrafikRow;
 window.addGrafikPreset = addGrafikPreset;
 window.resetGrafikView = resetGrafikView;
 window.setGrafikRange = setGrafikRange;
+window.zoomGrafik = zoomGrafik;
+window.analyzeActiveGrafik = analyzeActiveGrafik;
+window.applyDomainToGraph = applyDomainToGraph;
+window.closeGrafikAnalysis = closeGrafikAnalysis;
+window.toggleDerivativeOverlay = toggleDerivativeOverlay;
+window.toggleValuesTable = toggleValuesTable;
 window.shareGrafik = shareGrafik;
 window.downloadGrafikAs = downloadGrafikAs;
 window.renderGrafik = renderGrafik;
@@ -2267,6 +3518,12 @@ window.runUnaryMatrixOp = runUnaryMatrixOp;
 window.toggleScalarInput = toggleScalarInput;
 window.runScalarOp = runScalarOp;
 window.loadMatrixPreset = loadMatrixPreset;
+window.runSplAugmentedOp = runSplAugmentedOp;
+window.runBinaryOpDirect = runBinaryOpDirect;
+window.toggleObeManualInput = toggleObeManualInput;
+window.onObeTypeChange = onObeTypeChange;
+window.updateObeRowOptions = updateObeRowOptions;
+window.runManualObe = runManualObe;
 window.copyMatrixLatex = copyMatrixLatex;
 window.copyMatrixPlainText = copyMatrixPlainText;
 window.saveResultAsNewMatrix = saveResultAsNewMatrix;
@@ -2274,3 +3531,215 @@ window.toggleMatrixStoreMenu = toggleMatrixStoreMenu;
 window.copyResultToMatrix = copyResultToMatrix;
 window.togglePanduan = togglePanduan;
 window.toggleCardPanduan = toggleCardPanduan;
+window.resetApp = resetApp;
+window.abortActiveRequests = abortActiveRequests;
+
+// =============================================================================
+// SECTION 13: AUTO-RESET & SERVER-LOAD PROTECTION MANAGER (SILENT)
+// =============================================================================
+const AUTO_RESET_TIMEOUT_MS = 5 * 60 * 1000; // 5 menit (300.000 ms)
+let pageHiddenTime = null;
+let lastUserActivityTime = Date.now();
+let awayAbortTimer = null;
+
+function recordUserActivity() {
+    lastUserActivityTime = Date.now();
+}
+
+let activityThrottleTimer = null;
+function onUserInteraction() {
+    if (!activityThrottleTimer) {
+        recordUserActivity();
+        activityThrottleTimer = setTimeout(() => {
+            activityThrottleTimer = null;
+        }, 1000);
+    }
+}
+
+['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach((evt) => {
+    window.addEventListener(evt, onUserInteraction, { passive: true });
+});
+
+function resetApp() {
+    // 1. Batalkan semua request fetch yang sedang berjalan ke server
+    abortActiveRequests();
+
+    // 2. Reset Tab Turunan
+    const turunanFungsi = $('turunan-fungsi');
+    if (turunanFungsi) turunanFungsi.value = '';
+    const turunanTitik = $('turunan-titik');
+    if (turunanTitik) turunanTitik.value = '';
+    const turunanOrde = $('turunan-orde');
+    if (turunanOrde) turunanOrde.value = '1';
+    const hasilTurunan = $('hasil-turunan');
+    if (hasilTurunan) hasilTurunan.innerHTML = '';
+    const actionsTurunan = $('actions-turunan');
+    if (actionsTurunan) actionsTurunan.classList.add('hidden');
+    hidePlot('turunan');
+    showValid('turunan', '', '');
+    setLoading($('btn-turunan'), false);
+
+    // 3. Reset Tab Integral
+    const integralFungsi = $('integral-fungsi');
+    if (integralFungsi) integralFungsi.value = '';
+    const integralBawah = $('integral-bawah');
+    if (integralBawah) integralBawah.value = '';
+    const integralAtas = $('integral-atas');
+    if (integralAtas) integralAtas.value = '';
+    const hasilIntegral = $('hasil-integral');
+    if (hasilIntegral) hasilIntegral.innerHTML = '';
+    const actionsIntegral = $('actions-integral');
+    if (actionsIntegral) actionsIntegral.classList.add('hidden');
+    hidePlot('integral');
+    showValid('integral', '', '');
+    setLoading($('btn-integral'), false);
+
+    // 4. Reset Tab Limit
+    const limitFungsi = $('limit-fungsi');
+    if (limitFungsi) limitFungsi.value = '';
+    const limitTitik = $('limit-titik');
+    if (limitTitik) limitTitik.value = '0';
+    const limitArah = $('limit-arah');
+    if (limitArah) limitArah.value = '+-';
+    const hasilLimit = $('hasil-limit');
+    if (hasilLimit) hasilLimit.innerHTML = '';
+    const actionsLimit = $('actions-limit');
+    if (actionsLimit) actionsLimit.classList.add('hidden');
+    hidePlot('limit');
+    showValid('limit', '', '');
+    setLoading($('btn-limit'), false);
+
+    // 5. Reset Matriks ke state bawaan
+    matrixState.order = ['A', 'B'];
+    matrixState.currentOp = 'ADD';
+    matrixState.opA = 'A';
+    matrixState.opB = 'B';
+    matrixState.matrices = {
+        'A': { name: 'A', rows: 2, cols: 2, data: [['1', '2'], ['3', '4']] },
+        'B': { name: 'B', rows: 2, cols: 2, data: [['5', '6'], ['7', '8']] }
+    };
+    saveMatrixState();
+    renderMatrixCards();
+    updateMatrixDropdowns();
+    updateMatrixOpUI();
+    checkMatrixCompatibility();
+    const hasilMatriks = $('hasil-matriks');
+    if (hasilMatriks) hasilMatriks.innerHTML = '';
+    const actionsMatriks = $('actions-matriks');
+    if (actionsMatriks) actionsMatriks.classList.add('hidden');
+    const stepsMatriks = $('steps-matriks-wrap');
+    if (stepsMatriks) stepsMatriks.classList.add('hidden');
+    const scalarWrap = $('matrix-scalar-wrap');
+    if (scalarWrap) scalarWrap.classList.add('hidden');
+    setLoading($('btn-matrix'), false);
+    lastMatrixResult = null;
+
+    // 6. Reset Grafik
+    const grafikList = $('grafik-list');
+    if (grafikList) {
+        grafikList.innerHTML = '';
+        addGrafikRow('x^2', true);
+        setGrafikRange(-10, 10, -10, 10);
+        saveGrafikState();
+        renderGrafik();
+    }
+    const grafikError = $('grafik-error');
+    if (grafikError) grafikError.classList.add('hidden');
+
+    // 7. Bersihkan hash URL jika ada state grafik/query
+    if (window.location.hash) {
+        try {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+        } catch (e) { }
+    }
+
+    // 8. Bersihkan memori cache SVG & hasil perhitungan tersimpan
+    for (const k in last) delete last[k];
+    for (const k in plotSvgCache) delete plotSvgCache[k];
+
+    // 9. Kembali ke tab awal (Turunan)
+    const defaultTab = document.querySelector('.tab[data-tab="turunan"]');
+    if (defaultTab && !defaultTab.classList.contains('active')) {
+        defaultTab.click();
+    }
+
+    // 10. Tutup accordion panduan jika terbuka
+    const globalPanduan = $('panduan');
+    if (globalPanduan && !globalPanduan.classList.contains('hidden')) {
+        togglePanduan();
+    }
+    ['p-turunan', 'p-integral', 'p-limit', 'p-matriks', 'p-grafik'].forEach((id) => {
+        const body = $(id);
+        if (body && !body.classList.contains('hidden')) {
+            toggleCardPanduan(id, 'pt-' + id.replace('p-', ''));
+        }
+    });
+
+    // 11. Scroll ke paling atas secara halus
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Event listener saat visibilitas halaman berubah (keluar tab / pindah aplikasi)
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        pageHiddenTime = Date.now();
+        // Jika ada kalkulasi berat ke server sedang berjalan, batalkan setelah 3 detik
+        if (awayAbortTimer) clearTimeout(awayAbortTimer);
+        awayAbortTimer = setTimeout(() => {
+            if (document.visibilityState === 'hidden') {
+                abortActiveRequests();
+            }
+        }, 3000);
+    } else if (document.visibilityState === 'visible') {
+        if (awayAbortTimer) {
+            clearTimeout(awayAbortTimer);
+            awayAbortTimer = null;
+        }
+
+        const elapsed = pageHiddenTime ? (Date.now() - pageHiddenTime) : 0;
+        if (pageHiddenTime && elapsed >= AUTO_RESET_TIMEOUT_MS) {
+            pageHiddenTime = null;
+            lastUserActivityTime = Date.now();
+            resetApp();
+        } else {
+            pageHiddenTime = null;
+            lastUserActivityTime = Date.now();
+        }
+    }
+});
+
+// Fallback window blur & focus
+window.addEventListener('blur', () => {
+    if (!pageHiddenTime) {
+        pageHiddenTime = Date.now();
+    }
+});
+
+window.addEventListener('focus', () => {
+    const elapsed = pageHiddenTime ? (Date.now() - pageHiddenTime) : 0;
+    if (pageHiddenTime && elapsed >= AUTO_RESET_TIMEOUT_MS) {
+        pageHiddenTime = null;
+        lastUserActivityTime = Date.now();
+        resetApp();
+    }
+});
+
+// Pemeriksaan berkala (idle di foreground atau background timeout)
+setInterval(() => {
+    const now = Date.now();
+    if (document.visibilityState === 'visible') {
+        if (now - lastUserActivityTime >= AUTO_RESET_TIMEOUT_MS) {
+            lastUserActivityTime = now;
+            resetApp();
+        }
+    } else {
+        if (pageHiddenTime && (now - pageHiddenTime >= AUTO_RESET_TIMEOUT_MS)) {
+            abortActiveRequests();
+            resetApp();
+            pageHiddenTime = null;
+            lastUserActivityTime = Date.now();
+        }
+    }
+}, 10000);
+
+

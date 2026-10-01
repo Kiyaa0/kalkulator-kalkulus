@@ -24,7 +24,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/function-plot@1.14.0/dist/function-plot.js"></script>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.5">
 
     <!-- Vercel Web Analytics -->
     <script>
@@ -437,9 +437,9 @@
                             Download <span style="font-size:9px">▼</span></button>
                         <div id="menu-integral" class="dropdown-menu hidden">
                             <button onclick="downloadPlotAs('integral','png');toggleDownloadMenu('integral',true)"
-                                class="dropdown-item">🖼️ Download PNG</button>
+                                class="dropdown-item">Download PNG</button>
                             <button onclick="downloadPlotAs('integral','svg');toggleDownloadMenu('integral',true)"
-                                class="dropdown-item">📐 Download SVG</button>
+                                class="dropdown-item">Download SVG</button>
                         </div>
                     </div>
                 </div>
@@ -549,9 +549,9 @@
                             Download <span style="font-size:9px">▼</span></button>
                         <div id="menu-limit" class="dropdown-menu hidden">
                             <button onclick="downloadPlotAs('limit','png');toggleDownloadMenu('limit',true)"
-                                class="dropdown-item">🖼️ Download PNG</button>
+                                class="dropdown-item">Download PNG</button>
                             <button onclick="downloadPlotAs('limit','svg');toggleDownloadMenu('limit',true)"
-                                class="dropdown-item">📐 Download SVG</button>
+                                class="dropdown-item">Download SVG</button>
                         </div>
                     </div>
                 </div>
@@ -584,7 +584,8 @@
                             </span>
                             <span class="card-panduan-text">
                                 <span class="card-panduan-main">Cara Pakai Kalkulator Matriks</span>
-                                <span class="card-panduan-sub">Variabel fleksibel, operasi (+, −, ×, ÷), &amp; asisten otomatis</span>
+                                <span class="card-panduan-sub">Variabel fleksibel, operasi (+, −, ×, ÷), &amp; asisten
+                                    otomatis</span>
                             </span>
                         </span>
                         <span class="card-panduan-badge">
@@ -598,19 +599,41 @@
                     <div id="p-matriks" class="card-panduan-body hidden">
                         <div class="panduan-step">
                             <div class="panduan-step-num">1</div>
-                            <div class="panduan-step-text"><strong>Atur Baris &amp; Kolom:</strong> Setiap matriks ukurannya bebas diatur (1×1 s/d 8×8) dengan tombol <code>+</code> / <code>−</code> atau tombol cepat (2×2, 3×3, 2×3, dsb). Klik <strong>+ Tambah Matriks</strong> jika butuh variabel baru (A, B, C, ...).</div>
+                            <div class="panduan-step-text"><strong>Atur Baris &amp; Kolom:</strong> Setiap matriks
+                                ukurannya bebas diatur (1×1 s/d 8×8) dengan tombol <code>+</code> / <code>−</code> atau
+                                tombol cepat (2×2, 3×3, 2×3, dsb). Klik <strong>+ Tambah Matriks</strong> jika butuh
+                                variabel baru (A, B, C, ...).</div>
                         </div>
                         <div class="panduan-step">
                             <div class="panduan-step-num">2</div>
-                            <div class="panduan-step-text"><strong>Isi Elemen:</strong> Ketik angka pada kotak sel. Mendukung bilangan bulat, negatif (<code>-5</code>), desimal (<code>0.5</code>), maupun pecahan (<code>1/3</code>). Kotak kosong otomatis bernilai <code>0</code>. Gunakan tombol panah <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> untuk pindah sel dengan cepat.</div>
+                            <div class="panduan-step-text"><strong>Isi Elemen:</strong> Ketik angka pada kotak sel.
+                                Mendukung bilangan bulat, negatif (<code>-5</code>), desimal (<code>0.5</code>), maupun
+                                pecahan (<code>1/3</code>). Kotak kosong otomatis bernilai <code>0</code>. Gunakan
+                                tombol panah <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> untuk pindah sel dengan
+                                cepat.</div>
                         </div>
                         <div class="panduan-step">
                             <div class="panduan-step-num">3</div>
-                            <div class="panduan-step-text"><strong>Pilih Operasi:</strong> Pilih <strong>Penjumlahan</strong>, <strong>Pengurangan</strong>, <strong>Perkalian</strong>, atau <strong>Pembagian</strong> (A × B⁻¹). Tersedia juga Invers, Determinan, Transpose, dan Perkalian Skalar.</div>
+                            <div class="panduan-step-text"><strong>Pilih Operasi:</strong> Pilih
+                                <strong>Penjumlahan</strong>, <strong>Pengurangan</strong>, <strong>Perkalian</strong>,
+                                atau <strong>Pembagian</strong> (A × B⁻¹). Tersedia juga Invers, Determinan, Transpose,
+                                dan Perkalian Skalar.
+                            </div>
                         </div>
                         <div class="panduan-step">
                             <div class="panduan-step-num">4</div>
-                            <div class="panduan-step-text"><strong>Fitur Foolproof (Asisten Otomatis):</strong> Kotak asisten di bawah akan langsung memberi tahu apakah kedua matriks cocok. Jika ukurannya belum cocok, cukup klik tombol <em>Perbaiki Otomatis</em> sekali klik!</div>
+                            <div class="panduan-step-text"><strong>Fitur Foolproof (Asisten Otomatis):</strong> Kotak
+                                asisten di bawah akan langsung memberi tahu apakah kedua matriks cocok. Jika ukurannya
+                                belum cocok, cukup klik tombol <em>Perbaiki Otomatis</em> sekali klik!</div>
+                        </div>
+                        <div class="panduan-step">
+                            <div class="panduan-step-num">5</div>
+                            <div class="panduan-step-text"><strong>Eselon, RREF, SPL &amp; OBE Manual:</strong> Gunakan
+                                <em>Eselon Gauss (REF)</em> atau <em>Eselon Tereduksi (RREF)</em> untuk melihat rincian
+                                langkah OBE aritmatika per elemen. Gunakan <em>Solusi SPL [A|b]</em> untuk mencari
+                                himpunan
+                                penyelesaian otomatis, atau buka <em>Tool OBE Manual</em> untuk latihan baris per baris.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -619,11 +642,28 @@
                 <div style="margin-top:12px">
                     <div class="matrix-section-title">Contoh Soal Cepat — klik untuk langsung isi:</div>
                     <div class="example-chips" style="margin-top:6px">
-                        <button type="button" onclick="loadMatrixPreset('tambah2x2')" class="preset-chip">➕ Penjumlahan 2×2</button>
-                        <button type="button" onclick="loadMatrixPreset('kurang2x2')" class="preset-chip">➖ Pengurangan 2×2</button>
-                        <button type="button" onclick="loadMatrixPreset('kali2x3_3x2')" class="preset-chip">✖️ Perkalian 2×3 &amp; 3×2</button>
-                        <button type="button" onclick="loadMatrixPreset('bagi2x2')" class="preset-chip">➗ Pembagian 2×2</button>
-                        <button type="button" onclick="loadMatrixPreset('ordo3x3')" class="preset-chip">📐 Matriks 3×3</button>
+                        <button type="button" onclick="loadMatrixPreset('tambah2x2')" class="preset-chip">Penjumlahan
+                            2×2</button>
+                        <button type="button" onclick="loadMatrixPreset('kurang2x2')" class="preset-chip">Pengurangan
+                            2×2</button>
+                        <button type="button" onclick="loadMatrixPreset('kali2x3_3x2')" class="preset-chip">Perkalian
+                            2×3 &amp; 3×2</button>
+                        <button type="button" onclick="loadMatrixPreset('bagi2x2')" class="preset-chip">Pembagian
+                            2×2</button>
+                        <button type="button" onclick="loadMatrixPreset('ordo3x3')" class="preset-chip">Matriks
+                            3×3</button>
+                        <button type="button" onclick="loadMatrixPreset('gauss3x3')" class="preset-chip">Eselon Gauss
+                            (REF) 3×3</button>
+                        <button type="button" onclick="loadMatrixPreset('rref3x3')" class="preset-chip">Eselon Tereduksi
+                            (RREF) 3×3</button>
+                        <button type="button" onclick="loadMatrixPreset('spl3x4')" class="preset-chip">SPL 3 Variabel
+                            (Augmented 3×4)</button>
+                        <button type="button" onclick="loadMatrixPreset('spl2x3')" class="preset-chip">SPL 2 Variabel
+                            (Augmented 2×3)</button>
+                        <button type="button" onclick="loadMatrixPreset('spl_inconsistent')" class="preset-chip">SPL Tak
+                            Ada Solusi</button>
+                        <button type="button" onclick="loadMatrixPreset('augmented_ab')" class="preset-chip">Gabung
+                            Augmented [A|B]</button>
                     </div>
                 </div>
 
@@ -633,7 +673,8 @@
                         <span class="matrix-var-title">Daftar Variabel Matriks</span>
                         <span class="matrix-count-badge" id="matrix-count-badge">2 Matriks</span>
                     </div>
-                    <button type="button" onclick="addMatrixVariable()" class="btn-secondary matrix-add-btn" id="btn-add-matrix">
+                    <button type="button" onclick="addMatrixVariable()" class="btn-secondary matrix-add-btn"
+                        id="btn-add-matrix">
                         <span style="font-weight:700; font-size:15px; line-height:1">+</span> Tambah Matriks
                     </button>
                 </div>
@@ -643,49 +684,128 @@
 
                 <!-- Panel Operasi -->
                 <div class="matrix-operation-panel">
-                    <div class="matrix-op-title">Pilih Operasi Perhitungan:</div>
-                    
-                    <!-- 4 Operasi Utama: Tambah, Kurang, Kali, Bagi -->
+                    <!-- Kelompok 1: Operasi 2 Matriks -->
+                    <div class="matrix-op-section-header">
+                        <span class="matrix-op-section-badge">1</span>
+                        <span class="matrix-op-title">Operasi Aritmatika 2 Matriks</span>
+                    </div>
                     <div class="matrix-quick-ops">
-                        <button type="button" class="matrix-op-btn active" data-op="tambah" onclick="selectMatrixOp('tambah')">
-                            <span class="op-symbol">➕</span>
+                        <button type="button" class="matrix-op-btn active" data-op="tambah"
+                            onclick="selectMatrixOp('tambah')" title="Jumlahkan Matriks A + B">
+                            <span class="op-symbol">+</span>
                             <span class="op-label">Penjumlahan</span>
                         </button>
-                        <button type="button" class="matrix-op-btn" data-op="kurang" onclick="selectMatrixOp('kurang')">
-                            <span class="op-symbol">➖</span>
+                        <button type="button" class="matrix-op-btn" data-op="kurang" onclick="selectMatrixOp('kurang')"
+                            title="Kurangkan Matriks A - B">
+                            <span class="op-symbol">−</span>
                             <span class="op-label">Pengurangan</span>
                         </button>
-                        <button type="button" class="matrix-op-btn" data-op="kali" onclick="selectMatrixOp('kali')">
-                            <span class="op-symbol">✖️</span>
+                        <button type="button" class="matrix-op-btn" data-op="kali" onclick="selectMatrixOp('kali')"
+                            title="Kalikan Matriks A × B (Syarat: Kolom A = Baris B)">
+                            <span class="op-symbol">×</span>
                             <span class="op-label">Perkalian</span>
                         </button>
-                        <button type="button" class="matrix-op-btn" data-op="bagi" onclick="selectMatrixOp('bagi')">
-                            <span class="op-symbol">➗</span>
+                        <button type="button" class="matrix-op-btn" data-op="bagi" onclick="selectMatrixOp('bagi')"
+                            title="Bagi Matriks A ÷ B (Dihitung sebagai A × B⁻¹)">
+                            <span class="op-symbol">÷</span>
                             <span class="op-label">Pembagian (A × B⁻¹)</span>
+                        </button>
+                        <button type="button" class="matrix-op-btn" data-op="augmented" onclick="selectMatrixOp('augmented')"
+                            title="Gabungkan dua matriks menjadi matriks augmented [A|B]">
+                            <span class="op-symbol">[A|B]</span>
+                            <span class="op-label">Gabung Augmented</span>
                         </button>
                     </div>
 
-                    <!-- Pemilih Operan Matriks -->
-                    <div class="matrix-operand-selector" id="matrix-binary-selector">
-                        <div class="operand-col">
-                            <label class="label" for="matrix-op-a">Matriks Pertama</label>
-                            <select id="matrix-op-a" class="input-field matrix-select" onchange="onMatrixOperandChange()"></select>
+                    <!-- Kelompok 2: Sifat & Operasi 1 Matriks -->
+                    <div class="matrix-op-section-header" style="margin-top:14px">
+                        <span class="matrix-op-section-badge">2</span>
+                        <span class="matrix-op-title">Sifat &amp; Operasi 1 Matriks (Matriks Tunggal)</span>
+                    </div>
+                    <div class="matrix-unary-grid">
+                        <button type="button" class="matrix-op-btn" data-op="determinan"
+                            onclick="selectMatrixOp('determinan')" title="Hitung nilai determinan matriks persegi |A|">
+                            <span class="op-symbol">|A|</span>
+                            <span class="op-label">Determinan</span>
+                        </button>
+                        <button type="button" class="matrix-op-btn" data-op="invers"
+                            onclick="selectMatrixOp('invers')" title="Cari invers matriks persegi A⁻¹">
+                            <span class="op-symbol">A⁻¹</span>
+                            <span class="op-label">Invers Matriks</span>
+                        </button>
+                        <button type="button" class="matrix-op-btn" data-op="transpose"
+                            onclick="selectMatrixOp('transpose')" title="Balik baris menjadi kolom (Aᵀ)">
+                            <span class="op-symbol">Aᵀ</span>
+                            <span class="op-label">Transpose</span>
+                        </button>
+                        <button type="button" class="matrix-op-btn" data-op="skalar"
+                            onclick="selectMatrixOp('skalar')" title="Kalikan seluruh elemen dengan bilangan skalar (k · A)">
+                            <span class="op-symbol">k · A</span>
+                            <span class="op-label">Perkalian Skalar</span>
+                        </button>
+                    </div>
+
+                    <!-- Kelompok 3: Perhitungan Lanjutan (Dipisahkan Khusus) -->
+                    <div class="matrix-advanced-card">
+                        <div class="matrix-op-section-header advanced">
+                            <span class="matrix-op-section-badge advanced">3</span>
+                            <div class="matrix-op-header-text">
+                                <span class="matrix-op-title advanced">Perhitungan Lanjutan (Eliminasi Gauss &amp; SPL)</span>
+                                <span class="matrix-op-subtitle">Aljabar linear dengan langkah eliminasi baris elementer lengkap</span>
+                            </div>
                         </div>
-                        <div class="operand-sign" id="matrix-active-sign">+</div>
-                        <div class="operand-col">
-                            <label class="label" for="matrix-op-b">Matriks Kedua (Pembagi/Pengurang)</label>
-                            <select id="matrix-op-b" class="input-field matrix-select" onchange="onMatrixOperandChange()"></select>
+                        <div class="matrix-advanced-grid">
+                            <button type="button" class="matrix-advanced-btn" data-op="eselon"
+                                onclick="selectMatrixOp('eselon')"
+                                title="Eliminasi Gauss menjadi Bentuk Eselon Baris (REF) dengan langkah perhitungan per elemen">
+                                <div class="adv-btn-top">
+                                    <span class="adv-badge">REF</span>
+                                    <span class="adv-name">Eselon Gauss</span>
+                                </div>
+                                <div class="adv-btn-desc">Bentuk segitiga atas dengan 1 utama bertingkat</div>
+                            </button>
+                            <button type="button" class="matrix-advanced-btn" data-op="eselon_tereduksi"
+                                onclick="selectMatrixOp('eselon_tereduksi')"
+                                title="Eliminasi Gauss-Jordan menjadi Bentuk Eselon Baris Tereduksi (RREF) dengan langkah perhitungan per elemen">
+                                <div class="adv-btn-top">
+                                    <span class="adv-badge">RREF</span>
+                                    <span class="adv-name">Eselon Tereduksi</span>
+                                </div>
+                                <div class="adv-btn-desc">Gauss-Jordan hingga kolom 1 utama bernilai nol</div>
+                            </button>
+                            <button type="button" class="matrix-advanced-btn" data-op="spl_augmented"
+                                onclick="selectMatrixOp('spl_augmented')"
+                                title="Selesaikan SPL dari matriks augmented [A|b] dengan identifikasi solusi otomatis">
+                                <div class="adv-btn-top">
+                                    <span class="adv-badge spl">SPL [A|b]</span>
+                                    <span class="adv-name">Solusi SPL</span>
+                                </div>
+                                <div class="adv-btn-desc">Cari himpunan penyelesaian unik, tak terhingga, atau tak ada solusi</div>
+                            </button>
+                            <button type="button" class="matrix-advanced-btn" data-op="obe_manual"
+                                onclick="selectMatrixOp('obe_manual')"
+                                title="Lakukan Operasi Baris Elementer (OBE) interaktif langkah demi langkah">
+                                <div class="adv-btn-top">
+                                    <span class="adv-badge obe">OBE</span>
+                                    <span class="adv-name">Tool OBE Manual</span>
+                                </div>
+                                <div class="adv-btn-desc">Latihan operasi baris mandiri (tukar, skalar, eliminasi)</div>
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Operasi Tunggal Tambahan -->
-                    <div class="matrix-unary-bar">
-                        <span class="matrix-unary-label">Operasi Lainnya:</span>
-                        <div class="matrix-unary-chips">
-                            <button type="button" onclick="runUnaryMatrixOp('invers')" class="preset-chip">Invers (M⁻¹)</button>
-                            <button type="button" onclick="runUnaryMatrixOp('determinan')" class="preset-chip">Determinan (|M|)</button>
-                            <button type="button" onclick="runUnaryMatrixOp('transpose')" class="preset-chip">Transpose (Mᵀ)</button>
-                            <button type="button" onclick="toggleScalarInput()" class="preset-chip" id="btn-scalar-toggle">Skalar (k · M)</button>
+                    <!-- Pemilih Operan Matriks Dinamis (2 Matriks vs 1 Matriks) -->
+                    <div class="matrix-operand-selector" id="matrix-binary-selector">
+                        <div class="operand-col">
+                            <label class="label" for="matrix-op-a" id="label-matrix-op-a">Matriks Pertama</label>
+                            <select id="matrix-op-a" class="input-field matrix-select"
+                                onchange="onMatrixOperandChange()"></select>
+                        </div>
+                        <div class="operand-sign" id="matrix-active-sign">+</div>
+                        <div class="operand-col" id="col-matrix-op-b">
+                            <label class="label" for="matrix-op-b" id="label-matrix-op-b">Matriks Kedua (Pembagi/Pengurang)</label>
+                            <select id="matrix-op-b" class="input-field matrix-select"
+                                onchange="onMatrixOperandChange()"></select>
                         </div>
                     </div>
 
@@ -694,14 +814,68 @@
                         <div class="form-grid-2">
                             <div>
                                 <label class="label" for="matrix-scalar-k">Nilai Skalar (k)</label>
-                                <input id="matrix-scalar-k" type="text" inputmode="decimal" value="2" class="input-field" placeholder="misal: 2, -3, 1/2">
+                                <input id="matrix-scalar-k" type="text" inputmode="decimal" value="2"
+                                    class="input-field" placeholder="misal: 2, -3, 1/2">
                             </div>
                             <div>
-                                <label class="label" for="matrix-scalar-target">Pilih Matriks</label>
-                                <select id="matrix-scalar-target" class="input-field matrix-select"></select>
+                                <label class="label" for="matrix-scalar-target">Pilih Matriks Target</label>
+                                <select id="matrix-scalar-target" class="input-field matrix-select"
+                                    onchange="onScalarTargetChange()"></select>
                             </div>
                         </div>
-                        <button type="button" onclick="runScalarOp()" class="btn-secondary" style="margin-top:8px; width:100%">Hitung Perkalian Skalar</button>
+                    </div>
+
+                    <!-- Tool OBE Manual (bisa dibuka/tutup) -->
+                    <div id="matrix-obe-wrap" class="matrix-obe-wrap hidden">
+                        <div class="matrix-obe-header">
+                            <div class="matrix-obe-title">Tool Operasi Baris Elementer (OBE) Interaktif</div>
+                            <div class="matrix-obe-sub">Lakukan langkah OBE manual baris per baris dengan rincian
+                                perhitungan elemen otomatis</div>
+                        </div>
+                        <div class="form-grid-3 matrix-obe-controls" style="margin-top:10px">
+                            <div>
+                                <label class="label" for="matrix-obe-target">Pilih Matriks</label>
+                                <select id="matrix-obe-target" class="input-field matrix-select"
+                                    onchange="updateObeRowOptions()"></select>
+                            </div>
+                            <div>
+                                <label class="label" for="matrix-obe-type">Jenis Operasi OBE</label>
+                                <select id="matrix-obe-type" class="input-field" onchange="onObeTypeChange()">
+                                    <option value="tukar">Tukar Dua Baris (Ri ↔ Rj)</option>
+                                    <option value="skalar">Kalikan Baris dengan Skalar (Ri → k · Ri)</option>
+                                    <option value="tambah">Tambah/Kurang Kelipatan Baris (Ri → Ri + k · Rj)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="label" for="matrix-obe-row-i" id="label-obe-row-i">Baris Target / Pertama
+                                    (Ri)</label>
+                                <select id="matrix-obe-row-i" class="input-field"></select>
+                            </div>
+                        </div>
+                        <div class="form-grid-2 matrix-obe-controls" id="obe-sub-controls" style="margin-top:10px">
+                            <div id="obe-field-k" class="hidden">
+                                <label class="label" for="matrix-obe-k">Nilai Skalar / Pengali (k)</label>
+                                <input id="matrix-obe-k" type="text" inputmode="decimal" value="2" class="input-field"
+                                    placeholder="misal: 2, -3, 1/2">
+                            </div>
+                            <div id="obe-field-row-j">
+                                <label class="label" for="matrix-obe-row-j">Baris Sumber / Kedua (Rj)</label>
+                                <select id="matrix-obe-row-j" class="input-field"></select>
+                            </div>
+                        </div>
+                        <div class="matrix-obe-check-row" style="margin-top:10px">
+                            <label class="matrix-checkbox-label">
+                                <input type="checkbox" id="matrix-obe-is-augmented">
+                                <span>Format Matriks Augmented [A|b] (tampilkan garis batas kolom terakhir)</span>
+                            </label>
+                        </div>
+                        <div class="actions-row" style="margin-top:12px">
+                            <button type="button" onclick="runManualObe(false)" class="btn-primary"
+                                style="flex:1">Terapkan OBE</button>
+                            <button type="button" onclick="runManualObe(true)" class="btn-secondary" style="flex:1"
+                                title="Terapkan hasil operasi langsung ke grid matriks aktif">Terapkan &amp; Simpan ke
+                                Matriks</button>
+                        </div>
                     </div>
 
                     <!-- Asisten Otomatis (Foolproof Box) -->
@@ -710,7 +884,8 @@
                             <span class="assistant-icon" id="assistant-icon">✓</span>
                             <div class="assistant-text-wrap">
                                 <div class="assistant-title" id="assistant-title">Ukuran Sesuai (Siap Dihitung)</div>
-                                <div class="assistant-desc" id="assistant-desc">Kedua matriks memiliki ukuran yang sesuai untuk operasi ini.</div>
+                                <div class="assistant-desc" id="assistant-desc">Kedua matriks memiliki ukuran yang
+                                    sesuai untuk operasi ini.</div>
                             </div>
                         </div>
                         <div id="assistant-action-wrap" class="assistant-action-wrap hidden"></div>
@@ -719,10 +894,11 @@
 
                 <!-- Tombol Hitung -->
                 <button onclick="hitungMatriks()" class="btn-primary" id="btn-matrix" style="margin-top:14px">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.2">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                     </svg>
-                    Hitung Matriks
+                    <span id="btn-matrix-text">Hitung Matriks</span>
                 </button>
 
                 <!-- Box Hasil -->
@@ -733,8 +909,9 @@
                 <!-- Aksi Hasil -->
                 <div id="actions-matriks" class="hidden actions-row">
                     <button onclick="copyMatrixLatex()" class="btn-secondary">⧉ Copy LaTeX</button>
-                    <button onclick="copyMatrixPlainText()" class="btn-secondary">📋 Copy Angka</button>
-                    <button onclick="saveResultAsNewMatrix()" class="btn-secondary" title="Tambahkan hasil ini sebagai variabel matriks baru">💾 Buat Matriks Baru</button>
+                    <button onclick="copyMatrixPlainText()" class="btn-secondary">Copy Angka</button>
+                    <button onclick="saveResultAsNewMatrix()" class="btn-secondary"
+                        title="Tambahkan hasil ini sebagai variabel matriks baru">Buat Matriks Baru</button>
                     <div class="dropdown-wrap">
                         <button onclick="toggleMatrixStoreMenu()" id="btn-store-matrix" class="btn-secondary"
                             style="display:flex; align-items:center; justify-content:center; gap:4px">
@@ -748,8 +925,9 @@
                 <div id="steps-matriks-wrap" class="hidden matrix-steps-wrap">
                     <button type="button" class="steps-header" onclick="toggleMatrixSteps()">
                         <span class="steps-header-title">
-                            <svg id="steps-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                                <path d="M6 9l6 6 6-6"/>
+                            <svg id="steps-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2.2">
+                                <path d="M6 9l6 6 6-6" />
                             </svg>
                             Langkah-Langkah Penyelesaian (Cara Kerja)
                         </span>
@@ -817,16 +995,13 @@
                         </div>
                         <div class="panduan-step">
                             <div class="panduan-step-num">3</div>
-                            <div class="panduan-step-text"><strong>Navigasi:</strong> <em>drag</em> untuk geser,
-                                <em>scroll</em> untuk zoom, tombol <strong>⟲ Reset</strong> untuk kembali ke tampilan
-                                awal.
+                            <div class="panduan-step-text"><strong>Navigasi:</strong> <em>drag</em> untuk geser tampilan,
+                                <em>scroll mouse</em> untuk zoom, atau gunakan tombol <strong>+</strong> dan <strong>−</strong> di toolbar canvas.
                             </div>
                         </div>
                         <div class="panduan-step">
                             <div class="panduan-step-num">4</div>
-                            <div class="panduan-step-text">Atur rentang tampilan via kolom
-                                <strong>xMin/xMax/yMin/yMax</strong>. Gunakan <code>**</code> atau <code>^</code> untuk
-                                pangkat dan <code>*</code> untuk perkalian.
+                            <div class="panduan-step-text">Gunakan <strong>Pas Domain</strong> untuk menyesuaikan rentang dengan batas alami fungsi secara otomatis, atau <strong>Reset</strong> untuk kembali ke tampilan awal [-10, 10].
                             </div>
                         </div>
                     </div>
@@ -834,61 +1009,169 @@
 
                 <!-- Fungsi list -->
                 <div id="grafik-list" style="margin-top:12px"></div>
-                <button onclick="addGrafikRow()" class="btn-secondary"
-                    style="width:100%; margin-top:8px; display:flex; align-items:center; justify-content:center; gap:6px; border-style:dashed">
-                    <span style="font-size:16px; line-height:1">+</span> Tambah Fungsi
+
+                <!-- Tombol Tambah Fungsi: di bawah variable fungsi, tombol panjang -->
+                <button type="button" onclick="addGrafikRow()" class="btn-add-grafik-long" id="btn-add-grafik">
+                    <span style="font-size:16px; font-weight:700; line-height:1">+</span>
+                    <span>Tambah Fungsi</span>
                 </button>
+
+                <!-- Tombol Domain Alami dan Tabel Nilai di bawah tombol Tambah Fungsi (Grid 2 Kolom) -->
+                <div class="grafik-sub-action-grid">
+                    <button type="button" onclick="analyzeActiveGrafik()" id="btn-analyze-grafik" class="btn-grafik-sub"
+                        title="Analisis daerah asal alami, karakteristik grafik, akar, dan asimtot">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <span>Domain Alami &amp; Ciri</span>
+                    </button>
+                    <button type="button" onclick="openValuesTableDirect()" id="btn-quick-val-table" class="btn-grafik-sub"
+                        title="Buka tabel nilai evaluasi dan cek nilai fungsi di titik tertentu">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="3" y1="15" x2="21" y2="15"></line>
+                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                            <line x1="15" y1="3" x2="15" y2="21"></line>
+                        </svg>
+                        <span>Tabel Nilai</span>
+                    </button>
+                </div>
+
                 <div class="presets" style="margin-top:8px">
                     <button type="button" onclick="addGrafikPreset('x**2')" class="preset-chip">x²</button>
                     <button type="button" onclick="addGrafikPreset('sin(x)')" class="preset-chip">sin(x)</button>
                     <button type="button" onclick="addGrafikPreset('cos(x)')" class="preset-chip">cos(x)</button>
                     <button type="button" onclick="addGrafikPreset('tan(x)')" class="preset-chip">tan(x)</button>
                     <button type="button" onclick="addGrafikPreset('1/x')" class="preset-chip">1/x</button>
-                    <button type="button" onclick="addGrafikPreset('sin(x)/x')" class="preset-chip">sin(x)/x</button>
-                    <button type="button" onclick="addGrafikPreset('exp(-x**2)')" class="preset-chip">exp(-x²)</button>
+                    <button type="button" onclick="addGrafikPreset('1/(x**2 - 4)')"
+                        class="preset-chip">1/(x²-4)</button>
                     <button type="button" onclick="addGrafikPreset('sqrt(x)')" class="preset-chip">√x</button>
+                    <button type="button" onclick="addGrafikPreset('sqrt(9 - x**2)')"
+                        class="preset-chip">√(9-x²)</button>
+                    <button type="button" onclick="addGrafikPreset('log(x)')" class="preset-chip">ln(x)</button>
                 </div>
 
-                <!-- Rentang Axis -->
-                <div class="grafik-ranges-grid">
-                    <div>
-                        <label class="label" for="grafik-xmin">xMin</label>
-                        <input id="grafik-xmin" type="number" value="-10" step="any" class="input-field"
-                            style="text-align:center; padding:8px" title="Batas minimum sumbu X">
+                <!-- Panel Hasil Analisis & Domain Alami -->
+                <div id="grafik-analysis-card" class="grafik-analysis-card hidden">
+                    <div class="grafik-analysis-header">
+                        <div class="grafik-analysis-title-group">
+                            <span class="grafik-analysis-badge">ANALISIS MATEMATIS</span>
+                            <h3 class="grafik-analysis-title">Domain Alami &amp; Karakteristik Fungsi</h3>
+                        </div>
+                        <div class="grafik-analysis-actions">
+                            <button type="button" onclick="applyDomainToGraph()" class="btn-primary"
+                                style="font-size:11px; padding:5px 10px; font-weight:600">
+                                Terapkan ke Grafik
+                            </button>
+                            <button type="button" onclick="closeGrafikAnalysis()" class="grafik-analysis-close"
+                                title="Tutup">×</button>
+                        </div>
                     </div>
-                    <div>
-                        <label class="label" for="grafik-xmax">xMax</label>
-                        <input id="grafik-xmax" type="number" value="10" step="any" class="input-field"
-                            style="text-align:center; padding:8px" title="Batas maksimum sumbu X">
+                    <div id="grafik-analysis-loading" class="grafik-analysis-loading hidden">
+                        <div class="spinner"></div> Menghitung daerah asal alami dan batas pembatas...
                     </div>
-                    <div>
-                        <label class="label" for="grafik-ymin">yMin</label>
-                        <input id="grafik-ymin" type="number" value="-10" step="any" class="input-field"
-                            style="text-align:center; padding:8px" title="Batas minimum sumbu Y">
+                    <div id="grafik-analysis-body" class="grafik-analysis-body"></div>
+                </div>
+
+                <!-- KARTU TABEL NILAI EVALUASI DEDIKASI (RAPIH & FULL-PROOF) -->
+                <div id="grafik-values-card" class="grafik-values-card hidden">
+                    <div class="grafik-values-header">
+                        <div class="grafik-values-title-group">
+                            <span class="grafik-analysis-badge">TABEL EVALUASI</span>
+                            <h3 class="grafik-values-title" id="val-table-title">Tabel Nilai Evaluasi f(x)</h3>
+                        </div>
+                        <div class="grafik-values-header-actions">
+                            <button type="button" onclick="copyValuesTable()" class="btn-table-action" id="btn-copy-val-table"
+                                title="Salin seluruh baris tabel">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                <span id="val-copy-btn-text">Salin Data</span>
+                            </button>
+                            <button type="button" onclick="closeValuesTableCard()" class="grafik-analysis-close" title="Tutup Tabel">×</button>
+                        </div>
                     </div>
-                    <div>
-                        <label class="label" for="grafik-ymax">yMax</label>
-                        <input id="grafik-ymax" type="number" value="10" step="any" class="input-field"
-                            style="text-align:center; padding:8px" title="Batas maksimum sumbu Y">
+
+                    <!-- Evaluasi Titik Tertentu (x) -->
+                    <div class="val-quick-eval-card">
+                        <div class="val-quick-eval-title">Hitung Nilai di Titik Tertentu (x)</div>
+                        <div class="val-quick-eval-bar">
+                            <div class="val-quick-eval-input-wrap">
+                                <span class="val-input-prefix">x =</span>
+                                <input type="text" id="val-eval-x" class="val-input-point" placeholder="misal: 2, -1.5, 0" autocomplete="off">
+                            </div>
+                            <button type="button" onclick="evalSinglePoint()" class="btn-primary val-eval-btn" id="btn-eval-point">
+                                Hitung f(x)
+                            </button>
+                        </div>
+                        <div id="val-eval-result" class="val-eval-result-box hidden"></div>
+                    </div>
+
+                    <!-- Rentang Sampel Tabel -->
+                    <div class="val-table-controls">
+                        <span class="val-table-controls-label">Rentang Titik Sampel:</span>
+                        <div class="val-preset-chips">
+                            <button type="button" onclick="generateValuesTableRange(-5, 5, 1, this)" class="val-chip active" id="chip-tbl-5">x: -5 s/d 5 (Δ1)</button>
+                            <button type="button" onclick="generateValuesTableRange(-10, 10, 2, this)" class="val-chip" id="chip-tbl-10">x: -10 s/d 10 (Δ2)</button>
+                            <button type="button" onclick="generateValuesTableRange(0, 10, 1, this)" class="val-chip" id="chip-tbl-pos">x: 0 s/d 10 (Δ1)</button>
+                            <button type="button" onclick="generateValuesTableRange(-2, 2, 0.5, this)" class="val-chip" id="chip-tbl-det">x: -2 s/d 2 (Δ0.5)</button>
+                        </div>
+                    </div>
+
+                    <!-- Kontainer Tabel Nilai -->
+                    <div id="grafik-values-table-container" class="grafik-table-wrap">
+                        <table class="val-table-clean">
+                            <thead>
+                                <tr>
+                                    <th style="width:30%">Titik (x)</th>
+                                    <th style="width:40%">Nilai f(x)</th>
+                                    <th style="width:30%">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="val-table-tbody">
+                                <!-- Baris tabel diisi via JS -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                <!-- Quick Range Presets -->
-                <div class="grafik-range-presets">
-                    <span class="grafik-range-label">Rentang:</span>
-                    <button type="button" onclick="setGrafikRange(-10, 10, -10, 10)" class="preset-chip" title="Batas standar -10 sampai 10">[-10, 10]</button>
-                    <button type="button" onclick="setGrafikRange(-5, 5, -5, 5)" class="preset-chip" title="Fokus dekat -5 sampai 5">[-5, 5]</button>
-                    <button type="button" onclick="setGrafikRange(-20, 20, -20, 20)" class="preset-chip" title="Tampilan lebar -20 sampai 20">[-20, 20]</button>
-                    <button type="button" onclick="setGrafikRange(-6.28, 6.28, -2, 2)" class="preset-chip" title="Rentang trigonometri 2 periode">[-2π, 2π]</button>
-                    <button type="button" onclick="setGrafikRange(0, 10, 0, 50)" class="preset-chip" title="Hanya kuadran pertama positif">[0, 10]</button>
+                <!-- Canvas Toolbar -->
+                <div class="grafik-canvas-toolbar" style="margin-top:10px">
+                    <div class="grafik-toolbar-left">
+                        <button type="button" onclick="zoomGrafik(0.75)" class="grafik-tool-btn"
+                            title="Perbesar (Zoom In)">+</button>
+                        <button type="button" onclick="zoomGrafik(1.33)" class="grafik-tool-btn"
+                            title="Perkecil (Zoom Out)">−</button>
+                        <button type="button" onclick="applyDomainToGraph()" class="grafik-tool-btn"
+                            title="Sesuaikan Tampilan dengan Domain Alami"
+                            style="font-size:11px; width:auto; padding:0 8px">Pas Domain</button>
+                        <button type="button" onclick="resetGrafikView()" class="grafik-tool-btn"
+                            title="Reset Rentang [-10, 10]"
+                            style="font-size:11px; width:auto; padding:0 8px">Reset</button>
+                    </div>
+                    <div class="grafik-toolbar-right">
+                        <label class="check-label grafik-deriv-toggle-label" style="margin:0; font-size:12px; cursor:pointer"
+                            title="Tampilkan / sembunyikan kurva turunan pertama f'(x) pada grafik">
+                            <input id="grafik-toggle-deriv" type="checkbox" onchange="toggleDerivativeOverlay()">
+                            <span class="deriv-badge-pill">f'(x)</span>
+                            <span>Plot Turunan</span>
+                        </label>
+                        <label class="check-label" style="margin:0; font-size:12px; cursor:pointer">
+                            <input id="grafik-grid" type="checkbox" checked>
+                            <span>Grid</span>
+                        </label>
+                    </div>
                 </div>
-                <div id="grafik-range-warning" class="grafik-range-warning hidden"></div>
 
-                <label class="check-label" style="margin-top:10px">
-                    <input id="grafik-grid" type="checkbox" checked>
-                    <span>Tampilkan grid koordinat</span>
-                    <span id="grafik-coords" class="coords-display hidden"></span>
-                </label>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px">
+                    <span id="grafik-coords" class="coords-display" style="font-size:11px; color:var(--text-muted)">drag
+                        · scroll zoom</span>
+                </div>
 
                 <!-- Canvas -->
                 <div class="grafik-canvas-wrap" id="grafik-canvas-wrap">
@@ -898,18 +1181,18 @@
                 <div id="grafik-error" class="grafik-error hidden"></div>
 
                 <div class="grafik-actions">
-                    <button onclick="resetGrafikView()" class="btn-secondary">⟲ Reset</button>
-                    <button onclick="shareGrafik()" class="btn-secondary">⧉ Share</button>
+                    <button onclick="resetGrafikView()" class="btn-secondary">Reset</button>
+                    <button onclick="shareGrafik()" class="btn-secondary">Share</button>
                     <div class="dropdown-wrap">
                         <button onclick="toggleDownloadMenu('grafik')" id="btn-download-grafik" class="btn-secondary"
                             style="width:100%; display:flex; align-items:center; justify-content:center; gap:4px">
-                            ⬇ Download <span style="font-size:9px">▼</span>
+                            Download <span style="font-size:9px">▼</span>
                         </button>
                         <div id="menu-grafik" class="dropdown-menu hidden">
                             <button onclick="downloadGrafikAs('png');toggleDownloadMenu('grafik',true)"
-                                class="dropdown-item">🖼️ Download PNG</button>
+                                class="dropdown-item">Download PNG</button>
                             <button onclick="downloadGrafikAs('svg');toggleDownloadMenu('grafik',true)"
-                                class="dropdown-item">📐 Download SVG</button>
+                                class="dropdown-item">Download SVG</button>
                         </div>
                     </div>
                 </div>
@@ -925,7 +1208,7 @@
         </div>
     </footer>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}?v=1.4"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=1.5"></script>
 </body>
 
 </html>
