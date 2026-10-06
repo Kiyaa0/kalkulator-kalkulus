@@ -125,7 +125,7 @@ def _parse_matrix_cell(val):
 
 
 def _matrix_from_json(grid, name='Matriks'):
-    """Mengonversi 2D list JSON ke matriks SymPy dengan validasi ordo."""
+    """Mengonversi 2D list JSON ke matriks SymPy dengan validasi ordo dan proteksi anti-DoS."""
     if not grid or not isinstance(grid, list):
         raise ValueError(f'Data {name} tidak boleh kosong')
     num_rows = len(grid)
@@ -138,10 +138,26 @@ def _matrix_from_json(grid, name='Matriks'):
         raise ValueError(f'Jumlah kolom {name} harus antara 1 dan 8')
 
     rows = []
+    has_symbols = False
     for r_idx, r in enumerate(grid):
         if not isinstance(r, list) or len(r) != num_cols:
             raise ValueError(f'Baris ke-{r_idx+1} pada {name} memiliki jumlah kolom yang tidak konsisten')
-        rows.append([_parse_matrix_cell(c) for c in r])
+        row_cells = []
+        for c in r:
+            parsed = _parse_matrix_cell(c)
+            if hasattr(parsed, 'free_symbols') and parsed.free_symbols:
+                has_symbols = True
+            row_cells.append(parsed)
+        rows.append(row_cells)
+
+    # Proteksi DoS: Matriks simbolik (berisi variabel aljabar) hanya diizinkan maksimal 3x3
+    # karena determinan/invers simbolik di atas 3x3 memiliki kompleksitas O(n!) yang dapat membekukan server.
+    if has_symbols and (num_rows > 3 or num_cols > 3):
+        raise ValueError(
+            f'Matriks simbolik (berisi variabel aljabar) hanya didukung hingga ordo maksimal 3x3 demi kestabilan server. '
+            f'Untuk ordo {num_rows}x{num_cols}, gunakan angka atau pecahan numerik.'
+        )
+
     return sp.Matrix(rows)
 
 

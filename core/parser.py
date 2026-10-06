@@ -10,6 +10,9 @@ import numpy as np
 
 from core.config import (
     MAX_FUNCTION_LENGTH,
+    MAX_POWER_VALUE,
+    MAX_PAREN_DEPTH,
+    MAX_DIGIT_LENGTH,
     _BLOCKED_KEYWORDS,
     _BLOCKED_CHARS_RE,
     LOCAL_DICT,
@@ -41,7 +44,8 @@ def to_float(val, default=None):
 
 def validate_fungsi(expr_str):
     """
-    Validasi keamanan dan batas ukuran ekspresi input.
+    Validasi keamanan, batas ukuran, struktur kurung, dan pola eksponen ekspresi input.
+    Mencegah serangan Denial of Service (DoS / ReDoS / Power Bomb / Memory Exhaustion).
     Menghasilkan (sukses: bool, pesan_error: str).
     """
     if not isinstance(expr_str, str):
@@ -52,18 +56,49 @@ def validate_fungsi(expr_str):
     if len(s) > MAX_FUNCTION_LENGTH:
         return False, f"Fungsi terlalu panjang (maksimal {MAX_FUNCTION_LENGTH} karakter, saat ini {len(s)})."
 
+    # 1. Cek kata kunci berbahaya
     low = s.lower()
     for kw in _BLOCKED_KEYWORDS:
         if kw in low:
             return False, f"Kata kunci tidak diizinkan demi keamanan: {kw}"
 
-    # Cek karakter terlarang injeksi
+    # 2. Cek karakter terlarang injeksi
     if _BLOCKED_CHARS_RE.search(s):
         return False, "Karakter tidak diizinkan terdeteksi (seperti ; ` $ \" ' # dll)."
 
-    # Deteksi spam berulang
+    # 3. Deteksi spam berulang
     if len(s) > 50 and len(set(s)) < 3:
         return False, "Fungsi terlihat tidak valid atau spam."
+
+    # 4. Batasi kedalaman tanda kurung bersarang (mencegah stack overflow / recursion error)
+    depth = 0
+    for ch in s:
+        if ch in '([{':
+            depth += 1
+            if depth > MAX_PAREN_DEPTH:
+                return False, f"Kurung bersarang terlalu dalam (maksimal {MAX_PAREN_DEPTH} tingkat)."
+        elif ch in ')]}':
+            depth = max(0, depth - 1)
+
+    # 5. Blokir eksponen bertingkat (Power Towers seperti a^b^c atau 9^9^9^9 yang membekukan CPU)
+    if re.search(r'(?:\^|\*\*)\s*\(?[^+\-*/()]*\s*(?:\^|\*\*)', s):
+        return False, "Eksponen bertingkat (seperti a^b^c) tidak diizinkan demi keamanan server. Sederhanakan fungsi terlebih dahulu."
+
+    # 6. Batasi nilai pangkat numerik maksimal (mencegah perpangkatan bilangan raksasa)
+    for m in re.finditer(r'(?:\^|\*\*)\s*\(?([0-9]+)', s):
+        try:
+            if int(m.group(1)) > MAX_POWER_VALUE:
+                return False, f"Pangkat terlalu besar (maksimal pangkat {MAX_POWER_VALUE})."
+        except ValueError:
+            return False, "Nilai pangkat tidak valid."
+
+    # 7. Batasi panjang digit angka integer (mencegah komputasi integer raksasa)
+    if re.search(r'\d{16,}', s):
+        return False, "Angka dalam fungsi terlalu panjang (maksimal 15 digit)."
+
+    # 8. Deteksi operator berulang berlebihan (seperti +++++ atau ******)
+    if re.search(r'[+]{3,}|[-]{3,}|[*]{3,}|[/]{2,}', s):
+        return False, "Operator berulang berlebihan terdeteksi."
 
     return True, ""
 
@@ -152,11 +187,12 @@ def preprocess_math_input(raw_str):
     s = re.sub(r'\)\s*(\d)', r')*\1', s)                    # (x+1)2 -> (x+1)*2
     s = re.sub(r'\b(pi|E)\s*([a-zA-Z])', r'\1*\2', s)       # pi x -> pi*x, E x -> E*x
 
-    # 13. Auto-balance kurung jika tertinggal kurung tutup di ujung
+    # 13. Auto-balance kurung jika tertinggal kurung tutup di ujung (maksimal 3 kurung)
     open_count = s.count('(')
     close_count = s.count(')')
-    if open_count > close_count:
-        s = s + ')' * (open_count - close_count)
+    diff = open_count - close_count
+    if 0 < diff <= 3:
+        s = s + ')' * diff
 
     return s.strip()
 

@@ -1,35 +1,37 @@
 /**
  * =============================================================================
- * CalcKu — Main Client-Side Logic (Clean, Modular & Comprehensive)
+ * CalcKu — Main Client-Side Logic (Optimized, Modular & DRY)
  * =============================================================================
- * Architecture Overview:
- * 1. Core Utilities & DOM Selectors
+ * 1. Core Utilities, DOM Selectors & Shared Helpers
  * 2. Theme Manager (Dark / Light Mode)
  * 3. Tab Navigation & View Switcher
  * 4. Input Helpers, Auto-Fix & Live Syntax Hinting
  * 5. History Store (LocalStorage for Turunan, Integral, Limit)
  * 6. LaTeX & Result Renderer (KaTeX + Multi-Line Formatting)
  * 7. Calculus API Handlers (Turunan, Integral, Limit)
- * 8. Interactive Function Plotter (function-plot canvas, zoom, multi-curve, SVG/PNG)
- * 9. Matrix Calculator Engine:
- *    - State & Dimension Management
- *    - Dynamic Matrix Cards & Bracket Grid Generator
- *    - Spreadsheet-like Keyboard Navigation
- *    - Foolproof Live Compatibility Assistant
- *    - Binary (Add, Sub, Mul, Div), Unary (Inv, Det, Transpose), & Scalar Controllers
- *    - Step-by-Step LaTeX Explanation Generator
- *    - Preset Loader & Result Variable Storing
- * 10. Accordion & Documentation Guides (Global + Per-Card)
- * 11. Hero Formula Track Animations & Keyboard Shortcuts
- * 12. Global Window Exports & App Initialization
+ * 8. Interactive Function Plotter (function-plot, analysis, table, SVG/PNG)
+ * 9. Matrix Calculator Engine (Grid, Assistant, Operations, OBE, Presets)
+ * 10. Accordion & Documentation Guides
+ * 11. Hero Formulas Track & Keyboard Shortcuts
+ * 12. Auto-Reset & Inactivity Protection
+ * 13. Global Window Exports
  * =============================================================================
  */
 
 // =============================================================================
-// SECTION 1: CORE UTILITIES & DOM SELECTORS
+// SECTION 1: CORE UTILITIES, DOM SELECTORS & SHARED HELPERS
 // =============================================================================
 const $ = (id) => document.getElementById(id);
 const LS_H = 'calcku-h';
+const LS_GRAFIK = 'calcku-grafik-v1';
+const LS_MATRIX = 'calcku-matrix-v1';
+const SKELETON_HTML = '<div class="skeleton-wrap"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div>';
+const FIELD_MAP = {
+    turunan: 'turunan-fungsi',
+    integral: 'integral-fungsi',
+    limit: 'limit-fungsi'
+};
+
 const last = {};
 const plotSvgCache = {};
 let currentAbortController = null;
@@ -46,7 +48,6 @@ function abortActiveRequests() {
     }
 }
 
-
 /**
  * Higher-order debounce helper to rate-limit input event handlers.
  */
@@ -58,6 +59,88 @@ function debounce(fn, delay) {
     };
 }
 
+/**
+ * Helper terpadu untuk download file (PNG, SVG, teks, blob).
+ */
+function triggerDownload(href, filename, revokeDelay = 0) {
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    if (revokeDelay > 0) {
+        setTimeout(() => URL.revokeObjectURL(href), revokeDelay);
+    }
+}
+
+/**
+ * Helper terpadu untuk menyalin teks ke clipboard dengan UI/Alert feedback.
+ */
+function copyToClipboard(text, { btn, successText = '✓ Copied!', duration = 1200, alertMsg, promptMsg } = {}) {
+    if (!text) return;
+    const notifySuccess = () => {
+        if (btn) {
+            const original = btn.textContent;
+            btn.textContent = successText;
+            setTimeout(() => { btn.textContent = original; }, duration);
+        } else if (alertMsg) {
+            alert(alertMsg);
+        }
+    };
+
+    const fallbackCopy = () => {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            ta.remove();
+            if (ok) {
+                notifySuccess();
+                return;
+            }
+        } catch (e) { }
+        if (promptMsg) prompt(promptMsg, text);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(notifySuccess).catch(fallbackCopy);
+    } else {
+        fallbackCopy();
+    }
+}
+
+/**
+ * Render ekspresi KaTeX dengan fallback aman ke textContent.
+ */
+function safeKatexRender(latex, element, displayMode = false) {
+    if (!element) return;
+    try {
+        katex.render(latex, element, { throwOnError: false, displayMode });
+    } catch (e) {
+        element.textContent = latex;
+    }
+}
+
+/**
+ * Template markup error seragam dengan ikon peringatan.
+ */
+function getErrorHtml(msg) {
+    return `
+        <div class="error-msg">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v4M12 16h.01"/>
+            </svg>
+            <span>${msg}</span>
+        </div>
+    `;
+}
+
 const SUPERSCRIPTS_MAP = {
     '⁰': '^0', '¹': '^1', '²': '^2', '³': '^3', '⁴': '^4',
     '⁵': '^5', '⁶': '^6', '⁷': '^7', '⁸': '^8', '⁹': '^9',
@@ -65,7 +148,7 @@ const SUPERSCRIPTS_MAP = {
 };
 
 /**
- * Auto-correct common mathematical input typos (e.g., missing '*' before variables/brackets, unicode superscripts, commas).
+ * Auto-correct common mathematical input typos.
  */
 function autoFix(str) {
     if (!str) return '';
@@ -122,8 +205,10 @@ function hasMissingStar(str) {
 function toPlotExpr(str) {
     if (!str || !str.trim()) return '';
     let expr = str.trim();
+    if (expr.includes('{')) {
+        expr = expr.replace(/\{[^{}]*\}/g, '').trim();
+    }
     if (expr.includes('=')) {
-        // Strip left-hand assignments e.g. "y = x^2" or "f(x) = x^2"
         expr = expr.split('=').pop().trim();
     }
     expr = autoFix(expr);
@@ -162,7 +247,7 @@ function isValidPlotExpr(expr) {
     }
     if (balance !== 0) return false;
 
-    // Reject incomplete trailing operators (when user is mid-typing)
+    // Reject incomplete trailing operators
     if (/[\+\-\*\/\^\,\.]$/.test(s)) return false;
 
     return true;
@@ -295,12 +380,7 @@ function fillActive(symbol) {
         return;
     }
 
-    const fieldMap = {
-        turunan: 'turunan-fungsi',
-        integral: 'integral-fungsi',
-        limit: 'limit-fungsi'
-    };
-    const inputEl = $(fieldMap[activeTab]);
+    const inputEl = $(FIELD_MAP[activeTab]);
     if (!inputEl) return;
 
     const cursor = inputEl.selectionStart || inputEl.value.length;
@@ -333,16 +413,9 @@ function showValid(tab, message, fixValue) {
 }
 
 function autoFixAndFocus(tab) {
-    const fieldMap = {
-        turunan: 'turunan-fungsi',
-        integral: 'integral-fungsi',
-        limit: 'limit-fungsi'
-    };
-    const inputId = fieldMap[tab];
-    const el = $(inputId);
+    const el = $(FIELD_MAP[tab]);
     if (!el) return;
-    const fixed = autoFix(el.value);
-    el.value = fixed;
+    el.value = autoFix(el.value);
     el.dispatchEvent(new Event('input'));
     el.focus();
     showValid(tab, '', '');
@@ -366,12 +439,10 @@ function bindValidationListener(inputId, tab) {
     }, 220));
 }
 
-bindValidationListener('turunan-fungsi', 'turunan');
-bindValidationListener('integral-fungsi', 'integral');
-bindValidationListener('limit-fungsi', 'limit');
+Object.entries(FIELD_MAP).forEach(([tab, id]) => bindValidationListener(id, tab));
 
 // =============================================================================
-// SECTION 5: HISTORY STORE (LOCALSTORAGE FOR TURUNAN, INTEGRAL, LIMIT)
+// SECTION 5: HISTORY STORE (LOCALSTORAGE)
 // =============================================================================
 function loadH() {
     try {
@@ -392,7 +463,7 @@ function pushHistory(tab, input, latex) {
     const h = loadH();
     h[tab] = h[tab] || [];
     h[tab].unshift({ input, latex, t: Date.now() });
-    h[tab] = h[tab].slice(0, 5); // Keep up to 5 latest calculations
+    h[tab] = h[tab].slice(0, 5);
     saveH(h);
     renderHistory(tab);
 }
@@ -400,7 +471,7 @@ function pushHistory(tab, input, latex) {
 function renderHistory(tab) {
     const el = $('history-' + tab);
     if (!el) return;
-    const items = (loadH()[tab] || []);
+    const items = loadH()[tab] || [];
     if (!items.length) {
         el.classList.add('hidden');
         el.innerHTML = '';
@@ -420,12 +491,7 @@ function renderHistory(tab) {
         `;
         btn.title = 'Klik untuk isi lagi';
         btn.addEventListener('click', () => {
-            const fieldMap = {
-                turunan: 'turunan-fungsi',
-                integral: 'integral-fungsi',
-                limit: 'limit-fungsi'
-            };
-            const input = $(fieldMap[tab]);
+            const input = $(FIELD_MAP[tab]);
             if (input) {
                 input.value = item.input;
                 input.dispatchEvent(new Event('input'));
@@ -449,10 +515,10 @@ function renderHistory(tab) {
     el.appendChild(frag);
 }
 
-// Initialize history on page load
+// Inisialisasi riwayat saat halaman dimuat
 (() => {
-    ['turunan', 'integral', 'limit'].forEach(renderHistory);
-    ['turunan-fungsi', 'integral-fungsi', 'limit-fungsi'].forEach((id) => {
+    Object.keys(FIELD_MAP).forEach(renderHistory);
+    Object.values(FIELD_MAP).forEach((id) => {
         const el = $(id);
         if (el && el.value) el.dispatchEvent(new Event('input'));
     });
@@ -467,22 +533,10 @@ function renderLatex(id, latex, isError) {
     el.style.display = 'block';
     el.classList.remove('justify-center');
     if (isError) {
-        el.innerHTML = `
-            <div class="error-msg">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 8v4M12 16h.01"/>
-                </svg>
-                <span>${latex}</span>
-            </div>
-        `;
+        el.innerHTML = getErrorHtml(latex);
     } else {
         el.innerHTML = '';
-        try {
-            katex.render(latex, el, { throwOnError: false, displayMode: true });
-        } catch (e) {
-            el.textContent = latex;
-        }
+        safeKatexRender(latex, el, true);
     }
 }
 
@@ -496,11 +550,7 @@ function renderMultiLine(id, lines) {
     lines.forEach((latex) => {
         const d = document.createElement('div');
         d.className = 'result-line';
-        try {
-            katex.render(latex, d, { throwOnError: false, displayMode: true });
-        } catch (e) {
-            d.textContent = latex;
-        }
+        safeKatexRender(latex, d, true);
         frag.appendChild(d);
     });
     el.appendChild(frag);
@@ -535,21 +585,8 @@ function setLoading(btn, loading) {
 function copyLatex(tab) {
     const latex = last[tab];
     if (!latex) return;
-    navigator.clipboard.writeText(latex).then(() => {
-        const btn = document.querySelector('#actions-' + tab + ' button');
-        if (btn) {
-            const original = btn.textContent;
-            btn.textContent = '✓ Copied!';
-            setTimeout(() => { btn.textContent = original; }, 1200);
-        }
-    }).catch(() => {
-        const ta = document.createElement('textarea');
-        ta.value = latex;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        ta.remove();
-    });
+    const btn = document.querySelector('#actions-' + tab + ' button');
+    copyToClipboard(latex, { btn, successText: '✓ Copied!', duration: 1200 });
 }
 
 function toggleDownloadMenu(tab, forceClose) {
@@ -574,18 +611,14 @@ document.addEventListener('click', (e) => {
 
 function downloadPlotAs(tab, format) {
     const fmt = (format || 'png').toLowerCase();
+    const filename = `calcku-${tab}-${Date.now()}`;
     if (fmt === 'png') {
         const img = $('plot-' + tab + '-img');
         if (!img || !img.src || !img.src.includes('data:')) {
             alert('Belum ada grafik. Hitung dulu.');
             return;
         }
-        const a = document.createElement('a');
-        a.href = img.src;
-        a.download = `calcku-${tab}-${Date.now()}.png`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+        triggerDownload(img.src, `${filename}.png`);
     } else if (fmt === 'svg') {
         const svg = plotSvgCache[tab];
         if (!svg) {
@@ -594,30 +627,31 @@ function downloadPlotAs(tab, format) {
         }
         const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `calcku-${tab}-${Date.now()}.svg`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        triggerDownload(url, `${filename}.svg`, 1000);
     }
 }
 
 // =============================================================================
 // SECTION 7: CALCULUS API HANDLERS (TURUNAN, INTEGRAL, LIMIT)
 // =============================================================================
+function finishCalculusSuccess(tab, fungsi, lines, data) {
+    renderMultiLine('hasil-' + tab, lines);
+    const latexSummary = lines.join(' \\n ');
+    last[tab] = latexSummary;
+    if (data.plot) showPlot(tab, data.plot);
+    if (data.plot_svg) plotSvgCache[tab] = data.plot_svg;
+    $('actions-' + tab)?.classList.remove('hidden');
+    pushHistory(tab, fungsi, latexSummary);
+}
+
 async function calcApi({ endpoint, payload, tab, btnId, resultId, onSuccess }) {
     const btn = $(btnId);
     hidePlot(tab);
     setLoading(btn, true);
 
     const resultEl = $(resultId);
-    if (resultEl) {
-        resultEl.innerHTML = '<div class="skeleton-wrap"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div>';
-    }
+    if (resultEl) resultEl.innerHTML = SKELETON_HTML;
 
-    // Batalkan kalkulasi sebelumnya jika ada yang masih berlangsung
     abortActiveRequests();
     currentAbortController = new AbortController();
 
@@ -650,12 +684,10 @@ async function calcApi({ endpoint, payload, tab, btnId, resultId, onSuccess }) {
 async function hitungTurunan() {
     const inputEl = $('turunan-fungsi');
     const fungsi = inputEl ? inputEl.value.trim() : '';
-    if (!fungsi) {
-        if (inputEl) inputEl.focus();
-        return;
-    }
-    const orde = $('turunan-orde') ? $('turunan-orde').value : 1;
-    const titik = $('turunan-titik') ? $('turunan-titik').value.trim() : '';
+    if (!fungsi) { inputEl?.focus(); return; }
+
+    const orde = $('turunan-orde')?.value || 1;
+    const titik = $('turunan-titik')?.value.trim() || '';
 
     await calcApi({
         endpoint: '/api/turunan',
@@ -664,17 +696,11 @@ async function hitungTurunan() {
         btnId: 'btn-turunan',
         resultId: 'hasil-turunan',
         onSuccess: (data) => {
-            const lines = [data.notasi + ' = ' + data.hasil];
+            const lines = [`${data.notasi} = ${data.hasil}`];
             if (data.evaluasi) {
-                lines.push('f^{' + orde + '}(' + data.titik + ') = ' + data.evaluasi);
+                lines.push(`f^{${orde}}(${data.titik}) = ${data.evaluasi}`);
             }
-            renderMultiLine('hasil-turunan', lines);
-            last['turunan'] = lines.join(' \\n ');
-            if (data.plot) showPlot('turunan', data.plot);
-            if (data.plot_svg) plotSvgCache['turunan'] = data.plot_svg;
-            const actions = $('actions-turunan');
-            if (actions) actions.classList.remove('hidden');
-            pushHistory('turunan', fungsi, last['turunan']);
+            finishCalculusSuccess('turunan', fungsi, lines, data);
         }
     });
 }
@@ -682,12 +708,10 @@ async function hitungTurunan() {
 async function hitungIntegral() {
     const inputEl = $('integral-fungsi');
     const fungsi = inputEl ? inputEl.value.trim() : '';
-    if (!fungsi) {
-        if (inputEl) inputEl.focus();
-        return;
-    }
-    const batas_bawah = $('integral-bawah') ? $('integral-bawah').value.trim() : '';
-    const batas_atas = $('integral-atas') ? $('integral-atas').value.trim() : '';
+    if (!fungsi) { inputEl?.focus(); return; }
+
+    const batas_bawah = $('integral-bawah')?.value.trim() || '';
+    const batas_atas = $('integral-atas')?.value.trim() || '';
 
     await calcApi({
         endpoint: '/api/integral',
@@ -696,19 +720,8 @@ async function hitungIntegral() {
         btnId: 'btn-integral',
         resultId: 'hasil-integral',
         onSuccess: (data) => {
-            const lines = [];
-            if (data.tentu) {
-                lines.push(data.notasi + ' = ' + data.tentu);
-            } else {
-                lines.push(data.notasi + ' = ' + data.hasil + ' + C');
-            }
-            renderMultiLine('hasil-integral', lines);
-            last['integral'] = lines.join(' \\n ');
-            if (data.plot) showPlot('integral', data.plot);
-            if (data.plot_svg) plotSvgCache['integral'] = data.plot_svg;
-            const actions = $('actions-integral');
-            if (actions) actions.classList.remove('hidden');
-            pushHistory('integral', fungsi, last['integral']);
+            const lines = [data.tentu ? `${data.notasi} = ${data.tentu}` : `${data.notasi} = ${data.hasil} + C`];
+            finishCalculusSuccess('integral', fungsi, lines, data);
         }
     });
 }
@@ -716,12 +729,10 @@ async function hitungIntegral() {
 async function hitungLimit() {
     const inputEl = $('limit-fungsi');
     const fungsi = inputEl ? inputEl.value.trim() : '';
-    if (!fungsi) {
-        if (inputEl) inputEl.focus();
-        return;
-    }
-    const titik = $('limit-titik') ? $('limit-titik').value.trim() : '0';
-    const arah = $('limit-arah') ? $('limit-arah').value : '+-';
+    if (!fungsi) { inputEl?.focus(); return; }
+
+    const titik = $('limit-titik')?.value.trim() || '0';
+    const arah = $('limit-arah')?.value || '+-';
 
     await calcApi({
         endpoint: '/api/limit',
@@ -730,14 +741,7 @@ async function hitungLimit() {
         btnId: 'btn-limit',
         resultId: 'hasil-limit',
         onSuccess: (data) => {
-            const line = data.notasi + ' = ' + data.hasil;
-            renderMultiLine('hasil-limit', [line]);
-            last['limit'] = line;
-            if (data.plot) showPlot('limit', data.plot);
-            if (data.plot_svg) plotSvgCache['limit'] = data.plot_svg;
-            const actions = $('actions-limit');
-            if (actions) actions.classList.remove('hidden');
-            pushHistory('limit', fungsi, line);
+            finishCalculusSuccess('limit', fungsi, [`${data.notasi} = ${data.hasil}`], data);
         }
     });
 }
@@ -745,12 +749,9 @@ async function hitungLimit() {
 // =============================================================================
 // SECTION 8: INTERACTIVE FUNCTION PLOTTER (FUNCTION-PLOT ENGINE)
 // =============================================================================
-const LS_GRAFIK = 'calcku-grafik-v1';
 const GRAFIK_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
 let grafikInited = false;
-let isZoomingPlot = false;
 let activePlotInstance = null;
-let zoomResampleTimer = null;
 let lastNaturalDomainData = null;
 let derivativeOverlayFn = null;
 let isDerivativeOverlayActive = false;
@@ -800,22 +801,391 @@ function loadGrafikState() {
             } else if (parsed && typeof parsed === 'object') {
                 state = state || {};
                 if (Array.isArray(parsed.fns)) state.fns = parsed.fns;
-                if (parsed.xmin !== undefined) state.xmin = parsed.xmin;
-                if (parsed.xmax !== undefined) state.xmax = parsed.xmax;
-                if (parsed.ymin !== undefined) state.ymin = parsed.ymin;
-                if (parsed.ymax !== undefined) state.ymax = parsed.ymax;
+                ['xmin', 'xmax', 'ymin', 'ymax'].forEach((k) => {
+                    if (parsed[k] !== undefined) state[k] = parsed[k];
+                });
             }
         }
     } catch (e) { }
 
     if (state) {
-        if (Number.isFinite(Number(state.xmin))) currentGrafikDomain.xmin = Number(state.xmin);
-        if (Number.isFinite(Number(state.xmax))) currentGrafikDomain.xmax = Number(state.xmax);
-        if (Number.isFinite(Number(state.ymin))) currentGrafikDomain.ymin = Number(state.ymin);
-        if (Number.isFinite(Number(state.ymax))) currentGrafikDomain.ymax = Number(state.ymax);
+        // If state contains the old bug's default artifact [-6, 6] and [-3, 3], reset to standard [-10, 10]
+        const isOldBugArtifact =
+            Math.abs(Number(state.xmin) - (-6)) < 0.01 &&
+            Math.abs(Number(state.xmax) - 6) < 0.01 &&
+            Math.abs(Math.round(Number(state.ymin)) - (-3)) < 0.01 &&
+            Math.abs(Math.round(Number(state.ymax)) - 3) < 0.01;
+
+        if (isOldBugArtifact) {
+            currentGrafikDomain = { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
+        } else {
+            ['xmin', 'xmax', 'ymin', 'ymax'].forEach((k) => {
+                if (Number.isFinite(Number(state[k]))) currentGrafikDomain[k] = Number(state[k]);
+            });
+        }
     }
 
     return state;
+}
+
+// =============================================================================
+// DESMOS EQUATION & RESTRICTION PARSER ({ ... })
+// =============================================================================
+function evalBound(str) {
+    if (!str) return NaN;
+    let s = str.trim();
+    // Normalize Indonesian comma decimal: 2,5 -> 2.5
+    s = s.replace(/(\d+),(\d+)/g, '$1.$2');
+    s = s.replace(/\\pi\b/gi, String(Math.PI));
+    s = s.replace(/\bpi\b/gi, String(Math.PI));
+    s = s.replace(/\be\b/gi, String(Math.E));
+    s = s.replace(/(\d+)\s*([a-zA-Z]+)/g, '$1*$2');
+    s = s.replace(/\bsqrt\(([^)]+)\)/g, 'Math.sqrt($1)');
+    s = s.replace(/\babs\(([^)]+)\)/g, 'Math.abs($1)');
+    s = s.replace(/\^/g, '**');
+    try {
+        const clean = s.replace(/Math\.(sqrt|abs|PI|E)/g, '');
+        if (!/^[0-9\.\+\-\*\/\(\)\s]+$/.test(clean)) {
+            const num = parseFloat(s);
+            return isFinite(num) ? num : NaN;
+        }
+        const res = Function(`"use strict"; return (${s})`)();
+        return typeof res === 'number' && isFinite(res) ? res : NaN;
+    } catch (e) {
+        const num = parseFloat(s);
+        return isFinite(num) ? num : NaN;
+    }
+}
+
+function normalizeDesmosLatex(raw) {
+    if (!raw) return '';
+    let s = raw.trim();
+    // Remove leading numbering like "1. ", "1) ", "[1]"
+    s = s.replace(/^\s*(?:\[\d+\]|\d+[\.\)])\s*/, '');
+    // LaTeX symbols
+    s = s.replace(/\\left\s*\\\{/g, '{').replace(/\\right\s*\\\}/g, '}');
+    s = s.replace(/\\\{/g, '{').replace(/\\\}/g, '}');
+    s = s.replace(/\\left\s*\(/g, '(').replace(/\\right\s*\)/g, ')');
+    s = s.replace(/\\left\s*\[/g, '[').replace(/\\right\s*\]/g, ']');
+    s = s.replace(/\\le\b|\\leq\b|\\leqslant\b|≤/g, '<=');
+    s = s.replace(/\\ge\b|\\geq\b|\\geqslant\b|≥/g, '>=');
+    s = s.replace(/\\neq\b|\\ne\b|≠/g, '!=');
+    s = s.replace(/\\pi\b/g, 'PI');
+    s = s.replace(/\\cdot|\\times/g, '*');
+    s = s.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '(($1)/($2))');
+    s = s.replace(/\\sqrt\{([^{}]+)\}/g, 'sqrt($1)');
+    s = s.replace(/\\(sin|cos|tan|cot|sec|csc|ln|log|exp|abs)\b/g, '$1');
+    return s;
+}
+
+function parseParametricPair(str) {
+    if (!str) return null;
+    const s = str.trim();
+    if (!s.startsWith('(') || !s.endsWith(')')) return null;
+
+    let depth = 0;
+    let commaIdx = -1;
+
+    for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (ch === '(') {
+            depth++;
+        } else if (ch === ')') {
+            depth--;
+            if (depth === 0 && i < s.length - 1) {
+                return null;
+            }
+        } else if (ch === ',' && depth === 1) {
+            if (commaIdx !== -1) {
+                return null;
+            }
+            commaIdx = i;
+        }
+    }
+
+    if (depth !== 0 || commaIdx === -1) return null;
+
+    const xExpr = s.slice(1, commaIdx).trim();
+    const yExpr = s.slice(commaIdx + 1, s.length - 1).trim();
+
+    if (!xExpr || !yExpr) return null;
+    return { xExpr, yExpr };
+}
+
+function createParametricEvaluator(expr) {
+    if (!expr || !expr.trim()) return null;
+    let js = expr.trim()
+        .replace(/(\d+),(\d+)/g, '$1.$2')
+        .replace(/\^/g, '**')
+        .replace(/\bPI\b/gi, 'Math.PI')
+        .replace(/\bE\b/g, 'Math.E')
+        .replace(/\bln\b/gi, 'Math.log')
+        .replace(/\blog\b/gi, 'Math.log')
+        .replace(/\bsin\b/gi, 'Math.sin')
+        .replace(/\bcos\b/gi, 'Math.cos')
+        .replace(/\btan\b/gi, 'Math.tan')
+        .replace(/\bcot\b/gi, '((t) => 1 / Math.tan(t))')
+        .replace(/\bsec\b/gi, '((t) => 1 / Math.cos(t))')
+        .replace(/\bcsc\b/gi, '((t) => 1 / Math.sin(t))')
+        .replace(/\bsqrt\b/gi, 'Math.sqrt')
+        .replace(/\babs\b/gi, 'Math.abs')
+        .replace(/\bexp\b/gi, 'Math.exp');
+
+    // Add implicit multiplication for numbers before letters/parens and closing parens before tokens
+    js = js.replace(/(\d)\s*([a-zA-Z\(])/g, '$1*$2');
+    js = js.replace(/(\))\s*([\d\([a-zA-Z])/g, '$1*$2');
+
+    let fn;
+    try {
+        fn = new Function('t', `"use strict"; return (${js});`);
+        const test = fn(0.5);
+        if (!Number.isFinite(test)) return null;
+    } catch (e) {
+        return null;
+    }
+
+    return function(scope) {
+        const t = (typeof scope === 'object' && scope !== null)
+            ? (scope.t !== undefined ? scope.t : scope.x)
+            : Number(scope);
+        try {
+            const val = fn(t);
+            return Number.isFinite(val) ? val : NaN;
+        } catch (e) {
+            return NaN;
+        }
+    };
+}
+
+function getParametricBounds(fnX, fnY, tRange, samples = 80) {
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    const [t0, t1] = tRange;
+    const step = (t1 - t0) / samples;
+
+    for (let i = 0; i <= samples; i++) {
+        const t = t0 + i * step;
+        const x = fnX(t);
+        const y = fnY(t);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+        }
+    }
+
+    if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) {
+        return null;
+    }
+    return { minX, maxX, minY, maxY };
+}
+
+function parseDesmosEquation(raw) {
+    if (!raw || !raw.trim()) return null;
+    const normalized = normalizeDesmosLatex(raw);
+    if (!normalized.trim()) return null;
+
+    let xRange = [-Infinity, Infinity];
+    let yRange = [-Infinity, Infinity];
+    let tRange = [0, 1];
+    let hasExplicitTRange = false;
+    let isVerticalLine = false;
+    let verticalX = null;
+
+    let exprWithoutBraces = normalized;
+    const braceRegex = /\{([^{}]+)\}/g;
+    let match;
+    const conditions = [];
+
+    while ((match = braceRegex.exec(normalized)) !== null) {
+        conditions.push(match[1].trim());
+    }
+
+    exprWithoutBraces = normalized.replace(braceRegex, '').trim();
+
+    // Check if vertical line: e.g. x = 3
+    const vertMatch = exprWithoutBraces.match(/^\s*x\s*=\s*([^=]+)$/i);
+    if (vertMatch) {
+        const rhs = vertMatch[1].trim();
+        if (!/\bx\b/i.test(rhs) && !/\by\b/i.test(rhs)) {
+            const val = evalBound(rhs);
+            if (isFinite(val)) {
+                isVerticalLine = true;
+                verticalX = val;
+            }
+        }
+    }
+
+    // Check if 2D Parametric curve: e.g. (x(t), y(t))
+    const paramPair = parseParametricPair(exprWithoutBraces);
+    let isParametric = false;
+    let fnX = null;
+    let fnY = null;
+    let parametricXExpr = '';
+    let parametricYExpr = '';
+
+    if (paramPair) {
+        fnX = createParametricEvaluator(paramPair.xExpr);
+        fnY = createParametricEvaluator(paramPair.yExpr);
+        if (fnX && fnY) {
+            isParametric = true;
+            parametricXExpr = paramPair.xExpr;
+            parametricYExpr = paramPair.yExpr;
+        }
+    }
+
+    for (const cond of conditions) {
+        // Compound inequality: val1 (<=|<|>=|>) var (<=|<|>=|>) val2
+        const compMatch = cond.match(/^(.+?)\s*(<=|<|>=|>)\s*([xyt])\s*(<=|<|>=|>)\s*(.+)$/i);
+        if (compMatch) {
+            const val1 = evalBound(compMatch[1]);
+            const variable = compMatch[3].toLowerCase();
+            const val2 = evalBound(compMatch[5]);
+
+            if (isFinite(val1) && isFinite(val2)) {
+                const low = Math.min(val1, val2);
+                const high = Math.max(val1, val2);
+                if (variable === 'x') {
+                    xRange[0] = Math.max(xRange[0], low);
+                    xRange[1] = Math.min(xRange[1], high);
+                } else if (variable === 'y') {
+                    yRange[0] = Math.max(yRange[0], low);
+                    yRange[1] = Math.min(yRange[1], high);
+                } else if (variable === 't') {
+                    tRange[0] = low;
+                    tRange[1] = high;
+                    hasExplicitTRange = true;
+                }
+            }
+            continue;
+        }
+
+        // Single inequality: var op val
+        const singleVarMatch = cond.match(/^([xyt])\s*(<=|<|>=|>|==|=)\s*(.+)$/i);
+        if (singleVarMatch) {
+            const variable = singleVarMatch[1].toLowerCase();
+            const op = singleVarMatch[2];
+            const val = evalBound(singleVarMatch[3]);
+
+            if (isFinite(val)) {
+                if (variable === 'x') {
+                    if (op === '>=' || op === '>') xRange[0] = Math.max(xRange[0], val);
+                    else if (op === '<=' || op === '<') xRange[1] = Math.min(xRange[1], val);
+                } else if (variable === 'y') {
+                    if (op === '>=' || op === '>') yRange[0] = Math.max(yRange[0], val);
+                    else if (op === '<=' || op === '<') yRange[1] = Math.min(yRange[1], val);
+                } else if (variable === 't') {
+                    if (op === '>=' || op === '>') tRange[0] = val;
+                    else if (op === '<=' || op === '<') tRange[1] = val;
+                    hasExplicitTRange = true;
+                }
+            }
+            continue;
+        }
+
+        // Single inequality: val op var
+        const singleValMatch = cond.match(/^(.+?)\s*(<=|<|>=|>|==|=)\s*([xyt])$/i);
+        if (singleValMatch) {
+            const val = evalBound(singleValMatch[1]);
+            const op = singleValMatch[2];
+            const variable = singleValMatch[3].toLowerCase();
+
+            if (isFinite(val)) {
+                if (variable === 'x') {
+                    if (op === '<=' || op === '<') xRange[0] = Math.max(xRange[0], val);
+                    else if (op === '>=' || op === '>') xRange[1] = Math.min(xRange[1], val);
+                } else if (variable === 'y') {
+                    if (op === '<=' || op === '<') yRange[0] = Math.max(yRange[0], val);
+                    else if (op === '>=' || op === '>') yRange[1] = Math.min(yRange[1], val);
+                } else if (variable === 't') {
+                    if (op === '<=' || op === '<') tRange[0] = val;
+                    else if (op === '>=' || op === '>') tRange[1] = val;
+                    hasExplicitTRange = true;
+                }
+            }
+            continue;
+        }
+    }
+
+    let cleanExpr = exprWithoutBraces;
+    if (!isVerticalLine && !isParametric) {
+        cleanExpr = cleanExpr.replace(/^\s*(?:[yY]|[a-zA-Z]\([a-zA-Z]\))\s*=\s*/, '');
+    }
+
+    return {
+        raw,
+        cleanExpr,
+        isVerticalLine,
+        verticalX,
+        isParametric,
+        fnX,
+        fnY,
+        xExpr: parametricXExpr,
+        yExpr: parametricYExpr,
+        tRange: [tRange[0], tRange[1]],
+        hasExplicitTRange,
+        xRange: [xRange[0], xRange[1]],
+        yRange: [yRange[0], yRange[1]],
+        hasRestriction: isFinite(xRange[0]) || isFinite(xRange[1]) || isFinite(yRange[0]) || isFinite(yRange[1]) || hasExplicitTRange
+    };
+}
+
+function createSafeEvaluator(cleanExpr, xRange, yRange) {
+    let jsExpr = cleanExpr
+        .replace(/\^/g, '**')
+        .replace(/\bPI\b/gi, 'Math.PI')
+        .replace(/\bE\b/g, 'Math.E')
+        .replace(/\bln\b/gi, 'Math.log')
+        .replace(/\blog\b/gi, 'Math.log')
+        .replace(/\bsin\b/gi, 'Math.sin')
+        .replace(/\bcos\b/gi, 'Math.cos')
+        .replace(/\btan\b/gi, 'Math.tan')
+        .replace(/\bcot\b/gi, '((x) => 1 / Math.tan(x))')
+        .replace(/\bsec\b/gi, '((x) => 1 / Math.cos(x))')
+        .replace(/\bcsc\b/gi, '((x) => 1 / Math.sin(x))')
+        .replace(/\bsqrt\b/gi, 'Math.sqrt')
+        .replace(/\babs\b/gi, 'Math.abs')
+        .replace(/\bexp\b/gi, 'Math.exp');
+
+    let compiled;
+    try {
+        compiled = new Function('x', `"use strict"; return (${jsExpr});`);
+        compiled(1);
+    } catch (e) {
+        return null;
+    }
+
+    const xMin = xRange && isFinite(xRange[0]) ? xRange[0] : -Infinity;
+    const xMax = xRange && isFinite(xRange[1]) ? xRange[1] : Infinity;
+    const yMin = yRange && isFinite(yRange[0]) ? yRange[0] : -Infinity;
+    const yMax = yRange && isFinite(yRange[1]) ? yRange[1] : Infinity;
+
+    return function(scope) {
+        const x = scope.x;
+        if (x < xMin || x > xMax) return NaN;
+        try {
+            const y = compiled(x);
+            if (!Number.isFinite(y)) return NaN;
+            if (y < yMin || y > yMax) return NaN;
+            return y;
+        } catch (err) {
+            return NaN;
+        }
+    };
+}
+
+function updateGrafikRowIndices() {
+    document.querySelectorAll('#grafik-list .grafik-row').forEach((row, i) => {
+        const idxEl = row.querySelector('.grafik-idx');
+        if (idxEl) idxEl.textContent = i + 1;
+        const dot = row.querySelector('.grafik-dot');
+        const color = GRAFIK_COLORS[i % GRAFIK_COLORS.length];
+        if (dot) {
+            dot.style.background = color;
+            dot.style.setProperty('--dot-color', color);
+        }
+    });
 }
 
 function addGrafikRow(val = '', focus = true) {
@@ -825,32 +1195,76 @@ function addGrafikRow(val = '', focus = true) {
     const color = GRAFIK_COLORS[idx % GRAFIK_COLORS.length];
     const row = document.createElement('div');
     row.className = 'grafik-row';
+    row.setAttribute('data-visible', 'true');
     row.innerHTML = `
-        <span class="grafik-dot" style="background:${color}"></span>
-        <input type="text" placeholder="contoh: x^2, sin(x)/x, cos(x)" autocomplete="off" spellcheck="false" class="grafik-input" value="${val.replace(/"/g, '&quot;')}">
-        <button type="button" class="grafik-del" title="Hapus" aria-label="Hapus">×</button>
+        <span class="grafik-idx">${idx + 1}</span>
+        <button type="button" class="grafik-dot-btn" title="Klik untuk sembunyikan/tampilkan grafik">
+            <span class="grafik-dot" style="background:${color}; --dot-color:${color}"></span>
+        </button>
+        <input type="text" placeholder="contoh: y = x^2 {-2 <= x <= 2}, sin(x), x = 3" autocomplete="off" spellcheck="false" class="grafik-input" value="${val.replace(/"/g, '&quot;')}">
+        <button type="button" class="grafik-del" title="Hapus baris" aria-label="Hapus">×</button>
     `;
     const inp = row.querySelector('input');
-    const del = row.querySelector('button');
+    const del = row.querySelector('.grafik-del');
+    const dotBtn = row.querySelector('.grafik-dot-btn');
+
+    // Desmos-style show/hide toggle
+    dotBtn.addEventListener('click', () => {
+        const isVis = row.getAttribute('data-visible') !== 'false';
+        row.setAttribute('data-visible', isVis ? 'false' : 'true');
+        dotBtn.title = isVis ? 'Klik untuk tampilkan grafik' : 'Klik untuk sembunyikan grafik';
+        renderGrafik();
+    });
+
     const debouncedRender = debounce(() => {
         saveGrafikState();
         renderGrafik();
     }, 200);
 
     inp.addEventListener('input', debouncedRender);
+
+    // Multi-line paste handler on this input
+    inp.addEventListener('paste', (e) => {
+        handleGrafikPaste(e, inp);
+    });
+
     inp.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             saveGrafikState();
             renderGrafik();
+            // Desmos UX: Enter on the last row automatically creates and focuses next row
+            const rows = Array.from(list.children);
+            const isLast = rows[rows.length - 1] === row;
+            if (isLast && inp.value.trim()) {
+                addGrafikRow('', true);
+            } else {
+                const nextRow = row.nextElementSibling;
+                if (nextRow && nextRow.querySelector('input')) {
+                    nextRow.querySelector('input').focus();
+                }
+            }
+        } else if (e.key === 'Backspace' && !inp.value && list.children.length > 1) {
+            // Desmos UX: Backspace on empty input removes row and focuses previous
+            e.preventDefault();
+            const prevRow = row.previousElementSibling;
+            row.remove();
+            updateGrafikRowIndices();
+            if (prevRow && prevRow.querySelector('input')) {
+                const prevInput = prevRow.querySelector('input');
+                prevInput.focus();
+                prevInput.setSelectionRange(prevInput.value.length, prevInput.value.length);
+            }
+            saveGrafikState();
+            renderGrafik();
+        } else if (e.key === 'Escape') {
+            inp.blur();
         }
-        if (e.key === 'Escape') inp.blur();
     });
+
     del.addEventListener('click', () => {
         row.remove();
-        document.querySelectorAll('#grafik-list .grafik-dot').forEach((d, i) => {
-            d.style.background = GRAFIK_COLORS[i % GRAFIK_COLORS.length];
-        });
+        updateGrafikRowIndices();
         if (!list.children.length) addGrafikRow('', true);
         saveGrafikState();
         renderGrafik();
@@ -861,20 +1275,69 @@ function addGrafikRow(val = '', focus = true) {
     return row;
 }
 
-function addGrafikPreset(val) {
+function handleGrafikPaste(e, targetInput) {
+    const clipData = (e.clipboardData || window.clipboardData);
+    if (!clipData) return;
+    const text = clipData.getData('text');
+    if (!text) return;
+
+    // Check if pasted text contains multiple lines (or multiple equations separated by semicolons)
+    const lines = text
+        .split(/\r?\n|;/)
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith('#') && !line.startsWith('//'));
+
+    if (lines.length > 1) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const list = $('grafik-list');
+        if (!list) return;
+
+        let startIdx = 0;
+        if (targetInput) {
+            targetInput.value = lines[0];
+            startIdx = 1;
+        }
+
+        // Add remaining lines
+        for (let i = startIdx; i < lines.length; i++) {
+            addGrafikRow(lines[i], false);
+        }
+
+        updateGrafikRowIndices();
+        saveGrafikState();
+        renderGrafik();
+
+        showGrafikToast(`✓ Berhasil menambahkan ${lines.length} persamaan dari clipboard!`);
+    }
+}
+
+
+function clearAllGrafikRows() {
     const list = $('grafik-list');
     if (!list) return;
-    const inputs = list.querySelectorAll('.grafik-input');
-    if (inputs.length && !inputs[inputs.length - 1].value.trim()) {
-        inputs[inputs.length - 1].value = val;
-        inputs[inputs.length - 1].dispatchEvent(new Event('input'));
-        inputs[inputs.length - 1].focus();
-    } else {
-        addGrafikRow(val, true);
+    if (confirm('Bersihkan semua baris grafik?')) {
+        list.innerHTML = '';
+        addGrafikRow('', true);
+        saveGrafikState();
+        renderGrafik();
+        showGrafikToast('Semua baris grafik dibersihkan.');
     }
-    saveGrafikState();
-    renderGrafik();
 }
+
+let toastTimeout = null;
+function showGrafikToast(msg, duration = 2800) {
+    const toast = $('grafik-toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.remove('hidden');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+    }, duration);
+}
+
 
 function setGrafikRange(xmin, xmax, ymin, ymax) {
     if (Number.isFinite(Number(xmin)) && Number.isFinite(Number(xmax)) && Number(xmin) < Number(xmax)) {
@@ -890,10 +1353,7 @@ function setGrafikRange(xmin, xmax, ymin, ymax) {
 }
 
 function getValidDomains() {
-    let xmin = currentGrafikDomain.xmin;
-    let xmax = currentGrafikDomain.xmax;
-    let ymin = currentGrafikDomain.ymin;
-    let ymax = currentGrafikDomain.ymax;
+    let { xmin, xmax, ymin, ymax } = currentGrafikDomain;
 
     if (!isFinite(xmin)) xmin = -10;
     if (!isFinite(xmax)) xmax = 10;
@@ -928,22 +1388,17 @@ const renderGrafik = debounce(() => {
     const empty = $('grafik-empty');
     if (!wrap || !empty) return;
 
-    // 1. Guard against hidden container (0 width) when switching tabs
     const isTabActive = !!document.querySelector('.tab[data-tab="grafik"].active');
-    if (!isTabActive && wrap.offsetParent === null) {
-        return;
-    }
+    if (!isTabActive && wrap.offsetParent === null) return;
 
-    // 2. Measure actual geometry
     const wrapParent = $('grafik-canvas-wrap');
     const w = Math.floor(wrap.clientWidth || (wrapParent ? wrapParent.clientWidth : 0) || 600);
     if (w < 60) {
-        // Layout reflow in progress, re-schedule on next animation frame
         requestAnimationFrame(() => renderGrafik());
         return;
     }
 
-    // 3. Collect and validate functions individually
+    const { xDomain, yDomain } = getValidDomains();
     const inputs = document.querySelectorAll('#grafik-list .grafik-input');
     const validData = [];
     let hasValidFns = false;
@@ -954,24 +1409,119 @@ const renderGrafik = debounce(() => {
             inputEl.style.borderColor = '';
             return;
         }
-        const clean = toPlotExpr(raw);
-        if (!isValidPlotExpr(clean)) {
-            // Keep previous valid curves visible while user is still typing an operator
+
+        const row = inputEl.closest('.grafik-row');
+        if (row && row.getAttribute('data-visible') === 'false') {
+            // Toggled off in UI by user (Desmos style)
+            return;
+        }
+
+        const color = GRAFIK_COLORS[idx % GRAFIK_COLORS.length];
+
+        // Parse Desmos syntax & restrictions
+        const parsed = parseDesmosEquation(raw);
+        if (!parsed) {
             inputEl.style.borderColor = 'var(--warning-border, #fde68a)';
             return;
         }
+
+        // Handle vertical line: x = c { yLo <= y <= yHi }
+        if (parsed.isVerticalLine) {
+            const c = parsed.verticalX;
+            let yLo = isFinite(parsed.yRange[0]) ? parsed.yRange[0] : (yDomain[0] - 5);
+            let yHi = isFinite(parsed.yRange[1]) ? parsed.yRange[1] : (yDomain[1] + 5);
+            if (yLo > yHi) { const t = yLo; yLo = yHi; yHi = t; }
+
+            inputEl.style.borderColor = '';
+            hasValidFns = true;
+            validData.push({
+                fnType: 'parametric',
+                graphType: 'polyline',
+                x: String(c),
+                y: 't',
+                range: [yLo, yHi],
+                color: color,
+                nSamples: 300
+            });
+            return;
+        }
+
+        // Handle 2D Parametric Curve: e.g. (x(t), y(t)) or \left(x(t), y(t)\right)
+        if (parsed.isParametric) {
+            inputEl.style.borderColor = '';
+            hasValidFns = true;
+
+            const bounds = getParametricBounds(parsed.fnX, parsed.fnY, parsed.tRange);
+            if (bounds) {
+                // Auto-fit viewport if default [-10, 10] or curve is located far away
+                const isDefault = currentGrafikDomain.xmin === -10 && currentGrafikDomain.xmax === 10 &&
+                                  currentGrafikDomain.ymin === -10 && currentGrafikDomain.ymax === 10;
+                const isFar = bounds.minX > currentGrafikDomain.xmax || bounds.maxX < currentGrafikDomain.xmin ||
+                              bounds.minY > currentGrafikDomain.ymax || bounds.maxY < currentGrafikDomain.ymin;
+                if (isDefault || isFar) {
+                    const padX = Math.max((bounds.maxX - bounds.minX) * 0.15, 2);
+                    const padY = Math.max((bounds.maxY - bounds.minY) * 0.15, 2);
+                    currentGrafikDomain.xmin = Number((bounds.minX - padX).toFixed(2));
+                    currentGrafikDomain.xmax = Number((bounds.maxX + padX).toFixed(2));
+                    currentGrafikDomain.ymin = Number((bounds.minY - padY).toFixed(2));
+                    currentGrafikDomain.ymax = Number((bounds.maxY + padY).toFixed(2));
+                }
+            }
+
+            validData.push({
+                fnType: 'parametric',
+                graphType: 'polyline',
+                x: parsed.fnX,
+                y: parsed.fnY,
+                range: parsed.tRange,
+                color: color,
+                nSamples: 600
+            });
+            return;
+        }
+
+        // Standard Cartesian function: y = f(x)
+        const clean = toPlotExpr(parsed.cleanExpr);
+        if (!isValidPlotExpr(clean)) {
+            inputEl.style.borderColor = 'var(--warning-border, #fde68a)';
+            return;
+        }
+
         inputEl.style.borderColor = '';
         hasValidFns = true;
-        validData.push({
-            fn: clean,
-            color: GRAFIK_COLORS[idx % GRAFIK_COLORS.length],
+
+        const datum = {
+            color: color,
             graphType: 'polyline',
             sampler: 'builtIn',
             nSamples: 1200
-        });
+        };
+
+        const hasXRes = isFinite(parsed.xRange[0]) || isFinite(parsed.xRange[1]);
+        const hasYRes = isFinite(parsed.yRange[0]) || isFinite(parsed.yRange[1]);
+
+        if (hasXRes || hasYRes) {
+            const safeFn = createSafeEvaluator(clean, parsed.xRange, parsed.yRange);
+            if (safeFn) {
+                datum.fn = safeFn;
+            } else {
+                datum.fn = clean;
+            }
+
+            if (isFinite(parsed.xRange[0]) && isFinite(parsed.xRange[1])) {
+                datum.range = [parsed.xRange[0], parsed.xRange[1]];
+            } else if (isFinite(parsed.xRange[0])) {
+                datum.range = [parsed.xRange[0], Math.max(parsed.xRange[0] + 50, xDomain[1] + 10)];
+            } else if (isFinite(parsed.xRange[1])) {
+                datum.range = [Math.min(parsed.xRange[1] - 50, xDomain[0] - 10), parsed.xRange[1]];
+            }
+        } else {
+            datum.fn = clean;
+        }
+
+        validData.push(datum);
     });
 
-    // Optional: First derivative overlay curve
     if (isDerivativeOverlayActive && derivativeOverlayFn) {
         const cleanDeriv = toPlotExpr(derivativeOverlayFn);
         if (isValidPlotExpr(cleanDeriv)) {
@@ -995,8 +1545,6 @@ const renderGrafik = debounce(() => {
     empty.classList.add('hidden');
     clearGrafikError();
 
-    // 4. Validate xmin / xmax / ymin / ymax domains safely
-    const { xDomain, yDomain } = getValidDomains();
     const withGrid = $('grafik-grid') ? $('grafik-grid').checked : true;
     const plotHeight = Math.min(420, Math.max(280, window.innerWidth < 480 ? 290 : 380));
 
@@ -1007,10 +1555,14 @@ const renderGrafik = debounce(() => {
         }
 
         wrap.innerHTML = '';
+        wrap.style.height = `${plotHeight}px`;
+
         const instance = functionPlot({
             target: '#grafik-canvas',
             width: w,
             height: plotHeight,
+            xDomain: xDomain,
+            yDomain: yDomain,
             xAxis: { domain: xDomain },
             yAxis: { domain: yDomain },
             grid: withGrid,
@@ -1021,55 +1573,153 @@ const renderGrafik = debounce(() => {
 
         activePlotInstance = instance;
 
-        // 5. Real-time bi-directional zoom & pan synchronization with auto re-sampling
         try {
+            // Function-plot updates axes and curves natively on every zoom/drag frame.
+            // Do NOT wipe or re-render the canvas here — only record the new domain.
             instance.on('all:zoom', (xScale, yScale) => {
-                isZoomingPlot = true;
                 const xd = xScale.domain();
                 const yd = yScale.domain();
-                currentGrafikDomain.xmin = Number(xd[0].toFixed(3));
-                currentGrafikDomain.xmax = Number(xd[1].toFixed(3));
-                currentGrafikDomain.ymin = Number(yd[0].toFixed(3));
-                currentGrafikDomain.ymax = Number(yd[1].toFixed(3));
+                if (xd && isFinite(xd[0]) && isFinite(xd[1])) {
+                    currentGrafikDomain.xmin = Number(xd[0].toFixed(3));
+                    currentGrafikDomain.xmax = Number(xd[1].toFixed(3));
+                }
+                if (yd && isFinite(yd[0]) && isFinite(yd[1])) {
+                    currentGrafikDomain.ymin = Number(yd[0].toFixed(3));
+                    currentGrafikDomain.ymax = Number(yd[1].toFixed(3));
+                }
                 debouncedSaveGrafikState();
-
-                // Re-sample 1200 points on current visible viewport when user finishes zooming/panning
-                clearTimeout(zoomResampleTimer);
-                zoomResampleTimer = setTimeout(() => {
-                    isZoomingPlot = false;
-                    saveGrafikState();
-                    renderGrafik();
-                }, 220);
             });
         } catch (e) { }
 
-        // 6. Coordinates cursor display
         const svg = wrap.querySelector('svg');
         if (svg) {
+            svg.setAttribute('viewBox', `0 0 ${w} ${plotHeight}`);
             const coords = $('grafik-coords');
             if (coords) {
                 coords.classList.remove('hidden');
-                svg.addEventListener('mousemove', (e) => {
-                    const rect = svg.getBoundingClientRect();
-                    const activeXDomain = instance.options?.xAxis?.domain || xDomain;
-                    const activeYDomain = instance.options?.yAxis?.domain || yDomain;
-                    const x = activeXDomain[0] + (e.clientX - rect.left) / rect.width * (activeXDomain[1] - activeXDomain[0]);
-                    const y = activeYDomain[1] - (e.clientY - rect.top) / rect.height * (activeYDomain[1] - activeYDomain[0]);
-                    coords.textContent = `x: ${x.toFixed(2)}  y: ${y.toFixed(2)}`;
-                });
-                svg.addEventListener('mouseleave', () => {
+
+                const fmt = (num, prec = 2) => {
+                    if (!Number.isFinite(num)) return '0.00';
+                    if (Math.abs(num) < 1e-5) num = 0;
+                    return num.toFixed(prec);
+                };
+
+                let lastTipTime = 0;
+                let lastTouchTime = 0;
+
+                const getCursorCoords = (e) => {
+                    if (!instance || !instance.meta || !instance.meta.xScale || !instance.meta.yScale) return null;
+                    const zoomRect = svg.querySelector('rect.zoom-and-drag') || svg.querySelector('.canvas');
+                    if (!zoomRect) return null;
+
+                    const evt = (e.touches && e.touches.length > 0) ? e.touches[0] :
+                                ((e.changedTouches && e.changedTouches.length > 0) ? e.changedTouches[0] : e);
+                    if (!evt || evt.clientX === undefined || evt.clientY === undefined) return null;
+
+                    let px, py;
+                    try {
+                        const pt = svg.createSVGPoint();
+                        pt.x = evt.clientX;
+                        pt.y = evt.clientY;
+                        const ctm = zoomRect.getScreenCTM();
+                        if (ctm) {
+                            const loc = pt.matrixTransform(ctm.inverse());
+                            px = loc.x;
+                            py = loc.y;
+                        }
+                    } catch (err) { }
+
+                    // Robust fallback using bounding rect and meta width/height
+                    if (px === undefined || py === undefined) {
+                        const b = zoomRect.getBoundingClientRect();
+                        if (b.width > 0 && b.height > 0) {
+                            px = ((evt.clientX - b.left) / b.width) * instance.meta.width;
+                            py = ((evt.clientY - b.top) / b.height) * instance.meta.height;
+                        } else {
+                            return null;
+                        }
+                    }
+
+                    const width = instance.meta.width;
+                    const height = instance.meta.height;
+
+                    if (px >= 0 && px <= width && py >= 0 && py <= height) {
+                        const x = instance.meta.xScale.invert(px);
+                        const y = instance.meta.yScale.invert(py);
+                        if (Number.isFinite(x) && Number.isFinite(y)) {
+                            return { x, y };
+                        }
+                    }
+                    return null;
+                };
+
+                const updateCoords = (e) => {
+                    // If tip was updated very recently (curve point snapped), keep snapped coordinate
+                    if (Date.now() - lastTipTime < 80) return;
+                    const pos = getCursorCoords(e);
+                    if (pos) {
+                        coords.textContent = `x: ${fmt(pos.x, 2)}  y: ${fmt(pos.y, 2)}`;
+                    }
+                };
+
+                const handleTouch = (e) => {
+                    lastTouchTime = Date.now();
+                    const pos = getCursorCoords(e);
+                    if (pos) {
+                        if (instance.tip && typeof instance.tip.move === 'function') {
+                            instance.tip.move(pos.x, pos.y);
+                        }
+                        if (Date.now() - lastTipTime >= 80) {
+                            coords.textContent = `x: ${fmt(pos.x, 2)}  y: ${fmt(pos.y, 2)}`;
+                        }
+                    }
+                };
+
+                svg.addEventListener('mousemove', updateCoords);
+                svg.addEventListener('touchmove', handleTouch, { passive: true });
+                svg.addEventListener('touchstart', handleTouch, { passive: true });
+
+                // Curve-snapped tooltip coordinates
+                try {
+                    instance.on('tip:update', (tx, ty) => {
+                        if (Number.isFinite(tx) && Number.isFinite(ty)) {
+                            lastTipTime = Date.now();
+                            coords.textContent = `x: ${fmt(tx, 3)}  y: ${fmt(ty, 3)}`;
+                        }
+                    });
+                } catch (e) { }
+
+                // Visual drag cursor state
+                const startDrag = () => { wrap.classList.add('is-dragging'); };
+                const stopDrag = () => { wrap.classList.remove('is-dragging'); };
+                svg.addEventListener('mousedown', startDrag);
+                window.addEventListener('mouseup', stopDrag);
+                svg.addEventListener('touchstart', startDrag, { passive: true });
+                window.addEventListener('touchend', stopDrag, { passive: true });
+
+                const resetLabel = () => {
+                    stopDrag();
                     coords.textContent = 'drag · scroll zoom';
+                };
+                svg.addEventListener('mouseleave', resetLabel);
+                svg.addEventListener('touchend', () => {
+                    stopDrag();
+                    setTimeout(() => {
+                        if (Date.now() - lastTouchTime >= 1000) {
+                            resetLabel();
+                        }
+                    }, 1200);
                 });
-                coords.textContent = 'drag · scroll zoom';
+                resetLabel();
             }
         }
         saveGrafikState();
     } catch (err) {
+        console.error('RENDER ERROR FULL STACK:', err);
         showGrafikError('Gagal menggambar grafik: ' + (err.message || err));
     }
 }, 160);
 
-// Zooming controls (+ / -)
 function zoomGrafik(factor) {
     const { xDomain, yDomain } = getValidDomains();
     const xCenter = (xDomain[0] + xDomain[1]) / 2;
@@ -1084,25 +1734,62 @@ function zoomGrafik(factor) {
     );
 }
 
-// Helper: Ambil fungsi grafik yang sedang aktif
 function getActiveGrafikFn() {
     const inputs = Array.from(document.querySelectorAll('#grafik-list .grafik-input'));
     const focused = document.activeElement;
     if (focused && focused.classList && focused.classList.contains('grafik-input') && focused.value.trim()) {
         return focused.value.trim();
     }
-    const found = inputs.find(i => i.value.trim());
+    const found = inputs.find((i) => i.value.trim());
     return found ? found.value.trim() : '';
 }
 
-// Analisis Fungsi & Penentuan Domain Alami Otomatis
 async function analyzeActiveGrafik() {
-    const targetVal = getActiveGrafikFn();
-
-    if (!targetVal) {
+    const rawVal = getActiveGrafikFn();
+    if (!rawVal) {
         showGrafikError('Masukkan fungsi terlebih dahulu pada kotak fungsi.');
         return;
     }
+
+    const parsed = parseDesmosEquation(rawVal);
+    if (parsed && parsed.isParametric) {
+        card.classList.remove('hidden');
+        loading.classList.add('hidden');
+        clearGrafikError();
+        const bounds = getParametricBounds(parsed.fnX, parsed.fnY, parsed.tRange);
+        const p0 = { x: parsed.fnX(parsed.tRange[0]), y: parsed.fnY(parsed.tRange[0]) };
+        const p1 = { x: parsed.fnX(parsed.tRange[1]), y: parsed.fnY(parsed.tRange[1]) };
+
+        body.innerHTML = `
+            <div class="grafik-domain-box" style="margin-bottom:10px; border-left:3px solid var(--accent)">
+                <div class="grafik-domain-label" style="color:var(--accent)">Kurva Parametrik 2D: (x(t), y(t))</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:12px; margin-top:4px; color:var(--text); word-break:break-all">
+                    ${parsed.raw}
+                </div>
+            </div>
+            <div class="grafik-features-grid">
+                <div class="grafik-feature-card">
+                    <div class="grafik-feature-title">Parameter t</div>
+                    <div class="grafik-feature-val" style="font-size:13px">[${parsed.tRange[0]}, ${parsed.tRange[1]}]</div>
+                </div>
+                <div class="grafik-feature-card">
+                    <div class="grafik-feature-title">Titik Awal (t=${parsed.tRange[0]})</div>
+                    <div class="grafik-feature-val" style="font-size:12px">(${p0.x.toFixed(2)}, ${p0.y.toFixed(2)})</div>
+                </div>
+                <div class="grafik-feature-card">
+                    <div class="grafik-feature-title">Titik Akhir (t=${parsed.tRange[1]})</div>
+                    <div class="grafik-feature-val" style="font-size:12px">(${p1.x.toFixed(2)}, ${p1.y.toFixed(2)})</div>
+                </div>
+                <div class="grafik-feature-card">
+                    <div class="grafik-feature-title">Rentang X &amp; Y</div>
+                    <div class="grafik-feature-val" style="font-size:11px">${bounds ? `X: [${bounds.minX.toFixed(1)}, ${bounds.maxX.toFixed(1)}]<br>Y: [${bounds.minY.toFixed(1)}, ${bounds.maxY.toFixed(1)}]` : '-'}</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const targetVal = parsed ? (parsed.isVerticalLine ? `x = ${parsed.verticalX}` : parsed.cleanExpr) : rawVal;
 
     const card = $('grafik-analysis-card');
     const loading = $('grafik-analysis-loading');
@@ -1130,19 +1817,30 @@ async function analyzeActiveGrafik() {
 
         lastNaturalDomainData = data;
         derivativeOverlayFn = data.turunan_str || null;
-
-        renderNaturalDomainAnalysis(data);
+        renderNaturalDomainAnalysis(data, parsed);
     } catch (err) {
         loading.classList.add('hidden');
         body.innerHTML = `<div class="grafik-error" style="margin-top:0">Terjadi kesalahan: ${err.message || err}</div>`;
     }
 }
 
-function renderNaturalDomainAnalysis(data) {
+function renderNaturalDomainAnalysis(data, parsed) {
     const body = $('grafik-analysis-body');
     if (!body) return;
 
-    let html = `
+    let html = '';
+    if (parsed && parsed.hasRestriction) {
+        html += `
+            <div class="grafik-domain-box" style="margin-bottom:10px; border-left:3px solid var(--accent)">
+                <div class="grafik-domain-label" style="color:var(--accent)">Batasan Spesifik Pengguna (Gaya Desmos)</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; margin-top:3px; color:var(--text)">
+                    ${parsed.raw}
+                </div>
+            </div>
+        `;
+    }
+
+    html += `
         <div class="grafik-domain-box">
             <div class="grafik-domain-label">Daerah Asal Alami (Natural Domain $D_f$)</div>
             <div class="grafik-domain-val" id="g-domain-math"></div>
@@ -1150,7 +1848,6 @@ function renderNaturalDomainAnalysis(data) {
         </div>
     `;
 
-    // Syarat-syarat pembatas
     if (data.syarat && data.syarat.length) {
         html += `
             <div class="grafik-syarat-box">
@@ -1176,7 +1873,6 @@ function renderNaturalDomainAnalysis(data) {
         `;
     }
 
-    // Karakteristik kurva
     html += `
         <div class="grafik-features-grid">
             <div class="grafik-feature-card">
@@ -1212,7 +1908,6 @@ function renderNaturalDomainAnalysis(data) {
         </div>
     `;
 
-    // Turunan Pertama f'(x) Card - BESAR, JELAS & MENONJOL
     const derivActive = isDerivativeOverlayActive ? 'active' : '';
     const derivBtnLabel = isDerivativeOverlayActive ? 'Kurva Aktif di Grafik' : 'Tampilkan Kurva di Grafik';
 
@@ -1231,7 +1926,6 @@ function renderNaturalDomainAnalysis(data) {
             </div>
         </div>
 
-        <!-- Tombol Buka Tabel Nilai Evaluasi -->
         <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border)">
             <button type="button" onclick="openValuesTableDirect()" class="btn-secondary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:600">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1248,95 +1942,88 @@ function renderNaturalDomainAnalysis(data) {
 
     body.innerHTML = html;
 
-    // Render KaTeX expressions
     if (typeof katex !== 'undefined') {
-        const mathDomEl = $('g-domain-math');
-        if (mathDomEl && data.domain_latex) {
-            katex.render(`D_f = ${data.domain_latex}`, mathDomEl, { throwOnError: false, displayMode: true });
-        }
-        const setDomEl = $('g-domain-set');
-        if (setDomEl && data.domain_himpunan) {
-            katex.render(`\\text{Notasi Himpunan: } ${data.domain_himpunan}`, setDomEl, { throwOnError: false, displayMode: false });
-        }
-        document.querySelectorAll('.g-syarat-math').forEach(el => {
+        if (data.domain_latex) safeKatexRender(`D_f = ${data.domain_latex}`, $('g-domain-math'), true);
+        if (data.domain_himpunan) safeKatexRender(`\\text{Notasi Himpunan: } ${data.domain_himpunan}`, $('g-domain-set'), false);
+
+        document.querySelectorAll('.g-syarat-math').forEach((el) => {
             const m = el.getAttribute('data-math') || '';
             if (m.includes('$$')) {
                 const parts = m.split('$$');
-                el.innerHTML = parts.map((part, i) => {
-                    if (i % 2 === 1) {
-                        return katex.renderToString(part, { throwOnError: false, displayMode: true });
-                    }
-                    return part;
-                }).join('');
+                el.innerHTML = parts.map((part, i) => i % 2 === 1 ? katex.renderToString(part, { throwOnError: false, displayMode: true }) : part).join('');
             } else {
-                katex.render(m, el, { throwOnError: false, displayMode: false });
+                safeKatexRender(m, el, false);
             }
         });
 
         const rootsEl = $('g-feat-roots');
         if (rootsEl) {
-            if (data.akar && data.akar.length) {
-                katex.render(`x \\in \\{${data.akar.join(', ')}\\}`, rootsEl, { throwOnError: false, displayMode: false });
-            } else {
-                rootsEl.textContent = 'Tidak ada';
-            }
+            data.akar && data.akar.length ? safeKatexRender(`x \\in \\{${data.akar.join(', ')}\\}`, rootsEl, false) : (rootsEl.textContent = 'Tidak ada');
         }
 
         const yintEl = $('g-feat-yint');
         if (yintEl) {
-            if (data.potong_y) {
-                katex.render(`(0, ${data.potong_y})`, yintEl, { throwOnError: false, displayMode: false });
-            } else {
-                yintEl.textContent = 'Tidak ada';
-            }
+            data.potong_y ? safeKatexRender(`(0, ${data.potong_y})`, yintEl, false) : (yintEl.textContent = 'Tidak ada');
         }
 
         const vasympEl = $('g-feat-vasymp');
         if (vasympEl) {
-            if (data.asimtot_tegak && data.asimtot_tegak.length) {
-                katex.render(`x = ${data.asimtot_tegak.join(', ')}`, vasympEl, { throwOnError: false, displayMode: false });
-            } else {
-                vasympEl.textContent = 'Tidak ada';
-            }
+            data.asimtot_tegak && data.asimtot_tegak.length ? safeKatexRender(`x = ${data.asimtot_tegak.join(', ')}`, vasympEl, false) : (vasympEl.textContent = 'Tidak ada');
         }
 
         const hasympEl = $('g-feat-hasymp');
         if (hasympEl) {
-            if (data.asimtot_datar && data.asimtot_datar.length) {
-                katex.render(`y = ${data.asimtot_datar.join(', ')}`, hasympEl, { throwOnError: false, displayMode: false });
-            } else {
-                hasympEl.textContent = 'Tidak ada';
-            }
+            data.asimtot_datar && data.asimtot_datar.length ? safeKatexRender(`y = ${data.asimtot_datar.join(', ')}`, hasympEl, false) : (hasympEl.textContent = 'Tidak ada');
         }
 
         const critEl = $('g-feat-crit');
         if (critEl) {
             if (data.titik_stasioner && data.titik_stasioner.length) {
-                const ptsStr = data.titik_stasioner.map(p => `(${p.x}, ${p.y})`).join(', ');
-                katex.render(ptsStr, critEl, { throwOnError: false, displayMode: false });
+                safeKatexRender(data.titik_stasioner.map((p) => `(${p.x}, ${p.y})`).join(', '), critEl, false);
             } else {
                 critEl.textContent = 'Tidak ada';
             }
         }
 
         const symEl = $('g-feat-sym');
-        if (symEl) {
-            symEl.textContent = data.simetri || 'Bukan keduanya';
-        }
+        if (symEl) symEl.textContent = data.simetri || 'Bukan keduanya';
 
         const slantEl = $('g-feat-slant');
-        if (slantEl && data.asimtot_miring) {
-            katex.render(`y = ${data.asimtot_miring}`, slantEl, { throwOnError: false, displayMode: false });
-        }
+        if (slantEl && data.asimtot_miring) safeKatexRender(`y = ${data.asimtot_miring}`, slantEl, false);
 
         const derivEl = $('g-feat-deriv');
-        if (derivEl && data.turunan_latex) {
-            katex.render(`f'(x) = ${data.turunan_latex}`, derivEl, { throwOnError: false, displayMode: true });
-        }
+        if (derivEl && data.turunan_latex) safeKatexRender(`f'(x) = ${data.turunan_latex}`, derivEl, true);
     }
 }
 
 function applyDomainToGraph() {
+    const rawVal = getActiveGrafikFn();
+    const parsed = rawVal ? parseDesmosEquation(rawVal) : null;
+
+    if (parsed && parsed.isParametric) {
+        const bounds = getParametricBounds(parsed.fnX, parsed.fnY, parsed.tRange);
+        if (bounds) {
+            const padX = Math.max((bounds.maxX - bounds.minX) * 0.15, 2);
+            const padY = Math.max((bounds.maxY - bounds.minY) * 0.15, 2);
+            setGrafikRange(
+                Number((bounds.minX - padX).toFixed(2)),
+                Number((bounds.maxX + padX).toFixed(2)),
+                Number((bounds.minY - padY).toFixed(2)),
+                Number((bounds.maxY + padY).toFixed(2))
+            );
+            saveGrafikState();
+            renderGrafik();
+
+            const btn = document.querySelector('.grafik-analysis-actions button');
+            if (btn) {
+                const oldText = btn.textContent;
+                btn.textContent = 'Diterapkan!';
+                setTimeout(() => { btn.textContent = oldText; }, 1200);
+            }
+            return;
+        }
+    }
+
     if (!lastNaturalDomainData || !lastNaturalDomainData.rentang) {
         analyzeActiveGrafik().then(() => {
             if (lastNaturalDomainData && lastNaturalDomainData.rentang) {
@@ -1356,9 +2043,16 @@ function applyDomainToGraph() {
     }
 }
 
-function toggleDerivativeOverlay() {
+function toggleDerivativeOverlay(forceState) {
     const cb = $('grafik-toggle-deriv');
-    isDerivativeOverlayActive = !!(cb && cb.checked);
+    if (forceState !== undefined) {
+        isDerivativeOverlayActive = !!forceState;
+        if (cb) cb.checked = isDerivativeOverlayActive;
+    } else if (cb) {
+        isDerivativeOverlayActive = cb.checked;
+    } else {
+        isDerivativeOverlayActive = !isDerivativeOverlayActive;
+    }
     updateDerivativeCardButton();
 
     if (isDerivativeOverlayActive && !derivativeOverlayFn) {
@@ -1372,39 +2066,46 @@ function toggleDerivativeOverlay() {
 }
 
 function toggleDerivativeFromAnalysis() {
-    const cb = $('grafik-toggle-deriv');
-    if (cb) {
-        cb.checked = !cb.checked;
-        toggleDerivativeOverlay();
-    } else {
-        isDerivativeOverlayActive = !isDerivativeOverlayActive;
-        updateDerivativeCardButton();
-        renderGrafik();
-    }
+    toggleDerivativeOverlay(!isDerivativeOverlayActive);
 }
 
 function updateDerivativeCardButton() {
     const btn = $('btn-plot-deriv-card');
     const lbl = $('btn-plot-deriv-label');
     if (!btn) return;
-    if (isDerivativeOverlayActive) {
-        btn.classList.add('active');
-        if (lbl) lbl.textContent = 'Kurva Aktif di Grafik';
-    } else {
-        btn.classList.remove('active');
-        if (lbl) lbl.textContent = 'Tampilkan Kurva di Grafik';
+    btn.classList.toggle('active', isDerivativeOverlayActive);
+    if (lbl) {
+        lbl.textContent = isDerivativeOverlayActive ? 'Kurva Aktif di Grafik' : 'Tampilkan Kurva di Grafik';
     }
 }
 
-// =============================================================================
-// EVALUASI TITIK & TABEL NILAI MATEMATIS
-// =============================================================================
+// Evaluasi Titik & Tabel Nilai Matematis
 function evaluateMathPoint(exprStr, xVal) {
     if (!exprStr || !exprStr.trim()) {
         return { x: xVal, y: 'Tak terdefinisi', terdefinisi: false };
     }
+
+    const parsed = parseDesmosEquation(exprStr);
+    const cleanExpr = parsed ? (parsed.isVerticalLine ? null : parsed.cleanExpr) : exprStr;
+    if (parsed && parsed.isVerticalLine) {
+        return {
+            x: xVal,
+            y: (Math.abs(xVal - parsed.verticalX) < 1e-6) ? 'Semua nilai y' : 'Tak terdefinisi',
+            terdefinisi: Math.abs(xVal - parsed.verticalX) < 1e-6
+        };
+    }
+
+    const xMin = parsed && isFinite(parsed.xRange[0]) ? parsed.xRange[0] : -Infinity;
+    const xMax = parsed && isFinite(parsed.xRange[1]) ? parsed.xRange[1] : Infinity;
+    const yMin = parsed && isFinite(parsed.yRange[0]) ? parsed.yRange[0] : -Infinity;
+    const yMax = parsed && isFinite(parsed.yRange[1]) ? parsed.yRange[1] : Infinity;
+
+    if (xVal < xMin || xVal > xMax) {
+        return { x: xVal, y: 'Di luar domain', terdefinisi: false };
+    }
+
     try {
-        let clean = toPlotExpr(exprStr);
+        let clean = toPlotExpr(cleanExpr);
         if (!isValidPlotExpr(clean)) {
             return { x: xVal, y: 'Format tidak valid', terdefinisi: false };
         }
@@ -1415,10 +2116,9 @@ function evaluateMathPoint(exprStr, xVal) {
             'sinh', 'cosh', 'tanh', 'sqrt', 'cbrt', 'exp',
             'log10', 'log', 'abs'
         ];
-        for (const fn of mathFuncs) {
-            const regex = new RegExp(`\\b${fn}\\b`, 'g');
-            clean = clean.replace(regex, `Math.${fn}`);
-        }
+        mathFuncs.forEach((fn) => {
+            clean = clean.replace(new RegExp(`\\b${fn}\\b`, 'g'), `Math.${fn}`);
+        });
         clean = clean.replace(/\bPI\b/g, 'Math.PI');
 
         const evalFn = new Function('x', 'Math', `"use strict"; return (${clean});`);
@@ -1426,6 +2126,9 @@ function evaluateMathPoint(exprStr, xVal) {
 
         if (typeof res !== 'number' || isNaN(res) || !isFinite(res)) {
             return { x: xVal, y: 'Tak terdefinisi', terdefinisi: false };
+        }
+        if (res < yMin || res > yMax) {
+            return { x: xVal, y: 'Di luar batasan y', terdefinisi: false };
         }
         const rounded = Math.abs(res) < 1e-12 ? 0 : Number(res.toFixed(4));
         return { x: xVal, y: rounded, terdefinisi: true };
@@ -1446,18 +2149,14 @@ function openValuesTableDirect() {
     clearGrafikError();
 
     const titleEl = $('val-table-title');
-    if (titleEl) {
-        titleEl.textContent = `Tabel Nilai Evaluasi: f(x) = ${fn}`;
-    }
+    if (titleEl) titleEl.textContent = `Tabel Nilai Evaluasi: f(x) = ${fn}`;
 
     const evalRes = $('val-eval-result');
     if (evalRes) evalRes.classList.add('hidden');
     const evalInp = $('val-eval-x');
     if (evalInp && !evalInp.value) evalInp.value = '2';
 
-    const activeChip = $('chip-tbl-5');
-    generateValuesTableRange(-5, 5, 1, activeChip);
-
+    generateValuesTableRange(-5, 5, 1, $('chip-tbl-5'));
     card.classList.remove('hidden');
     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -1467,13 +2166,24 @@ function closeValuesTableCard() {
     if (card) card.classList.add('hidden');
 }
 
+function toggleValuesTable() {
+    const card = $('grafik-values-card');
+    if (card) {
+        if (card.classList.contains('hidden')) {
+            openValuesTableDirect();
+        } else {
+            closeValuesTableCard();
+        }
+    }
+}
+
 function generateValuesTableRange(start, end, step, clickedBtn) {
     const fn = getActiveGrafikFn();
     const tbody = $('val-table-tbody');
     if (!tbody) return;
 
     if (clickedBtn) {
-        document.querySelectorAll('.val-chip').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.val-chip').forEach((b) => b.classList.remove('active'));
         clickedBtn.classList.add('active');
     }
 
@@ -1489,8 +2199,7 @@ function generateValuesTableRange(start, end, step, clickedBtn) {
     let count = 0;
 
     while (curr <= end + 1e-9 && count < maxCount) {
-        const xVal = Number(curr.toFixed(3));
-        points.push(evaluateMathPoint(fn, xVal));
+        points.push(evaluateMathPoint(fn, Number(curr.toFixed(3))));
         curr += s;
         count++;
     }
@@ -1506,7 +2215,7 @@ function renderValuesTableRows(points) {
         return;
     }
 
-    tbody.innerHTML = points.map(pt => `
+    tbody.innerHTML = points.map((pt) => `
         <tr>
             <td style="font-weight:600">${pt.x}</td>
             <td style="${pt.terdefinisi ? 'color:var(--text); font-weight:600' : 'color:var(--error)'}">${pt.y}</td>
@@ -1587,8 +2296,8 @@ function copyValuesTable() {
     const rows = Array.from(tbody.querySelectorAll('tr'));
     if (!rows.length) return;
 
-    let lines = [`Tabel Evaluasi f(x) = ${fn || ''}`, '----------------------------------', 'x\tf(x)\tStatus'];
-    rows.forEach(tr => {
+    const lines = [`Tabel Evaluasi f(x) = ${fn || ''}`, '----------------------------------', 'x\tf(x)\tStatus'];
+    rows.forEach((tr) => {
         const cells = tr.querySelectorAll('td');
         if (cells.length >= 3) {
             const x = cells[0].innerText.replace('*', '').trim();
@@ -1598,16 +2307,7 @@ function copyValuesTable() {
         }
     });
 
-    const text = lines.join('\n');
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(() => {
-            if (btnText) {
-                const old = btnText.textContent;
-                btnText.textContent = 'Tersalin!';
-                setTimeout(() => { btnText.textContent = old; }, 1500);
-            }
-        });
-    }
+    copyToClipboard(lines.join('\n'), { btn: btnText, successText: 'Tersalin!', duration: 1500 });
 }
 
 function closeGrafikAnalysis() {
@@ -1635,23 +2335,24 @@ function initGrafik() {
         addGrafikRow('sin(x)', false);
     }
 
-    const evalInp = $('val-eval-x');
-    if (evalInp) {
-        evalInp.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                evalSinglePoint();
-            }
-        });
-    }
+    $('val-eval-x')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            evalSinglePoint();
+        }
+    });
 
-    const gridEl = $('grafik-grid');
-    if (gridEl) {
-        gridEl.addEventListener('change', () => {
-            saveGrafikState();
-            renderGrafik();
-        });
-    }
+    $('grafik-grid')?.addEventListener('change', () => {
+        saveGrafikState();
+        renderGrafik();
+    });
+
+    // Delegated paste on #grafik-list container
+    $('grafik-list')?.addEventListener('paste', (e) => {
+        if (!e.target.classList || !e.target.classList.contains('grafik-input')) {
+            handleGrafikPaste(e, null);
+        }
+    });
 
     try {
         const ro = new ResizeObserver(debounce(() => {
@@ -1681,32 +2382,22 @@ function shareGrafik() {
     }
     const stateObj = {
         fns,
-        xmin: $('grafik-xmin')?.value || '-10',
-        xmax: $('grafik-xmax')?.value || '10',
-        ymin: $('grafik-ymin')?.value || '-10',
-        ymax: $('grafik-ymax')?.value || '10'
+        xmin: currentGrafikDomain.xmin,
+        xmax: currentGrafikDomain.xmax,
+        ymin: currentGrafikDomain.ymin,
+        ymax: currentGrafikDomain.ymax
     };
     const hash = encodeURIComponent(JSON.stringify(stateObj));
     const url = `${location.origin}${location.pathname}#grafik=${hash}`;
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(url).then(() => {
-            const btn = document.querySelector('#form-grafik button[onclick="shareGrafik()"]');
-            if (btn) {
-                const old = btn.textContent;
-                btn.textContent = '✓ Copied!';
-                setTimeout(() => { btn.textContent = old; }, 1200);
-            }
-        });
-    } else {
-        prompt('Salin URL tautan:', url);
-    }
+    const btn = document.querySelector('#form-grafik button[onclick="shareGrafik()"]');
+    copyToClipboard(url, { btn, successText: '✓ Copied!', duration: 1200, promptMsg: 'Salin URL tautan:' });
 }
 
 function _getGrafikSvgString() {
     const wrap = $('grafik-canvas');
-    if (!wrap) return null;
-    const svg = wrap.querySelector('svg');
-    if (!svg) return null;
+    const svg = wrap?.querySelector('svg');
+    if (!wrap || !svg) return null;
+
     const clone = svg.cloneNode(true);
     clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
@@ -1720,7 +2411,7 @@ function _getGrafikSvgString() {
     clone.setAttribute('viewBox', clone.getAttribute('viewBox') || `0 0 ${w} ${h}`);
 
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const bg = isDark ? '#1e293b' : '#f8f9fa';
+    const bg = isDark ? '#0b0f17' : '#ffffff';
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     rect.setAttribute('x', '0');
     rect.setAttribute('y', '0');
@@ -1728,6 +2419,20 @@ function _getGrafikSvgString() {
     rect.setAttribute('height', h);
     rect.setAttribute('fill', bg);
     clone.insertBefore(rect, clone.firstChild);
+
+    // Embed standalone styles so SVG and PNG exports keep the high-visibility grid
+    const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(15, 23, 42, 0.14)';
+    const originColor = isDark ? '#cbd5e1' : '#334155';
+    const axisColor = isDark ? '#64748b' : '#64748b';
+    const textColor = isDark ? '#cbd5e1' : '#475569';
+    styleEl.textContent = `
+        .axis path.domain { stroke: ${axisColor} !important; stroke-width: 1px !important; opacity: 0.8 !important; }
+        .axis line, .axis .tick line, .grid line { stroke: ${gridColor} !important; stroke-width: 1px !important; stroke-opacity: 1 !important; opacity: 0.85 !important; }
+        path.origin, .origin, .x.origin, .y.origin { stroke: ${originColor} !important; stroke-width: 1.5px !important; stroke-opacity: 1 !important; opacity: 0.95 !important; }
+        .axis text, .tick text { fill: ${textColor} !important; font-family: 'JetBrains Mono', monospace !important; font-size: 11px !important; font-weight: 500 !important; }
+    `;
+    clone.appendChild(styleEl);
 
     return { str: new XMLSerializer().serializeToString(clone), svg, w, h };
 }
@@ -1739,16 +2444,11 @@ function downloadGrafikAs(fmt) {
         alert('Belum ada grafik. Tambah fungsi terlebih dahulu.');
         return;
     }
+    const filename = `calcku-grafik-${Date.now()}`;
     if (format === 'svg') {
         const blob = new Blob([data.str], { type: 'image/svg+xml;charset=utf-8' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `calcku-grafik-${Date.now()}.svg`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        triggerDownload(url, `${filename}.svg`, 1000);
     } else if (format === 'png') {
         let svg64;
         try {
@@ -1774,11 +2474,12 @@ function _renderSvgToPng(src, data, isBlob) {
             canvas.height = h * scale;
             const ctx = canvas.getContext('2d');
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            ctx.fillStyle = isDark ? '#1e293b' : '#f8f9fa';
+            ctx.fillStyle = isDark ? '#0b0f17' : '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             if (isBlob) URL.revokeObjectURL(src);
 
+            const filename = `calcku-grafik-${Date.now()}.png`;
             if (canvas.toBlob) {
                 canvas.toBlob((pngBlob) => {
                     if (!pngBlob) {
@@ -1786,22 +2487,10 @@ function _renderSvgToPng(src, data, isBlob) {
                         return;
                     }
                     const pngUrl = URL.createObjectURL(pngBlob);
-                    const a = document.createElement('a');
-                    a.href = pngUrl;
-                    a.download = `calcku-grafik-${Date.now()}.png`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    setTimeout(() => URL.revokeObjectURL(pngUrl), 800);
+                    triggerDownload(pngUrl, filename, 800);
                 }, 'image/png');
             } else {
-                const pngUrl = canvas.toDataURL('image/png');
-                const a = document.createElement('a');
-                a.href = pngUrl;
-                a.download = `calcku-grafik-${Date.now()}.png`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
+                triggerDownload(canvas.toDataURL('image/png'), filename);
             }
         } catch (err) {
             if (isBlob) URL.revokeObjectURL(src);
@@ -1818,7 +2507,6 @@ function _renderSvgToPng(src, data, isBlob) {
 // =============================================================================
 // SECTION 9: MATRIX CALCULATOR ENGINE
 // =============================================================================
-const LS_MATRIX = 'calcku-matrix-v1';
 let lastMatrixResult = null;
 
 let matrixState = {
@@ -1849,7 +2537,6 @@ function loadMatrixState() {
                 matrixState = parsed;
             }
         }
-        // Ensure no legacy matrix item in calculus history
         const h = loadH();
         if (h && h['matriks']) {
             delete h['matriks'];
@@ -1875,9 +2562,7 @@ function initMatrixTab() {
 
 function updateMatrixCountBadge() {
     const badge = $('matrix-count-badge');
-    if (badge) {
-        badge.textContent = `${matrixState.order.length} Matriks`;
-    }
+    if (badge) badge.textContent = `${matrixState.order.length} Matriks`;
 }
 
 function updateMatrixDropdowns() {
@@ -1902,9 +2587,7 @@ function updateMatrixDropdowns() {
     selB.innerHTML = buildOptions(matrixState.opB);
     if (selScalar) selScalar.innerHTML = buildOptions(matrixState.scalarTarget);
     try {
-        if (typeof updateObeRowOptions === 'function') {
-            updateObeRowOptions();
-        }
+        updateObeRowOptions();
     } catch (e) { }
 }
 
@@ -1932,30 +2615,23 @@ function selectMatrixOp(op) {
     saveMatrixState();
     checkMatrixCompatibility();
 
-    // Auto-run secara mulus jika format sudah sesuai dan bukan form konfigurasi (skalar/obe)
     if (!['skalar', 'obe_manual'].includes(op)) {
         const matA = matrixState.matrices[matrixState.opA];
         if (matA) {
             const isSingleMatrix = ['determinan', 'invers', 'transpose', 'eselon', 'eselon_tereduksi', 'spl_augmented'].includes(op);
             if (isSingleMatrix) {
-                if (['determinan', 'invers'].includes(op) && matA.rows !== matA.cols) {
-                    return; // Biarkan asisten menawarkan tombol 'Perbaiki Otomatis'
-                }
-                if (op === 'spl_augmented' && matA.cols < 2) {
-                    return; // Biarkan asisten menawarkan tombol 'Tambah Kolom b'
-                }
+                if (['determinan', 'invers'].includes(op) && matA.rows !== matA.cols) return;
+                if (op === 'spl_augmented' && matA.cols < 2) return;
                 hitungMatriks();
-            } else {
-                if (matrixState.order.length >= 2) {
-                    const matB = matrixState.matrices[matrixState.opB];
-                    if (matB) {
-                        if ((op === 'tambah' || op === 'kurang') && (matA.rows === matB.rows && matA.cols === matB.cols)) {
-                            hitungMatriks();
-                        } else if (op === 'kali' && matA.cols === matB.rows) {
-                            hitungMatriks();
-                        } else if (op === 'augmented' && matA.rows === matB.rows) {
-                            hitungMatriks();
-                        }
+            } else if (matrixState.order.length >= 2) {
+                const matB = matrixState.matrices[matrixState.opB];
+                if (matB) {
+                    if ((op === 'tambah' || op === 'kurang') && (matA.rows === matB.rows && matA.cols === matB.cols)) {
+                        hitungMatriks();
+                    } else if (op === 'kali' && matA.cols === matB.rows) {
+                        hitungMatriks();
+                    } else if (op === 'augmented' && matA.rows === matB.rows) {
+                        hitungMatriks();
                     }
                 }
             }
@@ -1967,7 +2643,6 @@ function updateMatrixOpUI() {
     const op = matrixState.currentOp || 'tambah';
     const signs = { tambah: '+', kurang: '−', kali: '×', bagi: '÷', augmented: '|', spl_augmented: '|' };
 
-    // Update active class on quick ops, unary grid, and advanced buttons
     document.querySelectorAll('.matrix-op-btn, .matrix-advanced-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.op === op);
     });
@@ -1994,15 +2669,15 @@ function updateMatrixOpUI() {
     }
 
     if (isScalar || isObe) {
-        if (binarySelector) binarySelector.classList.add('hidden');
+        binarySelector?.classList.add('hidden');
     } else {
-        if (binarySelector) binarySelector.classList.remove('hidden');
+        binarySelector?.classList.remove('hidden');
         if (isSingleMatrix) {
-            if (colB) colB.classList.add('hidden');
-            if (signEl) signEl.classList.add('hidden');
+            colB?.classList.add('hidden');
+            signEl?.classList.add('hidden');
             if (labelA) labelA.textContent = 'Pilih Matriks Target';
         } else {
-            if (colB) colB.classList.remove('hidden');
+            colB?.classList.remove('hidden');
             if (signEl) {
                 signEl.classList.remove('hidden');
                 signEl.textContent = signs[op] || '+';
@@ -2011,7 +2686,6 @@ function updateMatrixOpUI() {
         }
     }
 
-    // Update text on main button
     if (btnText) {
         const a = matrixState.opA || 'A';
         const b = matrixState.opB || 'B';
@@ -2056,11 +2730,16 @@ function renderMatrixCards() {
                     <span class="matrix-ordo-pill" id="ordo-pill-${key}">${mat.rows} × ${mat.cols}</span>
                 </div>
                 <div class="matrix-tools">
-                    <button type="button" onclick="fillMatrixIdentity('${key}')" class="matrix-tool-btn" title="Ubah jadi matriks identitas">Identitas</button>
-                    <button type="button" onclick="fillMatrixZeros('${key}')" class="matrix-tool-btn" title="Isi semua dengan angka 0">Nol</button>
-                    <button type="button" onclick="fillMatrixRandom('${key}')" class="matrix-tool-btn" title="Isi angka acak">Acak</button>
-                    <button type="button" onclick="clearMatrix('${key}')" class="matrix-tool-btn" title="Kosongkan sel">Bersihkan</button>
-                    ${canDelete ? `<button type="button" onclick="removeMatrixVariable('${key}')" class="matrix-tool-btn danger" title="Hapus matriks ini">Hapus</button>` : ''}
+                    <div class="matrix-tool-group" role="group" aria-label="Isi Cepat">
+                        <span class="matrix-tool-group-label">Isi:</span>
+                        <button type="button" onclick="fillMatrixZeros('${key}')" class="matrix-tool-btn" title="Isi seluruh elemen dengan angka 0">0</button>
+                        <button type="button" onclick="fillMatrixIdentity('${key}')" class="matrix-tool-btn" title="Ubah menjadi matriks identitas">Identitas</button>
+                        <button type="button" onclick="fillMatrixRandom('${key}')" class="matrix-tool-btn" title="Isi dengan angka acak">Acak</button>
+                    </div>
+                    <div class="matrix-tool-actions">
+                        <button type="button" onclick="clearMatrix('${key}')" class="matrix-tool-btn subtle" title="Kosongkan seluruh sel">Kosongkan</button>
+                        ${canDelete ? `<button type="button" onclick="removeMatrixVariable('${key}')" class="matrix-tool-btn danger" title="Hapus matriks ini">Hapus</button>` : ''}
+                    </div>
                 </div>
             </div>
 
@@ -2124,19 +2803,17 @@ function renderMatrixGrid(key) {
             input.placeholder = `${key.toLowerCase()}${r + 1}${c + 1}`;
             input.value = (mat.data && mat.data[r] && mat.data[r][c] !== undefined) ? mat.data[r][c] : '';
 
-            // Saat sel diklik atau difokuskan: langsung blok teks (termasuk jika 0) agar langsung terganti saat mengetik
             input.addEventListener('focus', () => {
                 setTimeout(() => {
-                    try { input.select(); } catch (err) {}
+                    try { input.select(); } catch (err) { }
                 }, 50);
             });
             input.addEventListener('click', () => {
                 if (input.value === '0') {
-                    try { input.select(); } catch (err) {}
+                    try { input.select(); } catch (err) { }
                 }
             });
 
-            // Jika isi sel adalah '0' dan user mengetik angka/simbol baru (selain desimal/pecahan), langsung hapus '0'
             input.addEventListener('beforeinput', (e) => {
                 if (input.value === '0' && e.data && !['.', ',', '/'].includes(e.data)) {
                     input.value = '';
@@ -2145,13 +2822,8 @@ function renderMatrixGrid(key) {
 
             input.addEventListener('input', (e) => {
                 let val = e.target.value;
-                // Jika diawali 0 lalu diikuti angka atau tanda minus (misal '05' atau '0-3') dan bukan desimal/pecahan
                 if (/^0[0-9\-]/.test(val)) {
-                    if (/^0+$/.test(val)) {
-                        val = '0';
-                    } else {
-                        val = val.replace(/^0+(?=[1-9\-])/, '');
-                    }
+                    val = /^0+$/.test(val) ? '0' : val.replace(/^0+(?=[1-9\-])/, '');
                     e.target.value = val;
                 }
                 mat.data[r][c] = val.trim();
@@ -2219,9 +2891,7 @@ function handleMatrixCellKey(e, key, r, c) {
 function changeMatrixDim(key, dRow, dCol) {
     const mat = matrixState.matrices[key];
     if (!mat) return;
-    const newRows = Math.max(1, Math.min(8, mat.rows + dRow));
-    const newCols = Math.max(1, Math.min(8, mat.cols + dCol));
-    setMatrixDimensions(key, newRows, newCols);
+    setMatrixDimensions(key, mat.rows + dRow, mat.cols + dCol);
 }
 
 function setMatrixDimensions(key, newRows, newCols) {
@@ -2235,11 +2905,7 @@ function setMatrixDimensions(key, newRows, newCols) {
     for (let r = 0; r < newRows; r++) {
         const row = [];
         for (let c = 0; c < newCols; c++) {
-            if (mat.data && mat.data[r] && mat.data[r][c] !== undefined) {
-                row.push(mat.data[r][c]);
-            } else {
-                row.push('');
-            }
+            row.push((mat.data && mat.data[r] && mat.data[r][c] !== undefined) ? mat.data[r][c] : '');
         }
         newData.push(row);
     }
@@ -2261,14 +2927,20 @@ function setMatrixDimensions(key, newRows, newCols) {
     checkMatrixCompatibility();
 }
 
-function fillMatrixIdentity(key) {
+function autoFixDimensions(targetKey, targetRows, targetCols) {
+    setMatrixDimensions(targetKey, targetRows, targetCols);
+}
+
+function populateMatrix(key, cellGenerator, resizeSquare = false) {
     const mat = matrixState.matrices[key];
     if (!mat) return;
-    const maxDim = Math.max(mat.rows, mat.cols);
-    setMatrixDimensions(key, maxDim, maxDim);
-    for (let r = 0; r < maxDim; r++) {
-        for (let c = 0; c < maxDim; c++) {
-            mat.data[r][c] = (r === c) ? '1' : '0';
+    if (resizeSquare) {
+        const maxDim = Math.max(mat.rows, mat.cols);
+        setMatrixDimensions(key, maxDim, maxDim);
+    }
+    for (let r = 0; r < mat.rows; r++) {
+        for (let c = 0; c < mat.cols; c++) {
+            mat.data[r][c] = cellGenerator(r, c);
         }
     }
     renderMatrixGrid(key);
@@ -2276,49 +2948,28 @@ function fillMatrixIdentity(key) {
     checkMatrixCompatibility();
 }
 
+function fillMatrixIdentity(key) {
+    populateMatrix(key, (r, c) => (r === c ? '1' : '0'), true);
+}
+
 function fillMatrixZeros(key) {
-    const mat = matrixState.matrices[key];
-    if (!mat) return;
-    for (let r = 0; r < mat.rows; r++) {
-        for (let c = 0; c < mat.cols; c++) {
-            mat.data[r][c] = '0';
-        }
-    }
-    renderMatrixGrid(key);
-    saveMatrixState();
+    populateMatrix(key, () => '0');
 }
 
 function fillMatrixRandom(key) {
-    const mat = matrixState.matrices[key];
-    if (!mat) return;
-    for (let r = 0; r < mat.rows; r++) {
-        for (let c = 0; c < mat.cols; c++) {
-            mat.data[r][c] = String(Math.floor(Math.random() * 15) - 5);
-        }
-    }
-    renderMatrixGrid(key);
-    saveMatrixState();
+    populateMatrix(key, () => String(Math.floor(Math.random() * 15) - 5));
 }
 
 function clearMatrix(key) {
-    const mat = matrixState.matrices[key];
-    if (!mat) return;
-    for (let r = 0; r < mat.rows; r++) {
-        for (let c = 0; c < mat.cols; c++) {
-            mat.data[r][c] = '';
-        }
-    }
-    renderMatrixGrid(key);
-    saveMatrixState();
+    populateMatrix(key, () => '');
 }
 
 function addMatrixVariable() {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let nextLetter = null;
     for (let i = 0; i < alphabet.length; i++) {
-        const letter = alphabet[i];
-        if (!matrixState.order.includes(letter)) {
-            nextLetter = letter;
+        if (!matrixState.order.includes(alphabet[i])) {
+            nextLetter = alphabet[i];
             break;
         }
     }
@@ -2340,10 +2991,7 @@ function addMatrixVariable() {
     saveMatrixState();
     checkMatrixCompatibility();
 
-    const newCard = $(`matrix-card-${nextLetter}`);
-    if (newCard) {
-        newCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    $(`matrix-card-${nextLetter}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function removeMatrixVariable(key) {
@@ -2383,11 +3031,16 @@ function addMatrixBAuto() {
     checkMatrixCompatibility();
 }
 
-function autoFixDimensions(targetKey, targetRows, targetCols) {
-    setMatrixDimensions(targetKey, targetRows, targetCols);
+function setAssistantFixAction(actionWrap, label, onClick) {
+    actionWrap.classList.remove('hidden');
+    const fixBtn = document.createElement('button');
+    fixBtn.type = 'button';
+    fixBtn.className = 'matrix-fix-btn';
+    fixBtn.textContent = label;
+    fixBtn.onclick = onClick;
+    actionWrap.appendChild(fixBtn);
 }
 
-// Live Foolproof Matrix Assistant
 function checkMatrixCompatibility() {
     const box = $('matrix-assistant');
     const title = $('assistant-title');
@@ -2402,15 +3055,12 @@ function checkMatrixCompatibility() {
     const op = matrixState.currentOp || 'tambah';
     const keyA = matrixState.opA || matrixState.order[0] || 'A';
     const matA = matrixState.matrices[keyA];
-
     if (!matA) return;
 
     const rA = matA.rows;
     const cA = matA.cols;
-
     const isSingleMatrix = ['determinan', 'invers', 'transpose', 'eselon', 'eselon_tereduksi', 'spl_augmented'].includes(op);
 
-    // KASUS OPERASI SATU MATRIKS (UNARY / LANJUTAN)
     if (isSingleMatrix) {
         if (op === 'determinan' || op === 'invers') {
             const opName = op === 'determinan' ? 'Determinan (|A|)' : 'Invers Matriks (A⁻¹)';
@@ -2424,14 +3074,7 @@ function checkMatrixCompatibility() {
                 icon.textContent = '!';
                 title.textContent = `${opName} Mensyaratkan Matriks Persegi`;
                 desc.textContent = `${opName} hanya dapat dihitung pada matriks persegi (jumlah baris = jumlah kolom). Saat ini Matriks ${keyA} berordo ${rA}×${cA}.`;
-
-                actionWrap.classList.remove('hidden');
-                const fixBtn = document.createElement('button');
-                fixBtn.type = 'button';
-                fixBtn.className = 'matrix-fix-btn';
-                fixBtn.textContent = `Perbaiki: Ubah Matriks ${keyA} Menjadi Persegi (${rA}×${rA})`;
-                fixBtn.onclick = () => autoFixDimensions(keyA, rA, rA);
-                actionWrap.appendChild(fixBtn);
+                setAssistantFixAction(actionWrap, `Perbaiki: Ubah Matriks ${keyA} Menjadi Persegi (${rA}×${rA})`, () => setMatrixDimensions(keyA, rA, rA));
             }
         } else if (op === 'transpose') {
             box.className = 'matrix-assistant-box valid';
@@ -2459,14 +3102,7 @@ function checkMatrixCompatibility() {
                 icon.textContent = '!';
                 title.textContent = `Matriks Augmented Butuh Minimal 2 Kolom`;
                 desc.textContent = `SPL augmented [A|b] membutuhkan minimal 1 kolom variabel dan 1 kolom konstanta b (minimal 2 kolom). Saat ini Matriks ${keyA} hanya memiliki ${cA} kolom.`;
-
-                actionWrap.classList.remove('hidden');
-                const fixBtn = document.createElement('button');
-                fixBtn.type = 'button';
-                fixBtn.className = 'matrix-fix-btn';
-                fixBtn.textContent = `Perbaiki: Tambah Kolom Matriks ${keyA} Menjadi ${Math.max(2, rA + 1)} Kolom`;
-                fixBtn.onclick = () => autoFixDimensions(keyA, rA, Math.max(2, rA + 1));
-                actionWrap.appendChild(fixBtn);
+                setAssistantFixAction(actionWrap, `Perbaiki: Tambah Kolom Matriks ${keyA} Menjadi ${Math.max(2, rA + 1)} Kolom`, () => setMatrixDimensions(keyA, rA, Math.max(2, rA + 1)));
             }
         }
         return;
@@ -2490,7 +3126,6 @@ function checkMatrixCompatibility() {
         return;
     }
 
-    // KASUS OPERASI DUA MATRIKS (TAMBAH, KURANG, KALI, BAGI, AUGMENTED)
     if (matrixState.order.length < 2) {
         box.className = 'matrix-assistant-box warning';
         icon.textContent = '!';
@@ -2498,14 +3133,7 @@ function checkMatrixCompatibility() {
         const opName = opNames[op] || 'Operasi 2 matriks';
         title.textContent = `${opName} Memerlukan 2 Variabel Matriks`;
         desc.textContent = `Saat ini Anda hanya memiliki 1 variabel matriks (Matriks ${keyA}). Klik tombol di bawah untuk menambahkan Matriks B secara instan.`;
-
-        actionWrap.classList.remove('hidden');
-        const fixBtn = document.createElement('button');
-        fixBtn.type = 'button';
-        fixBtn.className = 'matrix-fix-btn';
-        fixBtn.textContent = `+ Tambah Matriks B Otomatis`;
-        fixBtn.onclick = () => addMatrixBAuto();
-        actionWrap.appendChild(fixBtn);
+        setAssistantFixAction(actionWrap, `+ Tambah Matriks B Otomatis`, () => addMatrixBAuto());
         return;
     }
 
@@ -2528,14 +3156,7 @@ function checkMatrixCompatibility() {
             icon.textContent = '!';
             title.textContent = `Ukuran Belum Sesuai untuk ${opName}`;
             desc.textContent = `${opName} mensyaratkan kedua matriks berukuran sama persis. (Saat ini Matriks ${keyA}: ${rA}×${cA}, Matriks ${keyB}: ${rB}×${cB}).`;
-
-            actionWrap.classList.remove('hidden');
-            const fixBtn = document.createElement('button');
-            fixBtn.type = 'button';
-            fixBtn.className = 'matrix-fix-btn';
-            fixBtn.textContent = `Perbaiki: Samakan Matriks ${keyB} Menjadi ${rA}×${cA}`;
-            fixBtn.onclick = () => autoFixDimensions(keyB, rA, cA);
-            actionWrap.appendChild(fixBtn);
+            setAssistantFixAction(actionWrap, `Perbaiki: Samakan Matriks ${keyB} Menjadi ${rA}×${cA}`, () => setMatrixDimensions(keyB, rA, cA));
         }
     } else if (op === 'kali') {
         if (cA === rB) {
@@ -2548,14 +3169,7 @@ function checkMatrixCompatibility() {
             icon.textContent = '!';
             title.textContent = `Syarat Perkalian Belum Terpenuhi`;
             desc.textContent = `Perkalian ${keyA} × ${keyB} mensyaratkan Kolom Matriks ${keyA} (${cA}) = Baris Matriks ${keyB} (saat ini ${rB}).`;
-
-            actionWrap.classList.remove('hidden');
-            const fixBtn = document.createElement('button');
-            fixBtn.type = 'button';
-            fixBtn.className = 'matrix-fix-btn';
-            fixBtn.textContent = `Perbaiki: Ubah Baris Matriks ${keyB} Menjadi ${cA}`;
-            fixBtn.onclick = () => autoFixDimensions(keyB, cA, cB);
-            actionWrap.appendChild(fixBtn);
+            setAssistantFixAction(actionWrap, `Perbaiki: Ubah Baris Matriks ${keyB} Menjadi ${cA}`, () => setMatrixDimensions(keyB, cA, cB));
         }
     } else if (op === 'bagi') {
         if (rB !== cB) {
@@ -2563,27 +3177,13 @@ function checkMatrixCompatibility() {
             icon.textContent = '!';
             title.textContent = `Matriks Pembagi (${keyB}) Harus Persegi`;
             desc.textContent = `Pembagian ${keyA} ÷ ${keyB} dihitung sebagai ${keyA} × ${keyB}⁻¹. Matriks pembagi harus berupa matriks persegi (ordo n×n) agar memiliki invers. (Saat ini ${keyB} berordo ${rB}×${cB}).`;
-
-            actionWrap.classList.remove('hidden');
-            const fixBtn = document.createElement('button');
-            fixBtn.type = 'button';
-            fixBtn.className = 'matrix-fix-btn';
-            fixBtn.textContent = `Perbaiki: Ubah Matriks ${keyB} Menjadi Persegi (${rB}×${rB})`;
-            fixBtn.onclick = () => autoFixDimensions(keyB, rB, rB);
-            actionWrap.appendChild(fixBtn);
+            setAssistantFixAction(actionWrap, `Perbaiki: Ubah Matriks ${keyB} Menjadi Persegi (${rB}×${rB})`, () => setMatrixDimensions(keyB, rB, rB));
         } else if (cA !== rB) {
             box.className = 'matrix-assistant-box warning';
             icon.textContent = '!';
             title.textContent = `Dimensi Pengali Belum Cocok`;
             desc.textContent = `Kolom Matriks ${keyA} (${cA}) harus sama dengan ordo invers ${keyB} (${rB}).`;
-
-            actionWrap.classList.remove('hidden');
-            const fixBtn = document.createElement('button');
-            fixBtn.type = 'button';
-            fixBtn.className = 'matrix-fix-btn';
-            fixBtn.textContent = `Perbaiki: Sesuaikan Kolom Matriks ${keyA} Menjadi ${rB}`;
-            fixBtn.onclick = () => autoFixDimensions(keyA, rA, rB);
-            actionWrap.appendChild(fixBtn);
+            setAssistantFixAction(actionWrap, `Perbaiki: Sesuaikan Kolom Matriks ${keyA} Menjadi ${rB}`, () => setMatrixDimensions(keyA, rA, rB));
         } else {
             box.className = 'matrix-assistant-box valid';
             icon.textContent = '✓';
@@ -2601,62 +3201,21 @@ function checkMatrixCompatibility() {
             icon.textContent = '!';
             title.textContent = 'Jumlah Baris Belum Sama';
             desc.textContent = `Penggabungan augmented [${keyA}|${keyB}] mensyaratkan jumlah baris sama persis. (Matriks ${keyA}: ${rA} baris, Matriks ${keyB}: ${rB} baris).`;
-
-            actionWrap.classList.remove('hidden');
-            const fixBtn = document.createElement('button');
-            fixBtn.type = 'button';
-            fixBtn.className = 'matrix-fix-btn';
-            fixBtn.textContent = `Perbaiki: Samakan Baris Matriks ${keyB} Menjadi ${rA}`;
-            fixBtn.onclick = () => autoFixDimensions(keyB, rA, cB);
-            actionWrap.appendChild(fixBtn);
+            setAssistantFixAction(actionWrap, `Perbaiki: Samakan Baris Matriks ${keyB} Menjadi ${rA}`, () => setMatrixDimensions(keyB, rA, cB));
         }
     }
 }
 
-async function hitungMatriks() {
-    const op = matrixState.currentOp || 'tambah';
-
-    if (op === 'skalar') {
-        return runScalarOp();
-    }
-    if (op === 'obe_manual') {
-        return runManualObe(false);
-    }
-    if (['determinan', 'invers', 'transpose', 'eselon', 'eselon_tereduksi'].includes(op)) {
-        return runUnaryMatrixOp(op);
-    }
-    if (op === 'spl_augmented') {
-        return runSplAugmentedOp();
-    }
-
-    // Operasi 2 matriks
-    if (matrixState.order.length < 2) {
-        addMatrixBAuto();
-        return;
-    }
-
+/**
+ * Controller API terpadu untuk semua eksekusi perhitungan matriks.
+ */
+async function callMatrixApi(payload, fallbackErrorMsg = 'Gagal memproses matriks.', onSuccessExtra = null) {
     const btn = $('btn-matrix');
     const resultEl = $('hasil-matriks');
-    const keyA = matrixState.opA;
-    const keyB = matrixState.opB;
-    const matA = matrixState.matrices[keyA];
-    const matB = matrixState.matrices[keyB];
-
-    if (!matA || !matB) {
-        alert('Pilih matriks yang valid.');
-        return;
-    }
-
     setLoading(btn, true);
-    resultEl.innerHTML = '<div class="skeleton-wrap"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div>';
-    $('actions-matriks').classList.add('hidden');
-    $('steps-matriks-wrap').classList.add('hidden');
-
-    const payload = {
-        operasi: op,
-        matriks_a: { nama: keyA, data: matA.data },
-        matriks_b: { nama: keyB, data: matB.data }
-    };
+    if (resultEl) resultEl.innerHTML = SKELETON_HTML;
+    $('actions-matriks')?.classList.add('hidden');
+    $('steps-matriks-wrap')?.classList.add('hidden');
 
     abortActiveRequests();
     currentAbortController = new AbortController();
@@ -2669,8 +3228,8 @@ async function hitungMatriks() {
             signal: currentAbortController.signal
         });
         const data = await res.json();
-
         if (data.sukses) {
+            if (onSuccessExtra) onSuccessExtra(data);
             renderMatrixSuccessResult(data);
         } else {
             renderMatrixErrorResult(data.error);
@@ -2682,10 +3241,45 @@ async function hitungMatriks() {
             }
             return;
         }
-        renderMatrixErrorResult('Gagal menghubungi server. Pastikan koneksi atau server aktif.');
+        renderMatrixErrorResult(fallbackErrorMsg);
     } finally {
         setLoading(btn, false);
     }
+}
+
+async function hitungMatriks() {
+    const op = matrixState.currentOp || 'tambah';
+
+    if (op === 'skalar') return runScalarOp();
+    if (op === 'obe_manual') return runManualObe(false);
+    if (['determinan', 'invers', 'transpose', 'eselon', 'eselon_tereduksi'].includes(op)) {
+        return runUnaryMatrixOp(op);
+    }
+    if (op === 'spl_augmented') return runSplAugmentedOp();
+
+    if (matrixState.order.length < 2) {
+        addMatrixBAuto();
+        return;
+    }
+
+    const keyA = matrixState.opA;
+    const keyB = matrixState.opB;
+    const matA = matrixState.matrices[keyA];
+    const matB = matrixState.matrices[keyB];
+
+    if (!matA || !matB) {
+        alert('Pilih matriks yang valid.');
+        return;
+    }
+
+    await callMatrixApi(
+        {
+            operasi: op,
+            matriks_a: { nama: keyA, data: matA.data },
+            matriks_b: { nama: keyB, data: matB.data }
+        },
+        'Gagal menghubungi server. Pastikan koneksi atau server aktif.'
+    );
 }
 
 function renderMatrixSuccessResult(data) {
@@ -2705,12 +3299,7 @@ function renderMatrixSuccessResult(data) {
 
     const formulaDiv = document.createElement('div');
     formulaDiv.style.fontSize = '1.15em';
-    const latexDisplay = `${data.notasi} = ${data.hasil_latex}`;
-    try {
-        katex.render(latexDisplay, formulaDiv, { throwOnError: false, displayMode: true });
-    } catch (e) {
-        formulaDiv.textContent = latexDisplay;
-    }
+    safeKatexRender(`${data.notasi} = ${data.hasil_latex}`, formulaDiv, true);
     wrap.appendChild(formulaDiv);
 
     const infoPill = document.createElement('div');
@@ -2760,11 +3349,7 @@ function renderMatrixSuccessResult(data) {
             spl.solusi.forEach((solStr) => {
                 const chip = document.createElement('div');
                 chip.className = 'spl-solution-chip';
-                try {
-                    katex.render(solStr, chip, { throwOnError: false, displayMode: false });
-                } catch (err) {
-                    chip.textContent = solStr;
-                }
+                safeKatexRender(solStr, chip, false);
                 solGrid.appendChild(chip);
             });
             splCard.appendChild(solGrid);
@@ -2774,25 +3359,16 @@ function renderMatrixSuccessResult(data) {
     }
 
     resultEl.appendChild(wrap);
-
-    $('actions-matriks').classList.remove('hidden');
+    $('actions-matriks')?.classList.remove('hidden');
     updateMatrixStoreMenu();
     renderMatrixSteps(data.langkah);
 }
 
 function renderMatrixErrorResult(errorMsg) {
     const resultEl = $('hasil-matriks');
-    resultEl.innerHTML = `
-        <div class="error-msg">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 8v4M12 16h.01"/>
-            </svg>
-            <span>${errorMsg}</span>
-        </div>
-    `;
-    $('actions-matriks').classList.add('hidden');
-    $('steps-matriks-wrap').classList.add('hidden');
+    if (resultEl) resultEl.innerHTML = getErrorHtml(errorMsg);
+    $('actions-matriks')?.classList.add('hidden');
+    $('steps-matriks-wrap')?.classList.add('hidden');
 }
 
 function renderMatrixSteps(steps) {
@@ -2800,7 +3376,7 @@ function renderMatrixSteps(steps) {
     const body = $('steps-matriks-body');
     const badge = $('steps-badge-count');
     if (!wrap || !body || !steps || !steps.length) {
-        if (wrap) wrap.classList.add('hidden');
+        wrap?.classList.add('hidden');
         return;
     }
 
@@ -2826,11 +3402,7 @@ function renderMatrixSteps(steps) {
         if (step.latex) {
             const math = document.createElement('div');
             math.className = 'step-latex';
-            try {
-                katex.render(step.latex, math, { throwOnError: false, displayMode: true });
-            } catch (e) {
-                math.textContent = step.latex;
-            }
+            safeKatexRender(step.latex, math, true);
             item.appendChild(math);
         }
 
@@ -2840,11 +3412,7 @@ function renderMatrixSteps(steps) {
             step.items.forEach((line) => {
                 const li = document.createElement('div');
                 li.className = 'step-list-item';
-                try {
-                    katex.render(line, li, { throwOnError: false, displayMode: false });
-                } catch (e) {
-                    li.textContent = line;
-                }
+                safeKatexRender(line, li, false);
                 list.appendChild(li);
             });
             item.appendChild(list);
@@ -2869,94 +3437,33 @@ async function runUnaryMatrixOp(op) {
     const mat = matrixState.matrices[targetKey];
     if (!mat) return;
 
-    const btn = $('btn-matrix');
-    const resultEl = $('hasil-matriks');
-    setLoading(btn, true);
-    resultEl.innerHTML = '<div class="skeleton-wrap"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div>';
-    $('actions-matriks').classList.add('hidden');
-    $('steps-matriks-wrap').classList.add('hidden');
-
-    abortActiveRequests();
-    currentAbortController = new AbortController();
-
-    try {
-        const res = await fetch('/api/matrix', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                operasi: op,
-                matriks_a: { nama: targetKey, data: mat.data }
-            }),
-            signal: currentAbortController.signal
-        });
-        const data = await res.json();
-        if (data.sukses) {
-            renderMatrixSuccessResult(data);
-        } else {
-            renderMatrixErrorResult(data.error);
-        }
-    } catch (e) {
-        if (e.name === 'AbortError') {
-            if (resultEl && resultEl.innerHTML.includes('skeleton')) {
-                resultEl.innerHTML = '';
-            }
-            return;
-        }
-        renderMatrixErrorResult('Gagal menghitung operasi unary matriks.');
-    } finally {
-        setLoading(btn, false);
-    }
+    await callMatrixApi(
+        {
+            operasi: op,
+            matriks_a: { nama: targetKey, data: mat.data }
+        },
+        'Gagal menghitung operasi unary matriks.'
+    );
 }
 
 function toggleScalarInput() {
-    const wrap = $('matrix-scalar-wrap');
-    if (wrap) wrap.classList.toggle('hidden');
+    $('matrix-scalar-wrap')?.classList.toggle('hidden');
 }
 
 async function runScalarOp() {
-    const k = $('matrix-scalar-k').value.trim() || '1';
-    const targetKey = $('matrix-scalar-target').value || matrixState.opA;
+    const k = $('matrix-scalar-k')?.value.trim() || '1';
+    const targetKey = $('matrix-scalar-target')?.value || matrixState.opA;
     const mat = matrixState.matrices[targetKey];
     if (!mat) return;
 
-    const btn = $('btn-matrix');
-    const resultEl = $('hasil-matriks');
-    setLoading(btn, true);
-    resultEl.innerHTML = '<div class="skeleton-wrap"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div>';
-    $('actions-matriks').classList.add('hidden');
-    $('steps-matriks-wrap').classList.add('hidden');
-
-    abortActiveRequests();
-    currentAbortController = new AbortController();
-
-    try {
-        const res = await fetch('/api/matrix', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                operasi: 'skalar',
-                skalar: k,
-                matriks_a: { nama: targetKey, data: mat.data }
-            }),
-            signal: currentAbortController.signal
-        });
-        const data = await res.json();
-        if (data.sukses) {
-            renderMatrixSuccessResult(data);
-        } else {
-            renderMatrixErrorResult(data.error);
-        }
-    } catch (e) {
-        if (e.name === 'AbortError') {
-            if (resultEl && resultEl.innerHTML.includes('skeleton')) {
-                resultEl.innerHTML = '';
-            }
-            return;
-        }
-        renderMatrixErrorResult('Gagal menghitung perkalian skalar.');
-    } finally {
-        setLoading(btn, false);
-    }
+    await callMatrixApi(
+        {
+            operasi: 'skalar',
+            skalar: k,
+            matriks_a: { nama: targetKey, data: mat.data }
+        },
+        'Gagal menghitung perkalian skalar.'
+    );
 }
 
 async function runSplAugmentedOp() {
@@ -2969,45 +3476,15 @@ async function runSplAugmentedOp() {
         return;
     }
 
-    const btn = $('btn-matrix');
-    const resultEl = $('hasil-matriks');
-    setLoading(btn, true);
-    resultEl.innerHTML = '<div class="skeleton-wrap"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div>';
-    $('actions-matriks').classList.add('hidden');
-    $('steps-matriks-wrap').classList.add('hidden');
-
-    abortActiveRequests();
-    currentAbortController = new AbortController();
-
-    try {
-        const res = await fetch('/api/matrix', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                operasi: 'spl_augmented',
-                matriks_a: { nama: targetKey, data: mat.data },
-                is_augmented: true,
-                split_col: mat.cols - 1
-            }),
-            signal: currentAbortController.signal
-        });
-        const data = await res.json();
-        if (data.sukses) {
-            renderMatrixSuccessResult(data);
-        } else {
-            renderMatrixErrorResult(data.error);
-        }
-    } catch (e) {
-        if (e.name === 'AbortError') {
-            if (resultEl && resultEl.innerHTML.includes('skeleton')) {
-                resultEl.innerHTML = '';
-            }
-            return;
-        }
-        renderMatrixErrorResult('Gagal menyelesaikan SPL dari matriks augmented.');
-    } finally {
-        setLoading(btn, false);
-    }
+    await callMatrixApi(
+        {
+            operasi: 'spl_augmented',
+            matriks_a: { nama: targetKey, data: mat.data },
+            is_augmented: true,
+            split_col: mat.cols - 1
+        },
+        'Gagal menyelesaikan SPL dari matriks augmented.'
+    );
 }
 
 function runBinaryOpDirect(op) {
@@ -3034,16 +3511,16 @@ function onObeTypeChange() {
     const labelRowI = $('label-obe-row-i');
 
     if (type === 'tukar') {
-        if (fieldK) fieldK.classList.add('hidden');
-        if (fieldRowJ) fieldRowJ.classList.remove('hidden');
+        fieldK?.classList.add('hidden');
+        fieldRowJ?.classList.remove('hidden');
         if (labelRowI) labelRowI.textContent = 'Baris Pertama (Ri)';
     } else if (type === 'skalar') {
-        if (fieldK) fieldK.classList.remove('hidden');
-        if (fieldRowJ) fieldRowJ.classList.add('hidden');
+        fieldK?.classList.remove('hidden');
+        fieldRowJ?.classList.add('hidden');
         if (labelRowI) labelRowI.textContent = 'Baris yang Dikalikan (Ri)';
     } else if (type === 'tambah') {
-        if (fieldK) fieldK.classList.remove('hidden');
-        if (fieldRowJ) fieldRowJ.classList.remove('hidden');
+        fieldK?.classList.remove('hidden');
+        fieldRowJ?.classList.remove('hidden');
         if (labelRowI) labelRowI.textContent = 'Baris Target (Ri)';
     }
 }
@@ -3097,201 +3574,100 @@ async function runManualObe(saveBackToMatrix = false) {
         return;
     }
 
-    const btn = $('btn-matrix');
-    const resultEl = $('hasil-matriks');
-    setLoading(btn, true);
-    resultEl.innerHTML = '<div class="skeleton-wrap"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div>';
-    $('actions-matriks').classList.add('hidden');
-    $('steps-matriks-wrap').classList.add('hidden');
-
-    abortActiveRequests();
-    currentAbortController = new AbortController();
-
-    try {
-        const res = await fetch('/api/matrix', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                operasi: 'manual_obe',
-                matriks_a: { nama: targetKey, data: mat.data },
-                obe_params: {
-                    tipe: obeType,
-                    row_i: rowI,
-                    row_j: rowJ,
-                    k: kVal
-                },
-                is_augmented: isAugmented,
-                split_col: isAugmented ? mat.cols - 1 : null
-            }),
-            signal: currentAbortController.signal
-        });
-        const data = await res.json();
-        if (data.sukses) {
+    await callMatrixApi(
+        {
+            operasi: 'manual_obe',
+            matriks_a: { nama: targetKey, data: mat.data },
+            obe_params: {
+                tipe: obeType,
+                row_i: rowI,
+                row_j: rowJ,
+                k: kVal
+            },
+            is_augmented: isAugmented,
+            split_col: isAugmented ? mat.cols - 1 : null
+        },
+        'Gagal menerapkan operasi baris elementer.',
+        (data) => {
             if (saveBackToMatrix && data.hasil_grid) {
                 mat.data = JSON.parse(JSON.stringify(data.hasil_grid));
                 renderMatrixGrid(targetKey);
                 saveMatrixState();
             }
-            renderMatrixSuccessResult(data);
-        } else {
-            renderMatrixErrorResult(data.error);
         }
-    } catch (e) {
-        if (e.name === 'AbortError') {
-            if (resultEl && resultEl.innerHTML.includes('skeleton')) {
-                resultEl.innerHTML = '';
-            }
-            return;
-        }
-        renderMatrixErrorResult('Gagal menerapkan operasi baris elementer.');
-    } finally {
-        setLoading(btn, false);
-    }
+    );
 }
 
-function loadMatrixPreset(type) {
-    if (type === 'tambah2x2') {
-        matrixState.order = ['A', 'B'];
-        matrixState.matrices = {
-            'A': { name: 'A', rows: 2, cols: 2, data: [['1', '2'], ['3', '4']] },
-            'B': { name: 'B', rows: 2, cols: 2, data: [['5', '6'], ['7', '8']] }
-        };
-        matrixState.currentOp = 'tambah';
-        matrixState.opA = 'A';
-        matrixState.opB = 'B';
-    } else if (type === 'kurang2x2') {
-        matrixState.order = ['A', 'B'];
-        matrixState.matrices = {
-            'A': { name: 'A', rows: 2, cols: 2, data: [['9', '5'], ['7', '4']] },
-            'B': { name: 'B', rows: 2, cols: 2, data: [['3', '2'], ['1', '2']] }
-        };
-        matrixState.currentOp = 'kurang';
-        matrixState.opA = 'A';
-        matrixState.opB = 'B';
-    } else if (type === 'kali2x3_3x2') {
-        matrixState.order = ['A', 'B'];
-        matrixState.matrices = {
-            'A': { name: 'A', rows: 2, cols: 3, data: [['1', '2', '3'], ['4', '5', '6']] },
-            'B': { name: 'B', rows: 3, cols: 2, data: [['7', '8'], ['9', '1'], ['2', '3']] }
-        };
-        matrixState.currentOp = 'kali';
-        matrixState.opA = 'A';
-        matrixState.opB = 'B';
-    } else if (type === 'bagi2x2') {
-        matrixState.order = ['A', 'B'];
-        matrixState.matrices = {
-            'A': { name: 'A', rows: 2, cols: 2, data: [['1', '2'], ['3', '4']] },
-            'B': { name: 'B', rows: 2, cols: 2, data: [['2', '0'], ['1', '2']] }
-        };
-        matrixState.currentOp = 'bagi';
-        matrixState.opA = 'A';
-        matrixState.opB = 'B';
-    } else if (type === 'ordo3x3') {
-        matrixState.order = ['A', 'B'];
-        matrixState.matrices = {
-            'A': { name: 'A', rows: 3, cols: 3, data: [['1', '2', '3'], ['0', '1', '4'], ['5', '6', '0']] },
-            'B': { name: 'B', rows: 3, cols: 3, data: [['2', '0', '-1'], ['1', '3', '2'], ['0', '-2', '1']] }
-        };
-        matrixState.currentOp = 'kali';
-        matrixState.opA = 'A';
-        matrixState.opB = 'B';
-    } else if (type === 'gauss3x3') {
-        matrixState.order = ['A', 'B'];
-        matrixState.matrices = {
-            'A': { name: 'A', rows: 3, cols: 3, data: [['1', '2', '-1'], ['2', '3', '1'], ['-1', '1', '2']] },
-            'B': { name: 'B', rows: 3, cols: 3, data: [['1', '0', '0'], ['0', '1', '0'], ['0', '0', '1']] }
-        };
-        matrixState.currentOp = 'eselon';
-        matrixState.opA = 'A';
-        matrixState.opB = 'B';
-        renderMatrixCards();
-        updateMatrixDropdowns();
-        updateMatrixOpUI();
-        saveMatrixState();
-        checkMatrixCompatibility();
-        hitungMatriks();
-        return;
-    } else if (type === 'rref3x3') {
-        matrixState.order = ['A', 'B'];
-        matrixState.matrices = {
-            'A': { name: 'A', rows: 3, cols: 3, data: [['1', '2', '-1'], ['2', '3', '1'], ['-1', '1', '2']] },
-            'B': { name: 'B', rows: 3, cols: 3, data: [['1', '0', '0'], ['0', '1', '0'], ['0', '0', '1']] }
-        };
-        matrixState.currentOp = 'eselon_tereduksi';
-        matrixState.opA = 'A';
-        matrixState.opB = 'B';
-        renderMatrixCards();
-        updateMatrixDropdowns();
-        updateMatrixOpUI();
-        saveMatrixState();
-        checkMatrixCompatibility();
-        hitungMatriks();
-        return;
-    } else if (type === 'spl3x4') {
-        matrixState.order = ['A', 'B'];
-        matrixState.matrices = {
-            'A': { name: 'A', rows: 3, cols: 4, data: [['1', '2', '-1', '4'], ['2', '3', '1', '3'], ['-1', '1', '2', '1']] },
-            'B': { name: 'B', rows: 3, cols: 1, data: [['4'], ['3'], ['1']] }
-        };
-        matrixState.currentOp = 'spl_augmented';
-        matrixState.opA = 'A';
-        matrixState.opB = 'B';
-        renderMatrixCards();
-        updateMatrixDropdowns();
-        updateMatrixOpUI();
-        saveMatrixState();
-        checkMatrixCompatibility();
-        hitungMatriks();
-        return;
-    } else if (type === 'spl2x3') {
-        matrixState.order = ['A', 'B'];
-        matrixState.matrices = {
-            'A': { name: 'A', rows: 2, cols: 3, data: [['2', '1', '5'], ['1', '-1', '1']] },
-            'B': { name: 'B', rows: 2, cols: 1, data: [['5'], ['1']] }
-        };
-        matrixState.currentOp = 'spl_augmented';
-        matrixState.opA = 'A';
-        matrixState.opB = 'B';
-        renderMatrixCards();
-        updateMatrixDropdowns();
-        updateMatrixOpUI();
-        saveMatrixState();
-        checkMatrixCompatibility();
-        hitungMatriks();
-        return;
-    } else if (type === 'spl_inconsistent') {
-        matrixState.order = ['A', 'B'];
-        matrixState.matrices = {
-            'A': { name: 'A', rows: 3, cols: 4, data: [['1', '1', '1', '3'], ['1', '2', '3', '0'], ['1', '3', '5', '1']] },
-            'B': { name: 'B', rows: 3, cols: 1, data: [['3'], ['0'], ['1']] }
-        };
-        matrixState.currentOp = 'spl_augmented';
-        matrixState.opA = 'A';
-        matrixState.opB = 'B';
-        renderMatrixCards();
-        updateMatrixDropdowns();
-        updateMatrixOpUI();
-        saveMatrixState();
-        checkMatrixCompatibility();
-        hitungMatriks();
-        return;
-    } else if (type === 'augmented_ab') {
-        matrixState.order = ['A', 'B'];
-        matrixState.matrices = {
-            'A': { name: 'A', rows: 3, cols: 3, data: [['1', '2', '0'], ['3', '4', '1'], ['0', '1', '5']] },
-            'B': { name: 'B', rows: 3, cols: 1, data: [['7'], ['2'], ['9']] }
-        };
-        matrixState.currentOp = 'augmented';
-        matrixState.opA = 'A';
-        matrixState.opB = 'B';
-        renderMatrixCards();
-        updateMatrixDropdowns();
-        updateMatrixOpUI();
-        saveMatrixState();
-        checkMatrixCompatibility();
-        hitungMatriks();
-        return;
+const MATRIX_PRESETS = {
+    tambah2x2: {
+        op: 'tambah',
+        A: [['1', '2'], ['3', '4']],
+        B: [['5', '6'], ['7', '8']]
+    },
+    kurang2x2: {
+        op: 'kurang',
+        A: [['9', '5'], ['7', '4']],
+        B: [['3', '2'], ['1', '2']]
+    },
+    kali2x3_3x2: {
+        op: 'kali',
+        A: [['1', '2', '3'], ['4', '5', '6']],
+        B: [['7', '8'], ['9', '1'], ['2', '3']]
+    },
+    bagi2x2: {
+        op: 'bagi',
+        A: [['1', '2'], ['3', '4']],
+        B: [['2', '0'], ['1', '2']]
+    },
+    ordo3x3: {
+        op: 'kali',
+        A: [['1', '2', '3'], ['0', '1', '4'], ['5', '6', '0']],
+        B: [['2', '0', '-1'], ['1', '3', '2'], ['0', '-2', '1']]
+    },
+    gauss3x3: {
+        op: 'eselon',
+        A: [['1', '2', '-1'], ['2', '3', '1'], ['-1', '1', '2']],
+        B: [['1', '0', '0'], ['0', '1', '0'], ['0', '0', '1']]
+    },
+    rref3x3: {
+        op: 'eselon_tereduksi',
+        A: [['1', '2', '-1'], ['2', '3', '1'], ['-1', '1', '2']],
+        B: [['1', '0', '0'], ['0', '1', '0'], ['0', '0', '1']]
+    },
+    spl3x4: {
+        op: 'spl_augmented',
+        A: [['1', '2', '-1', '4'], ['2', '3', '1', '3'], ['-1', '1', '2', '1']],
+        B: [['4'], ['3'], ['1']]
+    },
+    spl2x3: {
+        op: 'spl_augmented',
+        A: [['2', '1', '5'], ['1', '-1', '1']],
+        B: [['5'], ['1']]
+    },
+    spl_inconsistent: {
+        op: 'spl_augmented',
+        A: [['1', '1', '1', '3'], ['1', '2', '3', '0'], ['1', '3', '5', '1']],
+        B: [['3'], ['0'], ['1']]
+    },
+    augmented_ab: {
+        op: 'augmented',
+        A: [['1', '2', '0'], ['3', '4', '1'], ['0', '1', '5']],
+        B: [['7'], ['2'], ['9']]
     }
+};
+
+function loadMatrixPreset(type) {
+    const p = MATRIX_PRESETS[type];
+    if (!p) return;
+
+    matrixState.order = ['A', 'B'];
+    matrixState.matrices = {
+        'A': { name: 'A', rows: p.A.length, cols: p.A[0].length, data: JSON.parse(JSON.stringify(p.A)) },
+        'B': { name: 'B', rows: p.B.length, cols: p.B[0].length, data: JSON.parse(JSON.stringify(p.B)) }
+    };
+    matrixState.currentOp = p.op;
+    matrixState.opA = 'A';
+    matrixState.opB = 'B';
 
     renderMatrixCards();
     updateMatrixDropdowns();
@@ -3303,20 +3679,18 @@ function loadMatrixPreset(type) {
 
 function copyMatrixLatex() {
     if (!lastMatrixResult || !lastMatrixResult.hasil_latex) return;
-    navigator.clipboard.writeText(lastMatrixResult.hasil_latex).then(() => {
-        alert('LaTeX berhasil disalin!');
-    }).catch(() => {
-        prompt('Salin kode LaTeX berikut:', lastMatrixResult.hasil_latex);
+    copyToClipboard(lastMatrixResult.hasil_latex, {
+        alertMsg: 'LaTeX berhasil disalin!',
+        promptMsg: 'Salin kode LaTeX berikut:'
     });
 }
 
 function copyMatrixPlainText() {
     if (!lastMatrixResult || !lastMatrixResult.hasil_grid) return;
     const txt = lastMatrixResult.hasil_grid.map((row) => row.join('\t')).join('\n');
-    navigator.clipboard.writeText(txt).then(() => {
-        alert('Tabel angka berhasil disalin!');
-    }).catch(() => {
-        prompt('Salin data berikut:', txt);
+    copyToClipboard(txt, {
+        alertMsg: 'Tabel angka berhasil disalin!',
+        promptMsg: 'Salin data berikut:'
     });
 }
 
@@ -3325,9 +3699,8 @@ function saveResultAsNewMatrix() {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let nextLetter = null;
     for (let i = 0; i < alphabet.length; i++) {
-        const letter = alphabet[i];
-        if (!matrixState.order.includes(letter)) {
-            nextLetter = letter;
+        if (!matrixState.order.includes(alphabet[i])) {
+            nextLetter = alphabet[i];
             break;
         }
     }
@@ -3349,8 +3722,7 @@ function saveResultAsNewMatrix() {
     saveMatrixState();
     checkMatrixCompatibility();
 
-    const newCard = $(`matrix-card-${nextLetter}`);
-    if (newCard) newCard.scrollIntoView({ behavior: 'smooth' });
+    $(`matrix-card-${nextLetter}`)?.scrollIntoView({ behavior: 'smooth' });
 }
 
 function updateMatrixStoreMenu() {
@@ -3362,8 +3734,7 @@ function updateMatrixStoreMenu() {
 }
 
 function toggleMatrixStoreMenu() {
-    const menu = $('menu-store-matrix');
-    if (menu) menu.classList.toggle('hidden');
+    $('menu-store-matrix')?.classList.toggle('hidden');
 }
 
 function copyResultToMatrix(targetKey) {
@@ -3377,11 +3748,8 @@ function copyResultToMatrix(targetKey) {
     saveMatrixState();
     checkMatrixCompatibility();
 
-    const menu = $('menu-store-matrix');
-    if (menu) menu.classList.add('hidden');
-
-    const card = $(`matrix-card-${targetKey}`);
-    if (card) card.scrollIntoView({ behavior: 'smooth' });
+    $('menu-store-matrix')?.classList.add('hidden');
+    $(`matrix-card-${targetKey}`)?.scrollIntoView({ behavior: 'smooth' });
 }
 
 // =============================================================================
@@ -3429,11 +3797,9 @@ document.querySelectorAll('.card input').forEach((inp) => {
     });
 });
 
-if ($('limit-arah')) {
-    $('limit-arah').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') hitungLimit();
-    });
-}
+$('limit-arah')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') hitungLimit();
+});
 
 (function animateHeroFormulas() {
     const track = $('hero-formulas-track');
@@ -3450,15 +3816,10 @@ if ($('limit-arah')) {
         '\\frac{d}{dx} \\ln x = \\frac{1}{x}',
         '\\sum_{n=0}^{\\infty} \\frac{x^n}{n!} = e^x',
     ];
-    const allFormulas = [...formulas, ...formulas];
-    allFormulas.forEach((f) => {
+    [...formulas, ...formulas].forEach((f) => {
         const span = document.createElement('span');
         span.className = 'hero-formula-item';
-        try {
-            katex.render(f, span, { throwOnError: false, displayMode: false });
-        } catch (e) {
-            span.textContent = f;
-        }
+        safeKatexRender(f, span, false);
         track.appendChild(span);
     });
 })();
@@ -3470,83 +3831,18 @@ if (location.hash.includes('grafik=')) {
 }
 
 // =============================================================================
-// SECTION 12: GLOBAL WINDOW EXPORTS (GUARANTEE ACCESSIBILITY FOR INLINE ONCLICK)
+// SECTION 12: AUTO-RESET & SERVER-LOAD PROTECTION MANAGER (SILENT)
 // =============================================================================
-window.updateThemeIcons = updateThemeIcons;
-window.fillField = fillField;
-window.fillTurunan = fillTurunan;
-window.fillIntegral = fillIntegral;
-window.fillLimit = fillLimit;
-window.fillActive = fillActive;
-window.autoFixAndFocus = autoFixAndFocus;
-window.copyLatex = copyLatex;
-window.toggleDownloadMenu = toggleDownloadMenu;
-window.downloadPlotAs = downloadPlotAs;
-window.hitungTurunan = hitungTurunan;
-window.hitungIntegral = hitungIntegral;
-window.hitungLimit = hitungLimit;
-window.addGrafikRow = addGrafikRow;
-window.addGrafikPreset = addGrafikPreset;
-window.resetGrafikView = resetGrafikView;
-window.setGrafikRange = setGrafikRange;
-window.zoomGrafik = zoomGrafik;
-window.analyzeActiveGrafik = analyzeActiveGrafik;
-window.applyDomainToGraph = applyDomainToGraph;
-window.closeGrafikAnalysis = closeGrafikAnalysis;
-window.toggleDerivativeOverlay = toggleDerivativeOverlay;
-window.toggleValuesTable = toggleValuesTable;
-window.shareGrafik = shareGrafik;
-window.downloadGrafikAs = downloadGrafikAs;
-window.renderGrafik = renderGrafik;
-window.toPlotExpr = toPlotExpr;
-window.isValidPlotExpr = isValidPlotExpr;
-window.initMatrixTab = initMatrixTab;
-window.onMatrixOperandChange = onMatrixOperandChange;
-window.selectMatrixOp = selectMatrixOp;
-window.fillMatrixIdentity = fillMatrixIdentity;
-window.fillMatrixZeros = fillMatrixZeros;
-window.fillMatrixRandom = fillMatrixRandom;
-window.clearMatrix = clearMatrix;
-window.addMatrixVariable = addMatrixVariable;
-window.removeMatrixVariable = removeMatrixVariable;
-window.changeMatrixDim = changeMatrixDim;
-window.setMatrixDimensions = setMatrixDimensions;
-window.autoFixDimensions = autoFixDimensions;
-window.hitungMatriks = hitungMatriks;
-window.toggleMatrixSteps = toggleMatrixSteps;
-window.runUnaryMatrixOp = runUnaryMatrixOp;
-window.toggleScalarInput = toggleScalarInput;
-window.runScalarOp = runScalarOp;
-window.loadMatrixPreset = loadMatrixPreset;
-window.runSplAugmentedOp = runSplAugmentedOp;
-window.runBinaryOpDirect = runBinaryOpDirect;
-window.toggleObeManualInput = toggleObeManualInput;
-window.onObeTypeChange = onObeTypeChange;
-window.updateObeRowOptions = updateObeRowOptions;
-window.runManualObe = runManualObe;
-window.copyMatrixLatex = copyMatrixLatex;
-window.copyMatrixPlainText = copyMatrixPlainText;
-window.saveResultAsNewMatrix = saveResultAsNewMatrix;
-window.toggleMatrixStoreMenu = toggleMatrixStoreMenu;
-window.copyResultToMatrix = copyResultToMatrix;
-window.togglePanduan = togglePanduan;
-window.toggleCardPanduan = toggleCardPanduan;
-window.resetApp = resetApp;
-window.abortActiveRequests = abortActiveRequests;
-
-// =============================================================================
-// SECTION 13: AUTO-RESET & SERVER-LOAD PROTECTION MANAGER (SILENT)
-// =============================================================================
-const AUTO_RESET_TIMEOUT_MS = 5 * 60 * 1000; // 5 menit (300.000 ms)
+const AUTO_RESET_TIMEOUT_MS = 5 * 60 * 1000;
 let pageHiddenTime = null;
 let lastUserActivityTime = Date.now();
 let awayAbortTimer = null;
+let activityThrottleTimer = null;
 
 function recordUserActivity() {
     lastUserActivityTime = Date.now();
 }
 
-let activityThrottleTimer = null;
 function onUserInteraction() {
     if (!activityThrottleTimer) {
         recordUserActivity();
@@ -3560,58 +3856,36 @@ function onUserInteraction() {
     window.addEventListener(evt, onUserInteraction, { passive: true });
 });
 
+function resetCalculusTab(tab) {
+    const input = $(FIELD_MAP[tab]);
+    if (input) input.value = '';
+    const hasil = $('hasil-' + tab);
+    if (hasil) hasil.innerHTML = '';
+    $('actions-' + tab)?.classList.add('hidden');
+    hidePlot(tab);
+    showValid(tab, '', '');
+    setLoading($('btn-' + tab), false);
+}
+
 function resetApp() {
-    // 1. Batalkan semua request fetch yang sedang berjalan ke server
     abortActiveRequests();
 
-    // 2. Reset Tab Turunan
-    const turunanFungsi = $('turunan-fungsi');
-    if (turunanFungsi) turunanFungsi.value = '';
-    const turunanTitik = $('turunan-titik');
-    if (turunanTitik) turunanTitik.value = '';
-    const turunanOrde = $('turunan-orde');
-    if (turunanOrde) turunanOrde.value = '1';
-    const hasilTurunan = $('hasil-turunan');
-    if (hasilTurunan) hasilTurunan.innerHTML = '';
-    const actionsTurunan = $('actions-turunan');
-    if (actionsTurunan) actionsTurunan.classList.add('hidden');
-    hidePlot('turunan');
-    showValid('turunan', '', '');
-    setLoading($('btn-turunan'), false);
+    // Reset Tabs Kalkulus
+    resetCalculusTab('turunan');
+    if ($('turunan-titik')) $('turunan-titik').value = '';
+    if ($('turunan-orde')) $('turunan-orde').value = '1';
 
-    // 3. Reset Tab Integral
-    const integralFungsi = $('integral-fungsi');
-    if (integralFungsi) integralFungsi.value = '';
-    const integralBawah = $('integral-bawah');
-    if (integralBawah) integralBawah.value = '';
-    const integralAtas = $('integral-atas');
-    if (integralAtas) integralAtas.value = '';
-    const hasilIntegral = $('hasil-integral');
-    if (hasilIntegral) hasilIntegral.innerHTML = '';
-    const actionsIntegral = $('actions-integral');
-    if (actionsIntegral) actionsIntegral.classList.add('hidden');
-    hidePlot('integral');
-    showValid('integral', '', '');
-    setLoading($('btn-integral'), false);
+    resetCalculusTab('integral');
+    if ($('integral-bawah')) $('integral-bawah').value = '';
+    if ($('integral-atas')) $('integral-atas').value = '';
 
-    // 4. Reset Tab Limit
-    const limitFungsi = $('limit-fungsi');
-    if (limitFungsi) limitFungsi.value = '';
-    const limitTitik = $('limit-titik');
-    if (limitTitik) limitTitik.value = '0';
-    const limitArah = $('limit-arah');
-    if (limitArah) limitArah.value = '+-';
-    const hasilLimit = $('hasil-limit');
-    if (hasilLimit) hasilLimit.innerHTML = '';
-    const actionsLimit = $('actions-limit');
-    if (actionsLimit) actionsLimit.classList.add('hidden');
-    hidePlot('limit');
-    showValid('limit', '', '');
-    setLoading($('btn-limit'), false);
+    resetCalculusTab('limit');
+    if ($('limit-titik')) $('limit-titik').value = '0';
+    if ($('limit-arah')) $('limit-arah').value = '+-';
 
-    // 5. Reset Matriks ke state bawaan
+    // Reset Matriks
     matrixState.order = ['A', 'B'];
-    matrixState.currentOp = 'ADD';
+    matrixState.currentOp = 'tambah';
     matrixState.opA = 'A';
     matrixState.opB = 'B';
     matrixState.matrices = {
@@ -3625,16 +3899,13 @@ function resetApp() {
     checkMatrixCompatibility();
     const hasilMatriks = $('hasil-matriks');
     if (hasilMatriks) hasilMatriks.innerHTML = '';
-    const actionsMatriks = $('actions-matriks');
-    if (actionsMatriks) actionsMatriks.classList.add('hidden');
-    const stepsMatriks = $('steps-matriks-wrap');
-    if (stepsMatriks) stepsMatriks.classList.add('hidden');
-    const scalarWrap = $('matrix-scalar-wrap');
-    if (scalarWrap) scalarWrap.classList.add('hidden');
+    $('actions-matriks')?.classList.add('hidden');
+    $('steps-matriks-wrap')?.classList.add('hidden');
+    $('matrix-scalar-wrap')?.classList.add('hidden');
     setLoading($('btn-matrix'), false);
     lastMatrixResult = null;
 
-    // 6. Reset Grafik
+    // Reset Grafik
     const grafikList = $('grafik-list');
     if (grafikList) {
         grafikList.innerHTML = '';
@@ -3643,27 +3914,26 @@ function resetApp() {
         saveGrafikState();
         renderGrafik();
     }
-    const grafikError = $('grafik-error');
-    if (grafikError) grafikError.classList.add('hidden');
+    $('grafik-error')?.classList.add('hidden');
 
-    // 7. Bersihkan hash URL jika ada state grafik/query
+    // Bersihkan hash URL
     if (window.location.hash) {
         try {
             history.replaceState(null, '', window.location.pathname + window.location.search);
         } catch (e) { }
     }
 
-    // 8. Bersihkan memori cache SVG & hasil perhitungan tersimpan
+    // Bersihkan cache hasil & plot
     for (const k in last) delete last[k];
     for (const k in plotSvgCache) delete plotSvgCache[k];
 
-    // 9. Kembali ke tab awal (Turunan)
+    // Kembali ke tab awal (Turunan)
     const defaultTab = document.querySelector('.tab[data-tab="turunan"]');
     if (defaultTab && !defaultTab.classList.contains('active')) {
         defaultTab.click();
     }
 
-    // 10. Tutup accordion panduan jika terbuka
+    // Tutup panduan
     const globalPanduan = $('panduan');
     if (globalPanduan && !globalPanduan.classList.contains('hidden')) {
         togglePanduan();
@@ -3675,15 +3945,12 @@ function resetApp() {
         }
     });
 
-    // 11. Scroll ke paling atas secara halus
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Event listener saat visibilitas halaman berubah (keluar tab / pindah aplikasi)
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
         pageHiddenTime = Date.now();
-        // Jika ada kalkulasi berat ke server sedang berjalan, batalkan setelah 3 detik
         if (awayAbortTimer) clearTimeout(awayAbortTimer);
         awayAbortTimer = setTimeout(() => {
             if (document.visibilityState === 'hidden') {
@@ -3698,33 +3965,26 @@ document.addEventListener('visibilitychange', () => {
 
         const elapsed = pageHiddenTime ? (Date.now() - pageHiddenTime) : 0;
         if (pageHiddenTime && elapsed >= AUTO_RESET_TIMEOUT_MS) {
-            pageHiddenTime = null;
-            lastUserActivityTime = Date.now();
             resetApp();
-        } else {
-            pageHiddenTime = null;
-            lastUserActivityTime = Date.now();
         }
+        pageHiddenTime = null;
+        lastUserActivityTime = Date.now();
     }
 });
 
-// Fallback window blur & focus
 window.addEventListener('blur', () => {
-    if (!pageHiddenTime) {
-        pageHiddenTime = Date.now();
-    }
+    if (!pageHiddenTime) pageHiddenTime = Date.now();
 });
 
 window.addEventListener('focus', () => {
     const elapsed = pageHiddenTime ? (Date.now() - pageHiddenTime) : 0;
     if (pageHiddenTime && elapsed >= AUTO_RESET_TIMEOUT_MS) {
-        pageHiddenTime = null;
-        lastUserActivityTime = Date.now();
         resetApp();
     }
+    pageHiddenTime = null;
+    lastUserActivityTime = Date.now();
 });
 
-// Pemeriksaan berkala (idle di foreground atau background timeout)
 setInterval(() => {
     const now = Date.now();
     if (document.visibilityState === 'visible') {
@@ -3742,4 +4002,79 @@ setInterval(() => {
     }
 }, 10000);
 
-
+// =============================================================================
+// SECTION 13: GLOBAL WINDOW EXPORTS (GUARANTEE ACCESSIBILITY FOR INLINE ONCLICK)
+// =============================================================================
+window.abortActiveRequests = abortActiveRequests;
+window.addGrafikRow = addGrafikRow;
+window.addMatrixVariable = addMatrixVariable;
+window.analyzeActiveGrafik = analyzeActiveGrafik;
+window.applyDomainToGraph = applyDomainToGraph;
+window.autoFixAndFocus = autoFixAndFocus;
+window.autoFixDimensions = autoFixDimensions;
+window.changeMatrixDim = changeMatrixDim;
+window.clearMatrix = clearMatrix;
+window.closeGrafikAnalysis = closeGrafikAnalysis;
+window.closeValuesTableCard = closeValuesTableCard;
+window.copyLatex = copyLatex;
+window.copyMatrixLatex = copyMatrixLatex;
+window.copyMatrixPlainText = copyMatrixPlainText;
+window.copyResultToMatrix = copyResultToMatrix;
+window.copyValuesTable = copyValuesTable;
+window.downloadGrafikAs = downloadGrafikAs;
+window.downloadPlotAs = downloadPlotAs;
+window.evalSinglePoint = evalSinglePoint;
+window.fillActive = fillActive;
+window.fillField = fillField;
+window.fillIntegral = fillIntegral;
+window.fillLimit = fillLimit;
+window.fillMatrixIdentity = fillMatrixIdentity;
+window.fillMatrixRandom = fillMatrixRandom;
+window.fillMatrixZeros = fillMatrixZeros;
+window.fillTurunan = fillTurunan;
+window.generateValuesTableRange = generateValuesTableRange;
+window.hitungIntegral = hitungIntegral;
+window.hitungLimit = hitungLimit;
+window.hitungMatriks = hitungMatriks;
+window.hitungTurunan = hitungTurunan;
+window.initMatrixTab = initMatrixTab;
+window.isValidPlotExpr = isValidPlotExpr;
+window.loadMatrixPreset = loadMatrixPreset;
+window.onMatrixOperandChange = onMatrixOperandChange;
+window.onObeTypeChange = onObeTypeChange;
+window.onScalarTargetChange = onScalarTargetChange;
+window.openValuesTableDirect = openValuesTableDirect;
+window.removeMatrixVariable = removeMatrixVariable;
+window.renderGrafik = renderGrafik;
+window.resetApp = resetApp;
+window.resetGrafikView = resetGrafikView;
+window.runBinaryOpDirect = runBinaryOpDirect;
+window.runManualObe = runManualObe;
+window.runScalarOp = runScalarOp;
+window.runSplAugmentedOp = runSplAugmentedOp;
+window.runUnaryMatrixOp = runUnaryMatrixOp;
+window.saveResultAsNewMatrix = saveResultAsNewMatrix;
+window.selectMatrixOp = selectMatrixOp;
+window.setGrafikRange = setGrafikRange;
+window.setMatrixDimensions = setMatrixDimensions;
+window.shareGrafik = shareGrafik;
+window.toPlotExpr = toPlotExpr;
+window.toggleCardPanduan = toggleCardPanduan;
+window.toggleDerivativeFromAnalysis = toggleDerivativeFromAnalysis;
+window.toggleDerivativeOverlay = toggleDerivativeOverlay;
+window.toggleDownloadMenu = toggleDownloadMenu;
+window.toggleMatrixSteps = toggleMatrixSteps;
+window.toggleMatrixStoreMenu = toggleMatrixStoreMenu;
+window.toggleObeManualInput = toggleObeManualInput;
+window.togglePanduan = togglePanduan;
+window.toggleScalarInput = toggleScalarInput;
+window.toggleValuesTable = toggleValuesTable;
+window.updateObeRowOptions = updateObeRowOptions;
+window.updateThemeIcons = updateThemeIcons;
+window.zoomGrafik = zoomGrafik;
+window.clearAllGrafikRows = clearAllGrafikRows;
+window.parseDesmosEquation = parseDesmosEquation;
+window.parseParametricPair = parseParametricPair;
+window.createParametricEvaluator = createParametricEvaluator;
+window.getParametricBounds = getParametricBounds;
+window.showGrafikToast = showGrafikToast;

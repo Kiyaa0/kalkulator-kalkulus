@@ -20,12 +20,12 @@ def sympy_to_numpy(expr, var=None):
 def fig_to_png_svg(fig):
     """
     Menghasilkan string PNG Base64 dan SVG dari figur Matplotlib.
-    Memastikan plt.close(fig) selalu dipanggil dalam blok finally untuk mencegah kebocoran memori.
+    Memastikan plt.close(fig) dan pembersihan buffer selalu dipanggil dalam blok finally untuk mencegah kebocoran memori.
     """
+    buf_png = io.BytesIO()
+    buf_svg = io.BytesIO()
     try:
-        buf_png = io.BytesIO()
-        fig.savefig(buf_png, format='png', dpi=120, bbox_inches='tight', facecolor=fig.get_facecolor())
-        buf_svg = io.BytesIO()
+        fig.savefig(buf_png, format='png', dpi=100, bbox_inches='tight', facecolor=fig.get_facecolor())
         fig.savefig(buf_svg, format='svg', bbox_inches='tight', facecolor=fig.get_facecolor())
 
         png_b64 = base64.b64encode(buf_png.getvalue()).decode('utf-8')
@@ -33,6 +33,8 @@ def fig_to_png_svg(fig):
         return png_b64, svg_str
     finally:
         plt.close(fig)
+        buf_png.close()
+        buf_svg.close()
 
 
 def _new_fig_ax():

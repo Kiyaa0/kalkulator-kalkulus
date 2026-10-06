@@ -11,7 +11,7 @@ import os
 import threading
 import time
 
-from flask import Flask, g, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request
 
 # Import fungsi dan konfigurasi dari paket core
 from core import (
@@ -43,12 +43,15 @@ try:
 except ImportError:
     pass
 
+env = os.environ.get('FLASK_ENV', 'production')
+is_dev = env == 'development' or os.environ.get('DEBUG') == '1'
+
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024  # 32 KB max payload
 app.config['JSON_AS_ASCII'] = False
 app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(32).hex()
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
-app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.jinja_env.auto_reload = True
+app.config['TEMPLATES_AUTO_RELOAD'] = is_dev
+app.jinja_env.auto_reload = is_dev
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
@@ -62,17 +65,12 @@ _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="sympy_worker")
 _lock = threading.Lock()
 _request_logs = defaultdict(lambda: defaultdict(deque))
 _last_cleanup = time.time()
-CLEANUP_INTERVAL = 300
+CLEANUP_INTERVAL = 60
+MAX_TRACKED_IPS = 5000  # Cegah Memory DoS / Hash table bloat
 
 
 def _get_client_ip():
-    """Mengambil IP klien asli dari header proxy atau remote_addr."""
-    xff = request.headers.get('X-Forwarded-For', '')
-    if xff:
-        return xff.split(',')[0].strip()
-    xri = request.headers.get('X-Real-IP', '')
-    if xri:
-        return xri.strip()
+    """Mengambil IP klien asli dari remote_addr (yang sudah diamankan oleh ProxyFix)."""
     return request.remote_addr or '127.0.0.1'
 
 
@@ -91,7 +89,7 @@ def _is_rate_limited(ip, bucket, limit, window):
 def _maybe_cleanup():
     global _last_cleanup
     now = time.time()
-    if now - _last_cleanup < CLEANUP_INTERVAL:
+    if now - _last_cleanup < CLEANUP_INTERVAL and len(_request_logs) < MAX_TRACKED_IPS:
         return
     _last_cleanup = now
     cutoff = now - 3600
@@ -109,6 +107,12 @@ def _maybe_cleanup():
             to_delete.append(ip)
     for ip in to_delete:
         _request_logs.pop(ip, None)
+
+    # Proteksi DoS: jika IP aktif melebihi MAX_TRACKED_IPS, eviksi separuh IP tertua
+    if len(_request_logs) > MAX_TRACKED_IPS:
+        excess = len(_request_logs) - (MAX_TRACKED_IPS // 2)
+        for k in list(_request_logs.keys())[:excess]:
+            _request_logs.pop(k, None)
 
 
 def _rate_limit_response(msg, retry):
@@ -141,7 +145,6 @@ def rate_limit(api_limit=40, api_window=60, burst_limit=25, burst_window=10, glo
                         logger.warning(f"{log_msg} ip={ip} path={request.path}")
                         return _rate_limit_response(err_tpl.format(retry=retry), retry)
 
-            g.rate_limit_ip = ip
             return f(*args, **kwargs)
         return wrapped
     return decorator
@@ -193,7 +196,15 @@ def _attach_plot_to_result(res, plot_result, expr_str):
 
 
 def _handle_calc(calc_fn, label="kalkulus"):
-    """Eksekutor kalkulasi terpadu dengan proteksi timeout dan penanganan galat konsisten."""
+    """Eksekutor kalkulasi terpadu dengan proteksi timeout, backpressure antrean, dan penanganan galat konsisten."""
+    # Proteksi Backpressure / Queue Bounding: Jika worker queue menumpuk > 16 task, tolak segera dengan 503
+    queue = getattr(_executor, '_work_queue', None)
+    if queue is not None and queue.qsize() > 16:
+        return jsonify({
+            'sukses': False,
+            'error': 'Server sedang memproses beban kalkulasi tinggi (antrean penuh). Silakan coba lagi dalam beberapa detik.'
+        }), 503
+
     try:
         res = run_with_timeout(calc_fn, timeout=SYMPY_TIMEOUT)
         return jsonify(res)
@@ -393,12 +404,9 @@ def health():
 # SECTION 6: SERVER RUNNER
 # =============================================================================
 if __name__ == '__main__':
-    env = os.environ.get('FLASK_ENV', 'production')
-    is_dev = env == 'development' or os.environ.get('DEBUG') == '1'
     port = int(os.environ.get('PORT', 5050))
-    debug = is_dev
     if is_dev:
         logger.warning("Menjalankan dalam mode DEVELOPMENT (debug=True)")
     else:
         logger.info("Menjalankan dalam mode PRODUCTION (debug=False) — rate limit & security aktif")
-    app.run(host='0.0.0.0', port=port, debug=debug, use_reloader=False)
+    app.run(host='0.0.0.0', port=port, debug=is_dev, use_reloader=False)

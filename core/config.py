@@ -13,12 +13,17 @@ from sympy.parsing.sympy_parser import (
 MAX_FUNCTION_LENGTH = 250
 MAX_ORDE = 10
 SYMPY_TIMEOUT = 5
+MAX_POWER_VALUE = 50          # Batas nilai eksponen numerik
+MAX_PAREN_DEPTH = 10          # Batas kedalaman tanda kurung bersarang
+MAX_DIGIT_LENGTH = 15         # Batas panjang digit integer
+MAX_TRACKED_IPS = 5000        # Batas kapasitas IP aktif pada rate limiter memori
 
 # Keamanan & Sanitasi
 _BLOCKED_KEYWORDS = [
     '__', 'import', 'exec', 'eval', 'open', 'os.', 'sys.',
     'subprocess', 'compile', 'globals', 'locals', 'getattr', 'setattr',
-    'builtins', 'breakpoint', 'input', 'shutil', 'pty'
+    'delattr', 'hasattr', 'builtins', 'breakpoint', 'input', 'shutil',
+    'pty', 'popen', 'system', 'lambda', 'vars', 'exit', 'quit'
 ]
 
 # Karakter berbahaya (karakter injeksi kode/shell)
