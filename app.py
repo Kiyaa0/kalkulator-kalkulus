@@ -66,7 +66,7 @@ _lock = threading.Lock()
 _request_logs = defaultdict(lambda: defaultdict(deque))
 _last_cleanup = time.time()
 CLEANUP_INTERVAL = 60
-MAX_TRACKED_IPS = 5000  # Cegah Memory DoS / Hash table bloat
+MAX_TRACKED_IPS = 5000  # Hash table bloat
 
 
 def _get_client_ip():

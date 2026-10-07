@@ -45,7 +45,7 @@ def to_float(val, default=None):
 def validate_fungsi(expr_str):
     """
     Validasi keamanan, batas ukuran, struktur kurung, dan pola eksponen ekspresi input.
-    Mencegah serangan Denial of Service (DoS / ReDoS / Power Bomb / Memory Exhaustion).
+    Mencegah serangan Denial of Service.
     Menghasilkan (sukses: bool, pesan_error: str).
     """
     if not isinstance(expr_str, str):

@@ -125,7 +125,7 @@ def _parse_matrix_cell(val):
 
 
 def _matrix_from_json(grid, name='Matriks'):
-    """Mengonversi 2D list JSON ke matriks SymPy dengan validasi ordo dan proteksi anti-DoS."""
+    """Mengonversi 2D list JSON ke matriks SymPy dengan validasi ordo."""
     if not grid or not isinstance(grid, list):
         raise ValueError(f'Data {name} tidak boleh kosong')
     num_rows = len(grid)
@@ -150,7 +150,6 @@ def _matrix_from_json(grid, name='Matriks'):
             row_cells.append(parsed)
         rows.append(row_cells)
 
-    # Proteksi DoS: Matriks simbolik (berisi variabel aljabar) hanya diizinkan maksimal 3x3
     # karena determinan/invers simbolik di atas 3x3 memiliki kompleksitas O(n!) yang dapat membekukan server.
     if has_symbols and (num_rows > 3 or num_cols > 3):
         raise ValueError(
