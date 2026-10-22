@@ -26,18 +26,25 @@ KNOWN_FUNCS = [
     'sin', 'cos', 'tan', 'cot', 'sec', 'csc',
     'asin', 'acos', 'atan', 'acot', 'asec', 'acsc',
     'sinh', 'cosh', 'tanh',
-    'ln', 'log', 'log10', 'log2', 'exp', 'sqrt', 'cbrt', 'abs', 'Abs'
+    'ln', 'log', 'log10', 'log2', 'exp', 'sqrt', 'cbrt', 'root', 'abs', 'Abs'
 ]
 
 
 def to_float(val, default=None):
-    """Mengonversi nilai SymPy atau numerik ke float secara aman."""
+    """Mengonversi nilai SymPy atau numerik ke float secara aman (termasuk akar ganjil bilangan negatif)."""
     if val is None:
         return default
     try:
         res = val.evalf() if hasattr(val, 'evalf') else val
         f = float(res)
         return f if np.isfinite(f) else default
+    except (TypeError, ValueError):
+        try:
+            rr = sp.real_root(val)
+            f = float(rr.evalf())
+            return f if np.isfinite(f) else default
+        except Exception:
+            return default
     except Exception:
         return default
 
@@ -103,6 +110,36 @@ def validate_fungsi(expr_str):
     return True, ""
 
 
+
+def _replace_nth_root_brackets(s):
+    """Mengonversi sqrt[n](...) atau √[n](...) dengan kurung bersarang menjadi root(..., n)."""
+    pattern = re.compile(r'(?:sqrt|√)\s*\[\s*(\d+)\s*\]\s*\(')
+    pos = 0
+    while True:
+        m = pattern.search(s, pos)
+        if not m:
+            break
+        n_order = m.group(1)
+        start_paren = m.end() - 1
+        depth = 0
+        end_paren = -1
+        for i in range(start_paren, len(s)):
+            if s[i] == '(':
+                depth += 1
+            elif s[i] == ')':
+                depth -= 1
+                if depth == 0:
+                    end_paren = i
+                    break
+        if end_paren != -1:
+            inner = s[start_paren + 1:end_paren]
+            replacement = f"root({inner}, {n_order})"
+            s = s[:m.start()] + replacement + s[end_paren + 1:]
+            pos = m.start() + len(replacement)
+        else:
+            pos = m.end()
+    return s
+
 def preprocess_math_input(raw_str):
     """
     Membersihkan dan menormalkan input matematika agar 'foolproof' bagi pengguna awam:
@@ -130,7 +167,10 @@ def preprocess_math_input(raw_str):
     s = s.replace('÷', '/')
     s = s.replace('π', 'pi').replace('Π', 'pi')
 
-    # 3. Normalisasi kurung siku [] dan kurawal {} menjadi kurung biasa ()
+    # 3a. Tangani akar orde tertentu dari kurung siku sebelum kurung siku dinormalkan: sqrt[3](...) atau √[3](...)
+    s = _replace_nth_root_brackets(s)
+
+    # 3b. Normalisasi kurung siku [] dan kurawal {} menjadi kurung biasa ()
     s = s.replace('[', '(').replace(']', ')')
     s = s.replace('{', '(').replace('}', ')')
 
@@ -140,7 +180,19 @@ def preprocess_math_input(raw_str):
     s = re.sub(r'\^(-|\+)\^(\d+)', r'^(\1\2)', s)
     s = re.sub(r'\^(\d+)\^(\d+)', r'^\1\2', s)
 
-    # 5. Tangani simbol akar √x atau √(x+1)
+    # 5. Tangani simbol akar √x, √(x+1), ∛, ∜, sqrt[n](...), serta koreksi salah ketik sqrt^3*(...)
+    # Tangani akar orde tertentu: sqrt[3](...) atau √[3](...)
+    # Koreksi salah ketik umum: sqrt**3*(...) atau sqrt^3*(...) atau sqrt^3(...)
+    s = re.sub(r'sqrt\s*(?:\^|\*\*)\s*3\s*\*?\s*\(', r'cbrt(', s)
+    s = re.sub(r'sqrt\s*(?:\^|\*\*)\s*(\d+)\s*\*?\s*\(', r'root(\1, ', s)
+    # Simbol Unicode kubik dan kuartik
+    s = re.sub(r'∛\s*\(([^)]+)\)', r'cbrt(\1)', s)
+    s = re.sub(r'∛\s*([a-zA-Z0-9_]+)', r'cbrt(\1)', s)
+    s = s.replace('∛', 'cbrt')
+    s = re.sub(r'∜\s*\(([^)]+)\)', r'root(\1, 4)', s)
+    s = re.sub(r'∜\s*([a-zA-Z0-9_]+)', r'root(\1, 4)', s)
+    s = s.replace('∜', 'root')
+    # Simbol akar kuadrat standar
     s = re.sub(r'√\s*\(([^)]+)\)', r'sqrt(\1)', s)
     s = re.sub(r'√\s*([a-zA-Z0-9_]+)', r'sqrt(\1)', s)
     s = s.replace('√', 'sqrt')
@@ -238,7 +290,7 @@ def detect_var(expr, requested=None):
 
     if expr is not None and hasattr(expr, 'free_symbols'):
         syms = expr.free_symbols
-        for sym_name in ('x', 't', 'y', 'u', 'z', 'theta'):
+        for sym_name in ('x', 's', 't', 'y', 'u', 'z', 'theta'):
             for s in syms:
                 if str(s).lower() == sym_name:
                     return s

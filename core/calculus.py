@@ -221,11 +221,21 @@ def compute_limit(f_expr, var, point_sym, direction='+-'):
     limit_val = sp.limit(f_expr, var, point_sym, dir=direction)
     lat_val = sp.latex(limit_val)
 
+    desimal_val = None
+    try:
+        from core.parser import to_float
+        f_val = to_float(limit_val)
+        if f_val is not None and not getattr(limit_val, 'is_Integer', False):
+            desimal_val = f"{f_val:.4f}"
+    except Exception:
+        pass
+
     res = {
         'sukses': True,
         'hasil': lat_val,
         'hasil_str': str(limit_val),
         'limit_val': limit_val,
+        'desimal': desimal_val,
         'fungsi_latex': sp.latex(f_expr),
         'variabel': var_name,
         'titik': sp.latex(point_sym),

@@ -181,12 +181,11 @@ function autoFix(str) {
     // Sinonim trigonometri
     s = s.replace(/\btg\b/gi, 'tan').replace(/\bctg\b/gi, 'cot').replace(/\bcotan\b/gi, 'cot');
 
-    // Perkalian implisit
+    // Perkalian implisit (pertahankan format ^ agar tidak membingungkan pengguna)
     return s
-        .replaceAll('^', '**')
         .replace(/(\d)\s*([a-zA-Z])/g, '$1*$2')
         .replace(/(\d)\s*\(/g, '$1*(')
-        .replace(/(?<![a-zA-Z0-9_])([xyzt])\s*\(/gi, '$1*(')
+        .replace(/(?<![a-zA-Z0-9_])([xyzts])\s*\(/gi, '$1*(')
         .replace(/\)\s*\(/g, ')*(')
         .replace(/\)\s*([a-zA-Z])/g, ')*$1')
         .replace(/\)\s*(\d)/g, ')*$1');
@@ -196,7 +195,7 @@ function autoFix(str) {
  * Checks if string likely contains missing multiplication operators.
  */
 function hasMissingStar(str) {
-    return /(\d[a-zA-Z]|\d\(|(?<![a-zA-Z0-9_])[xyzt]\(|\)[a-zA-Z0-9(]|[²³⁴]|√|[0-9],[0-9])/.test(str);
+    return /(\d[a-zA-Z]|\d\(|(?<![a-zA-Z0-9_])[xyzts]\(|\)[a-zA-Z0-9(]|[²³⁴]|√|[0-9],[0-9])/.test(str);
 }
 
 /**
@@ -741,7 +740,11 @@ async function hitungLimit() {
         btnId: 'btn-limit',
         resultId: 'hasil-limit',
         onSuccess: (data) => {
-            finishCalculusSuccess('limit', fungsi, [`${data.notasi} = ${data.hasil}`], data);
+            let resLine = `${data.notasi} = ${data.hasil}`;
+            if (data.desimal) {
+                resLine += ` \\approx ${data.desimal}`;
+            }
+            finishCalculusSuccess('limit', fungsi, [resLine], data);
         }
     });
 }
