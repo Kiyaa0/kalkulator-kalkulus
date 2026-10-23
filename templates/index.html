@@ -661,10 +661,20 @@
                             </span>
                             <div class="plot-header-titles">
                                 <span class="plot-title-main">Visualisasi Grafik Limit</span>
-                                <span class="plot-badge-crisp">Vector HD</span>
+                                <span class="plot-badge-crisp" id="plot-limit-badge">Interaktif</span>
                             </div>
                         </div>
                         <div class="plot-header-actions">
+                            <div class="plot-mode-group">
+                                <button type="button" id="btn-limit-mode-interactive" onclick="switchLimitPlotMode('interactive')" class="plot-btn-mode active" title="Mode Interaktif (Bisa digeser & di-zoom seperti Desmos)">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                                    <span>Interaktif</span>
+                                </button>
+                                <button type="button" id="btn-limit-mode-hd" onclick="switchLimitPlotMode('hd')" class="plot-btn-mode" title="Mode Gambar Vektor HD">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                    <span>Gambar HD</span>
+                                </button>
+                            </div>
                             <button type="button" onclick="openPlotModal('limit')" class="plot-btn-tool" title="Perbesar grafik (Fullscreen Lightbox)">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
                                 <span>Perbesar</span>
@@ -675,7 +685,20 @@
                             </button>
                         </div>
                     </div>
-                    <div id="plot-limit-view" class="plot-svg-viewport"></div>
+
+                    <!-- Interactive Desmos-Style Canvas -->
+                    <div id="plot-limit-interactive-wrap" class="plot-interactive-wrap">
+                        <div id="plot-limit-canvas" class="plot-interactive-canvas"></div>
+                        <div class="plot-interactive-toolbar">
+                            <button type="button" onclick="zoomLimitInteractive(0.8)" class="plot-ctrl-btn" title="Perbesar (Zoom In)">+</button>
+                            <button type="button" onclick="zoomLimitInteractive(1.25)" class="plot-ctrl-btn" title="Perkecil (Zoom Out)">−</button>
+                            <button type="button" onclick="resetLimitInteractive()" class="plot-ctrl-btn reset-btn" title="Pusatkan kembali ke (0,0)">⟲ Pusat (0,0)</button>
+                        </div>
+                        <div id="plot-limit-coords" class="plot-coords-badge hidden">x: 0.00, y: 0.00</div>
+                    </div>
+
+                    <!-- HD Static Viewport -->
+                    <div id="plot-limit-view" class="plot-svg-viewport hidden"></div>
                     <img id="plot-limit-img" class="hidden" alt="Grafik Limit" loading="lazy">
                 </div>
             </div>

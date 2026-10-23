@@ -356,12 +356,12 @@ def plot_integral(f_expr, indef_expr, func_str, lb=None, ub=None, def_val=None, 
 
 def plot_limit(f_expr, func_str, point_sym, limit_val, direction='+-', var=None, theme='light'):
     """
-    Plot visualisasi perilaku limit matematika dengan standar visual kalkulus modern:
-    - Pengenalan lubang titik (removable discontinuity/hole) vs titik kontinu.
-    - Anotasi panah pendekatan limit langsung di atas kurva fungsi.
-    - Garis proyeksi koordinat dan badge nilai limit melayang.
-    - Penanganan asimtot horizontal (x -> ±oo) dan vertikal (f(x) -> ±oo) dengan pita bayangan.
-    - Rentang sampling adaptif (1000 titik) yang menghindari singularitas tak hingga.
+    Plot visualisasi perilaku limit matematika dengan tampilan bersih dan proporsional:
+    - Terpusat alami pada koordinat Cartesius (0, 0).
+    - Diskontinuitas dan asimtot terputus secara natural tanpa artefak pemotongan semu.
+    - Pendekatan kurva mendekati asimtot horizontal (hampir menempel) untuk limit tak hingga.
+    - Garis asimtot horizontal/vertikal bersih tanpa elemen bayangan/panah berlebihan.
+    - Penanda titik limit yang jelas (lubang berongga untuk diskontinuitas terhapuskan / solid untuk kontinu).
     """
     if var is None:
         var = detect_var(f_expr)
@@ -395,114 +395,35 @@ def plot_limit(f_expr, func_str, point_sym, limit_val, direction='+-', var=None,
         f_numpy = sympy_to_numpy(f_expr, v)
 
         # -------------------------------------------------------------
-        # 1. Tentukan Rentang X Cerdas Berdasarkan Singularitas
+        # 1. Rentang Sumbu X Simetris Terpusat di (0, 0)
         # -------------------------------------------------------------
-        sings = _get_real_singularities(f_expr, v)
-
-        if is_minf_point:
-            if sings:
-                min_s = min(sings)
-                x_max = min_s - 0.75
-                x_min = min(x_max - 30.0, -40.0)
-            else:
-                x_min, x_max = -35.0, -1.0
-            x_vals = np.linspace(x_min, x_max, 1000)
-        elif is_inf_point:
-            if sings:
-                max_s = max(sings)
-                x_min = max_s + 0.75
-                x_max = max(x_min + 30.0, 40.0)
-            else:
-                x_min, x_max = 1.0, 35.0
-            x_vals = np.linspace(x_min, x_max, 1000)
+        if is_inf_point or is_minf_point:
+            x_lim = 40.0
         else:
             c = c_num if c_num is not None else 0.0
-            near_sings = [s for s in sings if abs(s - c) > 1e-4]
-            if near_sings:
-                closest_dist = min(abs(s - c) for s in near_sings)
-                delta = min(max(closest_dist * 0.85, 1.2), 3.5)
-            else:
-                delta = 3.2
+            x_lim = max(abs(c) * 1.8, 8.0)
 
-            if direction == '+':
-                x_vals = np.linspace(c - delta * 0.25, c + delta * 1.4, 1000)
-            elif direction == '-':
-                x_vals = np.linspace(c - delta * 1.4, c + delta * 0.25, 1000)
-            else:
-                x_vals = np.linspace(c - delta, c + delta, 1000)
-
-        # Evaluasi nilai kurva secara aman
+        x_vals = np.linspace(-x_lim, x_lim, 1500)
         y_vals = _eval_func_safe(f_numpy, x_vals)
         y_clean = _clean_curve_for_asymptotes(y_vals)
 
         # -------------------------------------------------------------
         # 2. Gambar Kurva Fungsi Asli f(x)
         # -------------------------------------------------------------
-        curve_label = f"f({var_name}) = {func_str}"
-        line, = ax.plot(x_vals, y_clean, label=curve_label, color=cfg['color_f'], linewidth=2.6, zorder=3)
+        ax.plot(x_vals, y_clean, label=f"f({var_name}) = {func_str}", color=cfg['color_f'], linewidth=2.4, zorder=3)
 
         # -------------------------------------------------------------
-        # 3. Anotasi Khusus Sesuai Jenis Limit
+        # 3. Anotasi Asimtot & Titik Limit Bersih
         # -------------------------------------------------------------
-        # KASUS A: Limit di Tak Hingga (x -> ±oo)
         if is_inf_point or is_minf_point:
             if is_finite_limit and L_num is not None:
                 # Asimtot Horizontal
-                ax.axhline(L_num, color=cfg['color_lim'], linestyle='--', linewidth=1.8, alpha=0.9,
-                           label=f"Asimtot Horizontal y = {L_num:.3f}", zorder=4)
-                # Pita bayangan lembut
-                ax.axhspan(L_num - 0.2, L_num + 0.2, color=cfg['color_lim'], alpha=0.07, zorder=1)
-
-                # Label Asimtot Horizontal
-                badge_x = x_vals[int(len(x_vals) * 0.12)] if is_minf_point else x_vals[int(len(x_vals) * 0.72)]
-                ax.text(
-                    badge_x, L_num,
-                    f"  Asimtot y = {L_num:.3f}  ",
-                    fontsize=9.5, fontweight='bold', color=cfg['color_lim'],
-                    va='bottom' if L_num >= 0 else 'top',
-                    bbox=dict(boxstyle="round,pad=0.3", fc=cfg['legend_bg'], ec=cfg['color_lim'], lw=1.2, alpha=0.95),
-                    zorder=7
-                )
-
-                # Panah gerakan limit sepanjang kurva
-                valid_idx = np.where(np.isfinite(y_clean))[0]
-                if len(valid_idx) > 40:
-                    if is_minf_point:
-                        idx_arr = valid_idx[int(len(valid_idx) * 0.2)]
-                        idx_src = valid_idx[int(len(valid_idx) * 0.38)]
-                    else:
-                        idx_arr = valid_idx[int(len(valid_idx) * 0.8)]
-                        idx_src = valid_idx[int(len(valid_idx) * 0.62)]
-
-                    ax.annotate(
-                        '',
-                        xy=(x_vals[idx_arr], y_clean[idx_arr]),
-                        xytext=(x_vals[idx_src], y_clean[idx_src]),
-                        arrowprops=dict(arrowstyle="-|>", color=cfg['color_lim'], lw=2.4, mutation_scale=16),
-                        zorder=6
-                    )
-            elif is_inf_limit or is_minf_limit:
-                # Divergen ke ±oo
-                valid_idx = np.where(np.isfinite(y_clean))[0]
-                if len(valid_idx) > 20:
-                    end_idx = valid_idx[-1] if is_inf_point else valid_idx[0]
-                    ax.annotate(
-                        f"f({var_name}) → {L_display}",
-                        xy=(x_vals[end_idx], y_clean[end_idx]),
-                        xytext=(30 if is_inf_point else -30, 25 if is_inf_limit else -25),
-                        textcoords="offset points",
-                        arrowprops=dict(arrowstyle="-|>", color=cfg['color_lim'], lw=2.0),
-                        fontsize=9.5, fontweight='bold', color=cfg['color_lim'],
-                        bbox=dict(boxstyle="round,pad=0.3", fc=cfg['legend_bg'], ec=cfg['color_lim'], lw=1.2, alpha=0.9),
-                        zorder=7
-                    )
-
-        # KASUS B: Titik Berhingga (x -> c)
+                ax.axhline(L_num, color=cfg['color_lim'], linestyle='--', linewidth=1.6,
+                           label=f"Asimtot y = {L_display}", zorder=4)
         else:
             c = c_num if c_num is not None else 0.0
-
             if is_finite_limit and L_num is not None:
-                # Deteksi apakah f(c) berlubang (hole / diskontinuitas terhapuskan)
+                # Titik Limit Berhingga (Hole vs Solid)
                 is_hole = False
                 try:
                     val_at_c = float(f_numpy(c))
@@ -511,107 +432,37 @@ def plot_limit(f_expr, func_str, point_sym, limit_val, direction='+-', var=None,
                 except Exception:
                     is_hole = True
 
-                # Garis proyeksi koordinat putus-putus ke sumbu X dan Y
-                ax.axvline(c, color=cfg['origin'], linestyle=':', linewidth=1.2, alpha=0.7, zorder=2)
-                ax.axhline(L_num, color=cfg['origin'], linestyle=':', linewidth=1.2, alpha=0.7, zorder=2)
+                # Proyeksi ke sumbu koordinat
+                ax.axvline(c, color=cfg['origin'], linestyle=':', linewidth=1.1, alpha=0.7, zorder=2)
+                ax.axhline(L_num, color=cfg['origin'], linestyle=':', linewidth=1.1, alpha=0.7, zorder=2)
 
-                # Titik Limit (Hollow Circle jika Hole, Solid jika kontinu)
                 if is_hole:
-                    ax.plot(c, L_num, 'o', markersize=9.5, markerfacecolor=cfg['ax_bg'],
-                            markeredgecolor=cfg['color_lim'], markeredgewidth=2.4, zorder=6,
-                            label=f"Lubang Titik (Hole) di ({c:.3g}, {L_num:.3f})")
+                    ax.plot(c, L_num, 'o', markersize=9.0, markerfacecolor=cfg['ax_bg'],
+                            markeredgecolor=cfg['color_lim'], markeredgewidth=2.2, zorder=6,
+                            label=f"Lubang Titik ({c:.3g}, {L_display})")
                 else:
-                    ax.plot(c, L_num, 'o', markersize=9.0, markerfacecolor=cfg['color_lim'],
+                    ax.plot(c, L_num, 'o', markersize=8.5, markerfacecolor=cfg['color_lim'],
                             markeredgecolor='white', markeredgewidth=1.8, zorder=6,
-                            label=f"Titik Limit ({c:.3g}, {L_num:.3f})")
-
-                # Badge Koordinat Melayang aman
-                offset_x = 24 if c <= (x_vals[0] + x_vals[-1]) / 2 else -95
-                offset_y = 20 if L_num >= 0 else -30
-                ax.annotate(
-                    f"Limit: ({c:.3g}, {L_num:.3f})",
-                    xy=(c, L_num),
-                    xytext=(offset_x, offset_y),
-                    textcoords="offset points",
-                    arrowprops=dict(arrowstyle="->", color=cfg['color_lim'], lw=1.4, mutation_scale=12),
-                    fontsize=9.5, fontweight='bold', color=cfg['title'],
-                    bbox=dict(boxstyle="round,pad=0.35", fc=cfg['legend_bg'], ec=cfg['color_lim'], lw=1.2, alpha=0.95),
-                    zorder=7
-                )
-
-                # Panah pendekatan limit dari kiri dan kanan
-                c_idx = np.argmin(np.abs(x_vals - c))
-                step_pts = max(len(x_vals) // 12, 10)
-
-                # Pendekatan dari Kiri (x -> c⁻)
-                if direction in ('+-', '-') and c_idx > step_pts + 5:
-                    idx_arr_left = c_idx - int(step_pts * 0.35)
-                    idx_src_left = c_idx - step_pts
-                    if idx_arr_left < len(x_vals) and idx_src_left < len(x_vals):
-                        yl_arr, yl_src = y_clean[idx_arr_left], y_clean[idx_src_left]
-                        if np.isfinite(yl_arr) and np.isfinite(yl_src):
-                            ax.annotate('', xy=(x_vals[idx_arr_left], yl_arr), xytext=(x_vals[idx_src_left], yl_src),
-                                        arrowprops=dict(arrowstyle="-|>", color=cfg['color_f'], lw=2.2, mutation_scale=15),
-                                        zorder=5)
-
-                # Pendekatan dari Kanan (x -> c⁺)
-                if direction in ('+-', '+') and c_idx + step_pts + 5 < len(x_vals):
-                    idx_arr_right = c_idx + int(step_pts * 0.35)
-                    idx_src_right = c_idx + step_pts
-                    if idx_arr_right < len(x_vals) and idx_src_right < len(x_vals):
-                        yr_arr, yr_src = y_clean[idx_arr_right], y_clean[idx_src_right]
-                        if np.isfinite(yr_arr) and np.isfinite(yr_src):
-                            ax.annotate('', xy=(x_vals[idx_arr_right], yr_arr), xytext=(x_vals[idx_src_right], yr_src),
-                                        arrowprops=dict(arrowstyle="-|>", color=cfg['color_f'], lw=2.2, mutation_scale=15),
-                                        zorder=5)
-
+                            label=f"Titik Limit ({c:.3g}, {L_display})")
             elif is_inf_limit or is_minf_limit:
                 # Asimtot Vertikal di x = c
-                ax.axvline(c, color=cfg['color_lim'], linestyle='--', linewidth=2.0, alpha=0.9,
-                           label=f"Asimtot Vertikal x = {c:.3g}", zorder=4)
-                ax.axvspan(c - 0.08, c + 0.08, color=cfg['color_lim'], alpha=0.08, zorder=1)
-
-                # Pin label asimtot di bagian atas figur
-                ax.text(
-                    c, 0.94,
-                    f"  Asimtot Vertikal x = {c:.3g} (Limit → {L_display})  ",
-                    transform=ax.get_xaxis_transform(),
-                    ha='center', va='top',
-                    fontsize=9.5, fontweight='bold', color=cfg['color_lim'],
-                    bbox=dict(boxstyle="round,pad=0.35", fc=cfg['legend_bg'], ec=cfg['color_lim'], lw=1.2, alpha=0.95),
-                    zorder=7
-                )
+                ax.axvline(c, color=cfg['color_lim'], linestyle='--', linewidth=1.6,
+                           label=f"Asimtot x = {c:.3g}", zorder=4)
 
         # -------------------------------------------------------------
-        # 4. Y-Lim Cerdas dan Terbuka
+        # 4. Sumbu Simetris dengan Pusat (0, 0)
         # -------------------------------------------------------------
-        include_y = [y_clean]
-        if L_num is not None:
-            include_y.append([L_num])
+        ax.set_xlim(-x_lim, x_lim)
 
-        all_vals = []
-        for arr in include_y:
-            arr_np = np.asarray(arr, dtype=np.float64)
-            finite = arr_np[np.isfinite(arr_np)]
-            if len(finite):
-                all_vals.append(finite)
-
-        if all_vals:
-            combined = np.concatenate(all_vals)
-            p_low = float(np.percentile(combined, 4))
-            p_high = float(np.percentile(combined, 96))
-
-            min_y = max(p_low, -40.0)
-            max_y = min(p_high, 40.0)
-            if min_y >= max_y:
-                min_y, max_y = min_y - 2.5, max_y + 2.5
-            rng = max_y - min_y
-            pad_bottom = rng * 0.22
-            pad_top = rng * 0.22
-            if L_num is not None and abs(L_num - min_y) < rng * 0.06:
-                pad_bottom = max(pad_bottom, abs(L_num) * 0.2 + 0.6)
-            ax.set_ylim(min_y - pad_bottom, max_y + pad_top)
+        if is_finite_limit and L_num is not None:
+            y_span = max(abs(L_num) * 1.8, 4.0)
+            finite_y = y_clean[np.isfinite(y_clean)]
+            if len(finite_y):
+                p92 = float(np.percentile(np.abs(finite_y), 92))
+                y_span = max(y_span, min(p92 * 1.25, 25.0))
+            y_span = min(max(y_span, 4.0), 30.0)
+            ax.set_ylim(-y_span, y_span)
         else:
-            ax.set_ylim(-5, 5)
+            ax.set_ylim(-10.0, 10.0)
 
     return fig_to_png_svg(fig)

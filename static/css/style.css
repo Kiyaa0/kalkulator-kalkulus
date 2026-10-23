@@ -1351,6 +1351,134 @@ select.input-field {
   color: #ffffff;
 }
 
+.plot-mode-group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.plot-btn-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.plot-btn-mode:hover {
+  color: var(--text);
+}
+
+.plot-btn-mode.active {
+  background: var(--card);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.plot-interactive-wrap {
+  position: relative;
+  width: 100%;
+  background: var(--chart-bg, var(--card));
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-mid);
+}
+
+.plot-interactive-canvas {
+  width: 100%;
+  min-height: 380px;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.plot-interactive-canvas svg {
+  width: 100% !important;
+  display: block;
+}
+
+.plot-interactive-canvas rect.zoom-and-drag {
+  cursor: grab;
+}
+
+.plot-interactive-canvas.is-dragging,
+.plot-interactive-canvas.is-dragging *,
+.plot-interactive-canvas.is-dragging svg,
+.plot-interactive-canvas.is-dragging rect.zoom-and-drag {
+  cursor: grabbing !important;
+}
+
+.plot-interactive-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--card);
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  padding: 3px 5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+}
+
+.plot-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.plot-ctrl-btn:hover {
+  background: var(--accent-faint);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.plot-ctrl-btn.reset-btn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 8px;
+}
+
+.plot-coords-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  pointer-events: none;
+  z-index: 5;
+}
+
 .plot-svg-viewport {
   width: 100%;
   background: var(--chart-bg, var(--card));
@@ -3482,7 +3610,8 @@ select.input-field {
 }
 
 /* ===== GRID & AXES HIGH VISIBILITY STYLING ===== */
-#grafik-canvas .axis path.domain {
+#grafik-canvas .axis path.domain,
+.plot-interactive-canvas .axis path.domain {
   stroke: var(--chart-axis) !important;
   stroke-width: 1px !important;
   opacity: 0.8 !important;
@@ -3490,7 +3619,10 @@ select.input-field {
 
 #grafik-canvas .axis line,
 #grafik-canvas .axis .tick line,
-#grafik-canvas .grid line {
+#grafik-canvas .grid line,
+.plot-interactive-canvas .axis line,
+.plot-interactive-canvas .axis .tick line,
+.plot-interactive-canvas .grid line {
   stroke: var(--chart-grid) !important;
   stroke-width: 1px !important;
   stroke-opacity: 1 !important;
@@ -3502,7 +3634,11 @@ select.input-field {
 #grafik-canvas path.origin,
 #grafik-canvas .origin,
 #grafik-canvas .x.origin,
-#grafik-canvas .y.origin {
+#grafik-canvas .y.origin,
+.plot-interactive-canvas path.origin,
+.plot-interactive-canvas .origin,
+.plot-interactive-canvas .x.origin,
+.plot-interactive-canvas .y.origin {
   stroke: var(--chart-origin) !important;
   stroke-width: 1.5px !important;
   stroke-opacity: 1 !important;
@@ -3511,7 +3647,9 @@ select.input-field {
 
 /* Axis numbers and labels */
 #grafik-canvas .axis text,
-#grafik-canvas .tick text {
+#grafik-canvas .tick text,
+.plot-interactive-canvas .axis text,
+.plot-interactive-canvas .tick text {
   fill: var(--chart-text) !important;
   font-family: 'JetBrains Mono', monospace !important;
   font-size: 11px !important;

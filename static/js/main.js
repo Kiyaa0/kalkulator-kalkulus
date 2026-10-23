@@ -594,6 +594,10 @@ function showPlot(tab, base64, svgStr) {
             img.classList.remove('hidden');
         }
         wrap.classList.remove('hidden');
+
+        if (tab === 'limit') {
+            switchLimitPlotMode(currentLimitPlotMode || 'interactive');
+        }
     }
 }
 
@@ -602,6 +606,260 @@ function hidePlot(tab) {
     if (plotEl) plotEl.classList.add('hidden');
     const view = $('plot-' + tab + '-view');
     if (view) view.innerHTML = '';
+    if (tab === 'limit') {
+        const interactiveCanvas = $('plot-limit-canvas');
+        if (interactiveCanvas) interactiveCanvas.innerHTML = '';
+        activeLimitPlotInstance = null;
+    }
+}
+
+// =============================================================================
+// INTERACTIVE LIMIT PLOTTER (DESMOS-STYLE DRAGGABLE & ZOOMABLE)
+// =============================================================================
+let activeLimitPlotInstance = null;
+let limitInteractiveDomain = { xmin: -15, xmax: 15, ymin: -10, ymax: 10 };
+let defaultLimitDomain = { xmin: -15, xmax: 15, ymin: -10, ymax: 10 };
+let currentLimitPlotData = null;
+let currentLimitPlotMode = 'interactive';
+
+function renderLimitInteractive(fungsi, titikStr, hasilStr, desimalStr, arah) {
+    currentLimitPlotData = { fungsi, titikStr, hasilStr, desimalStr, arah };
+
+    // Parse point and limits
+    const isInfPoint = (titikStr === 'oo' || titikStr === '+oo' || titikStr === 'inf' || titikStr === '+inf' || String(titikStr).includes('\\infty'));
+    const isMinfPoint = (titikStr === '-oo' || titikStr === '-inf' || String(titikStr).includes('-\\infty'));
+    let cNum = null;
+    if (!isInfPoint && !isMinfPoint) {
+        const parsedC = parseFloat(titikStr);
+        if (isFinite(parsedC)) cNum = parsedC;
+    }
+
+    let LNum = null;
+    if (desimalStr) {
+        const d = parseFloat(desimalStr);
+        if (isFinite(d)) LNum = d;
+    }
+    if (LNum === null && hasilStr) {
+        const h = parseFloat(hasilStr);
+        if (isFinite(h)) LNum = h;
+    }
+
+    // Determine natural symmetric domains centered at (0, 0)
+    let spanX = 15;
+    let spanY = 10;
+
+    if (isInfPoint || isMinfPoint) {
+        spanX = 35;
+        if (LNum !== null) {
+            spanY = Math.max(Math.abs(LNum) * 2.0, 6);
+        }
+    } else if (cNum !== null) {
+        spanX = Math.max(Math.abs(cNum) * 2.2, 10);
+        if (LNum !== null) {
+            spanY = Math.max(Math.abs(LNum) * 2.0, 6);
+        }
+    }
+
+    limitInteractiveDomain = {
+        xmin: -spanX,
+        xmax: spanX,
+        ymin: -spanY,
+        ymax: spanY
+    };
+    defaultLimitDomain = { ...limitInteractiveDomain };
+
+    if (currentLimitPlotMode === 'interactive') {
+        setTimeout(() => drawLimitFunctionPlot(), 50);
+    }
+}
+
+function drawLimitFunctionPlot() {
+    const wrap = $('plot-limit-canvas');
+    if (!wrap || !currentLimitPlotData) return;
+
+    const { fungsi, titikStr, hasilStr, desimalStr } = currentLimitPlotData;
+    const clean = toPlotExpr(fungsi);
+    if (!clean || !isValidPlotExpr(clean)) return;
+
+    const wrapParent = $('plot-limit-interactive-wrap');
+    const w = Math.floor(wrap.clientWidth || (wrapParent ? wrapParent.clientWidth : 0) || 600);
+    if (w < 60) {
+        requestAnimationFrame(() => drawLimitFunctionPlot());
+        return;
+    }
+
+    const h = Math.min(420, Math.max(280, window.innerWidth < 480 ? 300 : 380));
+    wrap.style.height = `${h}px`;
+    wrap.innerHTML = '';
+
+    const validData = [];
+
+    // 1. Curve f(x)
+    validData.push({
+        fn: clean,
+        color: '#0284c7',
+        graphType: 'polyline',
+        sampler: 'builtIn',
+        nSamples: 1400
+    });
+
+    const isInfPoint = (titikStr === 'oo' || titikStr === '+oo' || titikStr === 'inf' || titikStr === '+inf' || String(titikStr).includes('\\infty'));
+    const isMinfPoint = (titikStr === '-oo' || titikStr === '-inf' || String(titikStr).includes('-\\infty'));
+    let cNum = null;
+    if (!isInfPoint && !isMinfPoint) {
+        const parsedC = parseFloat(titikStr);
+        if (isFinite(parsedC)) cNum = parsedC;
+    }
+
+    let LNum = null;
+    if (desimalStr) {
+        const d = parseFloat(desimalStr);
+        if (isFinite(d)) LNum = d;
+    }
+    if (LNum === null && hasilStr) {
+        const h = parseFloat(hasilStr);
+        if (isFinite(h)) LNum = h;
+    }
+
+    // 2. Horizontal Asymptote: y = L
+    if ((isInfPoint || isMinfPoint) && LNum !== null) {
+        validData.push({
+            fn: String(LNum),
+            color: '#ef4444',
+            graphType: 'polyline',
+            attr: { 'stroke-dasharray': '6,4', 'stroke-width': 2 },
+            nSamples: 100
+        });
+    }
+
+    // 3. Finite Point or Vertical Asymptote
+    if (cNum !== null) {
+        if (LNum !== null) {
+            validData.push({
+                points: [[cNum, LNum]],
+                fnType: 'points',
+                graphType: 'scatter',
+                color: '#ef4444',
+                attr: { 'r': 5 }
+            });
+        } else if (String(hasilStr).includes('oo') || String(hasilStr).includes('inf')) {
+            validData.push({
+                fnType: 'parametric',
+                graphType: 'polyline',
+                x: String(cNum),
+                y: 't',
+                range: [-200, 200],
+                color: '#ef4444',
+                attr: { 'stroke-dasharray': '6,4', 'stroke-width': 2 },
+                nSamples: 150
+            });
+        }
+    }
+
+    try {
+        if (typeof functionPlot === 'undefined') return;
+
+        const instance = functionPlot({
+            target: '#plot-limit-canvas',
+            width: w,
+            height: h,
+            xDomain: [limitInteractiveDomain.xmin, limitInteractiveDomain.xmax],
+            yDomain: [limitInteractiveDomain.ymin, limitInteractiveDomain.ymax],
+            xAxis: { domain: [limitInteractiveDomain.xmin, limitInteractiveDomain.xmax] },
+            yAxis: { domain: [limitInteractiveDomain.ymin, limitInteractiveDomain.ymax] },
+            grid: true,
+            disableZoom: false,
+            data: validData,
+            tip: { xLine: true, yLine: true }
+        });
+
+        activeLimitPlotInstance = instance;
+
+        instance.on('all:zoom', (xScale, yScale) => {
+            const xd = xScale.domain();
+            const yd = yScale.domain();
+            if (xd && isFinite(xd[0]) && isFinite(xd[1])) {
+                limitInteractiveDomain.xmin = Number(xd[0].toFixed(3));
+                limitInteractiveDomain.xmax = Number(xd[1].toFixed(3));
+            }
+            if (yd && isFinite(yd[0]) && isFinite(yd[1])) {
+                limitInteractiveDomain.ymin = Number(yd[0].toFixed(3));
+                limitInteractiveDomain.ymax = Number(yd[1].toFixed(3));
+            }
+        });
+
+        // Track mouse position and coordinates
+        const coordsEl = $('plot-limit-coords');
+        const svg = wrap.querySelector('svg');
+        if (svg && coordsEl) {
+            coordsEl.classList.remove('hidden');
+            const updateCoords = (e) => {
+                if (!instance || !instance.meta || !instance.meta.xScale || !instance.meta.yScale) return;
+                const rect = svg.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+                if (mx >= 0 && mx <= rect.width && my >= 0 && my <= rect.height) {
+                    const xVal = instance.meta.xScale.invert(mx);
+                    const yVal = instance.meta.yScale.invert(my);
+                    if (isFinite(xVal) && isFinite(yVal)) {
+                        coordsEl.textContent = `x: ${xVal.toFixed(2)}, y: ${yVal.toFixed(2)}`;
+                    }
+                }
+            };
+            svg.addEventListener('mousemove', updateCoords);
+            svg.addEventListener('mouseleave', () => {
+                coordsEl.textContent = 'x: 0.00, y: 0.00';
+            });
+        }
+    } catch (err) {
+        console.error('Error drawing interactive limit plot:', err);
+    }
+}
+
+function zoomLimitInteractive(factor) {
+    if (!limitInteractiveDomain) return;
+    const cx = (limitInteractiveDomain.xmin + limitInteractiveDomain.xmax) / 2;
+    const cy = (limitInteractiveDomain.ymin + limitInteractiveDomain.ymax) / 2;
+    const halfW = ((limitInteractiveDomain.xmax - limitInteractiveDomain.xmin) / 2) * factor;
+    const halfH = ((limitInteractiveDomain.ymax - limitInteractiveDomain.ymin) / 2) * factor;
+    limitInteractiveDomain = {
+        xmin: cx - halfW,
+        xmax: cx + halfW,
+        ymin: cy - halfH,
+        ymax: cy + halfH
+    };
+    drawLimitFunctionPlot();
+}
+
+function resetLimitInteractive() {
+    limitInteractiveDomain = { ...defaultLimitDomain };
+    drawLimitFunctionPlot();
+}
+
+function switchLimitPlotMode(mode) {
+    currentLimitPlotMode = mode;
+    const interactiveWrap = $('plot-limit-interactive-wrap');
+    const view = $('plot-limit-view');
+    const img = $('plot-limit-img');
+    const btnInter = $('btn-limit-mode-interactive');
+    const btnHd = $('btn-limit-mode-hd');
+    const badge = $('plot-limit-badge');
+
+    if (mode === 'interactive') {
+        if (interactiveWrap) interactiveWrap.classList.remove('hidden');
+        if (view) view.classList.add('hidden');
+        if (img) img.classList.add('hidden');
+        if (btnInter) btnInter.classList.add('active');
+        if (btnHd) btnHd.classList.remove('active');
+        if (badge) badge.textContent = 'Interaktif';
+        setTimeout(() => drawLimitFunctionPlot(), 50);
+    } else {
+        if (interactiveWrap) interactiveWrap.classList.add('hidden');
+        if (view) view.classList.remove('hidden');
+        if (btnInter) btnInter.classList.remove('active');
+        if (btnHd) btnHd.classList.add('active');
+        if (badge) badge.textContent = 'Vector HD';
+    }
 }
 
 function openPlotModal(tab) {
@@ -879,6 +1137,7 @@ async function hitungLimit() {
                 resLine += ` \\approx ${data.desimal}`;
             }
             finishCalculusSuccess('limit', fungsi, [resLine], data);
+            renderLimitInteractive(fungsi, titik, data.hasil_str, data.desimal, arah);
         }
     });
 }
@@ -4219,3 +4478,8 @@ window.openPlotModal = openPlotModal;
 window.closePlotModal = closePlotModal;
 window.downloadModalPlot = downloadModalPlot;
 window.exploreInGrafikTab = exploreInGrafikTab;
+window.switchLimitPlotMode = switchLimitPlotMode;
+window.zoomLimitInteractive = zoomLimitInteractive;
+window.resetLimitInteractive = resetLimitInteractive;
+window.renderLimitInteractive = renderLimitInteractive;
+
