@@ -134,8 +134,9 @@ def ask_gemini_tutor(user_message: str, chat_history: list = None) -> dict:
     api_key = _get_api_key()
     if not api_key:
         return {
-            "sukses": False,
-            "error": "Layanan chatbot belum dikonfigurasi dengan API Key. Silakan periksa pengaturan server."
+            "sukses": True,
+            "balasan": "Kalau mau unlock ini, bayarin UKT semua Asdos dulu ya ges ya~ 💸🎓\n\n*(Bercanda! Masukkan `GEMINI_API_KEY` di file `.env` server kamu biar asisten AI Tutor-nya aktif dan diajak mikir 🤖)*",
+            "error": "Kalau mau unlock ini, bayarin UKT semua Asdos dulu ya ges ya~ 💸🎓"
         }
 
     user_message = str(user_message or '').strip()

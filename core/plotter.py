@@ -121,6 +121,87 @@ def _style_ax(ax, cfg, title=None, xlabel=None, ylabel=None):
         spine.set_linewidth(1.0)
 
 
+def _eval_func_safe(f_numpy, x_vals):
+    """
+    Mengevaluasi fungsi numpy secara aman terhadap input array x_vals.
+    - Mengonversi skalar konstan menjadi array dengan ukuran yang sama.
+    - Mengubah bilangan kompleks dengan bagian imajiner (|Im| > 1e-6) menjadi NaN.
+    - Menangani invalid value, overflow, atau division-by-zero tanpa crash.
+    """
+    with np.errstate(all='ignore'):
+        try:
+            y = f_numpy(x_vals)
+        except Exception:
+            # Fallback point-by-point jika vektorisasi gagal
+            y = []
+            for xv in x_vals:
+                try:
+                    val = f_numpy(float(xv))
+                    y.append(val)
+                except Exception:
+                    y.append(np.nan)
+            y = np.array(y)
+
+        if np.isscalar(y):
+            y = np.full_like(x_vals, fill_value=float(y), dtype=np.float64)
+        else:
+            y = np.asarray(y)
+
+        if np.iscomplexobj(y):
+            real_part = np.real(y)
+            imag_part = np.imag(y)
+            y = np.where(np.abs(imag_part) < 1e-6, real_part, np.nan)
+        else:
+            y = np.asarray(y, dtype=np.float64)
+
+        y[~np.isfinite(y)] = np.nan
+        return y
+
+
+def _get_real_singularities(f_expr, var):
+    """Mendapatkan daftar titik singularitas riil jika dapat dihitung."""
+    real_s = []
+    try:
+        sings = sp.singularities(f_expr, var)
+        for s in sings:
+            if getattr(s, 'is_real', False):
+                real_s.append(float(s))
+    except Exception:
+        pass
+
+    if not real_s:
+        try:
+            denom = sp.denom(f_expr)
+            roots = sp.solve(denom, var)
+            for r in roots:
+                if getattr(r, 'is_real', False):
+                    real_s.append(float(r))
+        except Exception:
+            pass
+
+    return sorted(real_s)
+
+
+def _format_point_title(point_sym, direction='+-'):
+    """Memformat titik limit ke string Unicode bersih tanpa sintaks mentah LaTeX."""
+    if point_sym == sp.oo or str(point_sym) in ('oo', '+oo', 'inf', '+inf'):
+        return '+∞'
+    if point_sym == -sp.oo or str(point_sym) in ('-oo', '-inf'):
+        return '-∞'
+
+    try:
+        val_f = float(point_sym)
+        val_str = f"{val_f:.4g}"
+    except (ValueError, TypeError):
+        val_str = str(point_sym).replace('**', '^')
+
+    if direction == '+':
+        return f"{val_str}⁺"
+    elif direction == '-':
+        return f"{val_str}⁻"
+    return val_str
+
+
 def _clean_curve_for_asymptotes(y_vals):
     """
     Memfilter nilai kurva secara cerdas untuk memutus garis penghubung palsu pada asimtot vertikal
@@ -220,8 +301,8 @@ def plot_derivative(f_expr, derivative_expr, func_str, order, point_val=None, ev
         x_max = (pv_num + 4.0) if pv_num is not None else 6.0
 
         x_vals = np.linspace(x_min, x_max, 500)
-        y_f = f_numpy(x_vals)
-        y_d = d_numpy(x_vals)
+        y_f = _eval_func_safe(f_numpy, x_vals)
+        y_d = _eval_func_safe(d_numpy, x_vals)
 
         _plot_curve(ax, x_vals, y_f, label=f'f({var_name}) = {func_str}', color=cfg['color_f'], linewidth=2.4)
         prime_label = "f" + "'" * min(order, 3) + f"({var_name})"
@@ -252,15 +333,15 @@ def plot_integral(f_expr, indef_expr, func_str, lb=None, ub=None, def_val=None, 
         else:
             x_plot = np.linspace(-6, 6, 500)
 
-        y_f = f_numpy(x_plot)
-        y_ind = ind_numpy(x_plot)
+        y_f = _eval_func_safe(f_numpy, x_plot)
+        y_ind = _eval_func_safe(ind_numpy, x_plot)
 
         _plot_curve(ax, x_plot, y_f, label=f'f({var_name}) = {func_str}', color=cfg['color_f'], linewidth=2.4)
         _plot_curve(ax, x_plot, y_ind, label=f'F({var_name}) + C', color=cfg['color_ind'], linestyle='--', linewidth=2.0, dashes=(6, 3))
 
         if is_definite:
             x_fill = np.linspace(lb_f, ub_f, 300)
-            y_fill = f_numpy(x_fill)
+            y_fill = _eval_func_safe(f_numpy, x_fill)
             y_fill_clean = _clean_curve_for_asymptotes(y_fill)
             area = to_float(def_val)
             label_area = f'Luas Area = {area:.3f}' if area is not None else 'Luas Area'
@@ -276,17 +357,32 @@ def plot_integral(f_expr, indef_expr, func_str, lb=None, ub=None, def_val=None, 
 def plot_limit(f_expr, func_str, point_sym, limit_val, direction='+-', var=None, theme='light'):
     """Plot visualisasi perilaku fungsi di sekitar titik limit atau asimtot tak hingga."""
     resolved_var = var or detect_var(f_expr)
-    title = f'Grafik Perilaku Limit di {resolved_var} \u2192 {sp.latex(point_sym)}'
+    pt_title_str = _format_point_title(point_sym, direction)
+    title = f'Grafik Perilaku Limit di {resolved_var} → {pt_title_str}'
 
     with _managed_plot(f_expr, var, title=title, theme=theme) as (fig, ax, v, var_name, cfg):
         f_numpy = sympy_to_numpy(f_expr, v)
 
-        if point_sym == sp.oo:
-            x_vals = np.linspace(1, 25, 500)
+        if point_sym == sp.oo or str(point_sym) in ('oo', '+oo', 'inf', '+inf'):
+            sings = _get_real_singularities(f_expr, v)
+            if sings:
+                max_s = max(sings)
+                x_min = max_s + 1.0
+                x_max = max(x_min + 25.0, 30.0)
+            else:
+                x_min, x_max = 1.0, 30.0
+            x_vals = np.linspace(x_min, x_max, 500)
             pt_finite = False
             pt = None
-        elif point_sym == -sp.oo:
-            x_vals = np.linspace(-25, -1, 500)
+        elif point_sym == -sp.oo or str(point_sym) in ('-oo', '-inf'):
+            sings = _get_real_singularities(f_expr, v)
+            if sings:
+                min_s = min(sings)
+                x_max = min_s - 1.0
+                x_min = min(x_max - 25.0, -30.0)
+            else:
+                x_min, x_max = -30.0, -1.0
+            x_vals = np.linspace(x_min, x_max, 500)
             pt_finite = False
             pt = None
         else:
@@ -294,7 +390,7 @@ def plot_limit(f_expr, func_str, point_sym, limit_val, direction='+-', var=None,
             x_vals = np.linspace(pt - 3.5, pt + 3.5, 500)
             pt_finite = True
 
-        y_vals = f_numpy(x_vals)
+        y_vals = _eval_func_safe(f_numpy, x_vals)
         _plot_curve(ax, x_vals, y_vals, label=f'f({var_name}) = {func_str}', color=cfg['color_f'], linewidth=2.4)
 
         lv_num = to_float(limit_val)
@@ -303,7 +399,8 @@ def plot_limit(f_expr, func_str, point_sym, limit_val, direction='+-', var=None,
                 _plot_marked_point(ax, pt, lv_num, f'Limit = {lv_num:.3f}', color=cfg['color_lim'], cfg=cfg)
             else:
                 ax.axhline(lv_num, color=cfg['color_lim'], linestyle='--', linewidth=1.4, alpha=0.85, label=f'Asimtot y = {lv_num:.3f}', zorder=2)
-
-        _apply_ylim(ax, y_vals)
+            _apply_ylim(ax, y_vals, [lv_num])
+        else:
+            _apply_ylim(ax, y_vals)
 
     return fig_to_png_svg(fig)

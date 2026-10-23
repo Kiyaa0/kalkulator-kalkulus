@@ -13,6 +13,7 @@
     const fabBtn = document.getElementById('calcku-chat-fab');
     const widget = document.getElementById('calcku-chat-widget');
     const closeBtn = document.getElementById('chat-close-btn');
+    const mobileBackBtn = document.getElementById('chat-mobile-back-btn');
     const clearBtn = document.getElementById('chat-clear-btn');
     const messagesBody = document.getElementById('chat-messages-body');
     const chatInput = document.getElementById('chat-input');
@@ -23,8 +24,8 @@
         return;
     }
 
-    // Toggle tampilan widget
-    function toggleChat(open) {
+    // Toggle tampilan widget dengan dukungan tombol Back HP & riwayat peramban
+    function toggleChat(open, fromPopstate) {
         if (typeof open === 'boolean') {
             isChatOpen = open;
         } else {
@@ -33,17 +34,44 @@
 
         if (isChatOpen) {
             widget.classList.remove('hidden');
+            // Dorong riwayat virtual agar tombol Back fisik/gesture di Android menutup chat, bukan keluar web
+            if (!fromPopstate) {
+                try {
+                    window.history.pushState({ calckuChat: true }, '');
+                } catch (e) {}
+            }
             setTimeout(() => {
                 chatInput.focus();
                 scrollToBottom();
             }, 100);
         } else {
             widget.classList.add('hidden');
+            // Sinkronisasi riwayat jika modal ditutup melalui tombol UI (Kembali / Tutup)
+            if (!fromPopstate && window.history.state && window.history.state.calckuChat) {
+                try {
+                    window.history.back();
+                } catch (e) {}
+            }
         }
     }
 
-    fabBtn.addEventListener('click', () => toggleChat());
+    fabBtn.addEventListener('click', () => toggleChat(true));
     if (closeBtn) closeBtn.addEventListener('click', () => toggleChat(false));
+    if (mobileBackBtn) mobileBackBtn.addEventListener('click', () => toggleChat(false));
+
+    // Menutup dengan tombol fisik/gesture Back pada handphone
+    window.addEventListener('popstate', () => {
+        if (isChatOpen) {
+            toggleChat(false, true);
+        }
+    });
+
+    // Menutup dengan tombol Escape keyboard
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isChatOpen) {
+            toggleChat(false);
+        }
+    });
 
     // Bersihkan riwayat chat
     if (clearBtn) {

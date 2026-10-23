@@ -25,7 +25,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/function-plot@1.14.0/dist/function-plot.js"></script>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4.1">
 
     <!-- Vercel Web Analytics -->
     <script>
@@ -1372,6 +1372,13 @@
     <div id="calcku-chat-widget" class="calcku-chat-widget hidden" role="dialog" aria-labelledby="chat-main-title">
         <!-- Header -->
         <div class="chat-widget-header">
+            <button id="chat-mobile-back-btn" class="chat-back-btn" type="button" title="Kembali ke Kalkulator" aria-label="Kembali ke Kalkulator">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                <span>Kembali</span>
+            </button>
             <div class="chat-header-info">
                 <div class="chat-avatar-badge">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1463,7 +1470,7 @@
     </div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}?v=4.0"></script>
-    <script src="{{ url_for('static', filename='js/chatbot.js') }}?v=1.1"></script>
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}?v=1.2"></script>
 </body>
 
 </html>
