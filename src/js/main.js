@@ -34,6 +34,8 @@ const FIELD_MAP = {
 
 const last = {};
 const plotSvgCache = {};
+const plotPngCache = {};
+let activeModalPlotTab = 'turunan';
 let currentAbortController = null;
 
 /**
@@ -291,6 +293,17 @@ if (themeToggleBtn) {
         try {
             if (document.querySelector('.tab[data-tab="grafik"].active')) {
                 renderGrafik();
+            } else {
+                // Refresh active calculus plot if visible so plot colors match theme instantly
+                const activeTabEl = document.querySelector('.tab.active');
+                const activeTab = activeTabEl ? activeTabEl.dataset.tab : null;
+                if (activeTab === 'turunan' && $('turunan-fungsi')?.value.trim() && $('plot-turunan') && !$('plot-turunan').classList.contains('hidden')) {
+                    hitungTurunan();
+                } else if (activeTab === 'integral' && $('integral-fungsi')?.value.trim() && $('plot-integral') && !$('plot-integral').classList.contains('hidden')) {
+                    hitungIntegral();
+                } else if (activeTab === 'limit' && $('limit-fungsi')?.value.trim() && $('plot-limit') && !$('plot-limit').classList.contains('hidden')) {
+                    hitungLimit();
+                }
             }
         } catch (e) { }
     });
@@ -555,11 +568,31 @@ function renderMultiLine(id, lines) {
     el.appendChild(frag);
 }
 
-function showPlot(tab, base64) {
+function showPlot(tab, base64, svgStr) {
     const wrap = $('plot-' + tab);
+    const view = $('plot-' + tab + '-view');
     const img = $('plot-' + tab + '-img');
-    if (wrap && img && base64) {
-        img.src = 'data:image/png;base64,' + base64;
+
+    if (base64) plotPngCache[tab] = base64;
+    if (svgStr) plotSvgCache[tab] = svgStr;
+
+    if (wrap) {
+        if (view && svgStr) {
+            // Render pure vector SVG for ultra-sharp, infinite-resolution clarity
+            view.innerHTML = svgStr;
+            const svgEl = view.querySelector('svg');
+            if (svgEl) {
+                svgEl.removeAttribute('width');
+                svgEl.removeAttribute('height');
+                svgEl.style.width = '100%';
+                svgEl.style.height = 'auto';
+                svgEl.style.display = 'block';
+            }
+            if (img) img.classList.add('hidden');
+        } else if (img && base64) {
+            img.src = 'data:image/png;base64,' + base64;
+            img.classList.remove('hidden');
+        }
         wrap.classList.remove('hidden');
     }
 }
@@ -567,6 +600,103 @@ function showPlot(tab, base64) {
 function hidePlot(tab) {
     const plotEl = $('plot-' + tab);
     if (plotEl) plotEl.classList.add('hidden');
+    const view = $('plot-' + tab + '-view');
+    if (view) view.innerHTML = '';
+}
+
+function openPlotModal(tab) {
+    activeModalPlotTab = tab;
+    const modal = $('plot-modal');
+    const content = $('plot-modal-content');
+    const title = $('plot-modal-title');
+    if (!modal || !content) return;
+
+    const titles = {
+        turunan: 'Visualisasi Grafik Turunan',
+        integral: 'Visualisasi Grafik Integral',
+        limit: 'Visualisasi Grafik Limit'
+    };
+    if (title) title.textContent = titles[tab] || 'Perbesaran Grafik Matematika';
+
+    const svg = plotSvgCache[tab];
+    const png = plotPngCache[tab];
+    content.innerHTML = '';
+
+    if (svg) {
+        content.innerHTML = svg;
+        const svgEl = content.querySelector('svg');
+        if (svgEl) {
+            svgEl.removeAttribute('width');
+            svgEl.removeAttribute('height');
+            svgEl.style.width = '100%';
+            svgEl.style.maxHeight = '75vh';
+            svgEl.style.display = 'block';
+        }
+    } else if (png) {
+        const img = document.createElement('img');
+        img.src = 'data:image/png;base64,' + png;
+        img.style.width = '100%';
+        img.style.maxHeight = '75vh';
+        img.style.objectFit = 'contain';
+        content.appendChild(img);
+    } else {
+        content.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted)">Grafik belum tersedia. Silakan hitung terlebih dahulu.</div>';
+    }
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closePlotModal() {
+    const modal = $('plot-modal');
+    if (modal) modal.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function downloadModalPlot(format) {
+    downloadPlotAs(activeModalPlotTab, format);
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closePlotModal();
+    }
+});
+
+function exploreInGrafikTab(tab) {
+    let fn = '';
+    if (tab === 'turunan') {
+        fn = $('turunan-fungsi')?.value.trim() || '';
+    } else if (tab === 'integral') {
+        fn = $('integral-fungsi')?.value.trim() || '';
+    } else if (tab === 'limit') {
+        fn = $('limit-fungsi')?.value.trim() || '';
+    }
+
+    if (!fn) {
+        alert('Masukkan rumus fungsi terlebih dahulu.');
+        return;
+    }
+
+    // Switch to grafik tab
+    const grafikTabBtn = document.querySelector('.tab[data-tab="grafik"]');
+    if (grafikTabBtn) {
+        grafikTabBtn.click();
+    }
+
+    // Prepopulate first input row in grafik tab
+    setTimeout(() => {
+        const inputs = document.querySelectorAll('#grafik-list .grafik-input');
+        if (inputs.length > 0) {
+            inputs[0].value = fn;
+            inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+            addGrafikRow(fn);
+        }
+        renderGrafik();
+        showGrafikToast(`Rumus f(x) = ${fn} dimuat ke Tab Grafik Interaktif!`);
+    }, 120);
 }
 
 function setLoading(btn, loading) {
@@ -612,12 +742,14 @@ function downloadPlotAs(tab, format) {
     const fmt = (format || 'png').toLowerCase();
     const filename = `calcku-${tab}-${Date.now()}`;
     if (fmt === 'png') {
+        const base64 = plotPngCache[tab];
         const img = $('plot-' + tab + '-img');
-        if (!img || !img.src || !img.src.includes('data:')) {
+        const src = base64 ? ('data:image/png;base64,' + base64) : (img ? img.src : null);
+        if (!src || !src.includes('data:')) {
             alert('Belum ada grafik. Hitung dulu.');
             return;
         }
-        triggerDownload(img.src, `${filename}.png`);
+        triggerDownload(src, `${filename}.png`);
     } else if (fmt === 'svg') {
         const svg = plotSvgCache[tab];
         if (!svg) {
@@ -637,8 +769,7 @@ function finishCalculusSuccess(tab, fungsi, lines, data) {
     renderMultiLine('hasil-' + tab, lines);
     const latexSummary = lines.join(' \\n ');
     last[tab] = latexSummary;
-    if (data.plot) showPlot(tab, data.plot);
-    if (data.plot_svg) plotSvgCache[tab] = data.plot_svg;
+    showPlot(tab, data.plot, data.plot_svg);
     $('actions-' + tab)?.classList.remove('hidden');
     pushHistory(tab, fungsi, latexSummary);
 }
@@ -654,11 +785,14 @@ async function calcApi({ endpoint, payload, tab, btnId, resultId, onSuccess }) {
     abortActiveRequests();
     currentAbortController = new AbortController();
 
+    const activeTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const finalPayload = Object.assign({ theme: activeTheme }, payload);
+
     try {
         const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(finalPayload),
             signal: currentAbortController.signal
         });
         const data = await res.json();
@@ -4081,3 +4215,7 @@ window.parseParametricPair = parseParametricPair;
 window.createParametricEvaluator = createParametricEvaluator;
 window.getParametricBounds = getParametricBounds;
 window.showGrafikToast = showGrafikToast;
+window.openPlotModal = openPlotModal;
+window.closePlotModal = closePlotModal;
+window.downloadModalPlot = downloadModalPlot;
+window.exploreInGrafikTab = exploreInGrafikTab;

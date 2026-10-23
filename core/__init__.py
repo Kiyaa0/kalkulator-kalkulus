@@ -40,6 +40,9 @@ from core.plotter import (
 from core.matrix_engine import (
     calc_matrix_logic
 )
+from core.chatbot import (
+    ask_gemini_tutor
+)
 
 __all__ = [
     'MAX_FUNCTION_LENGTH',
@@ -66,5 +69,6 @@ __all__ = [
     'plot_integral',
     'plot_limit',
     'sympy_to_numpy',
-    'calc_matrix_logic'
+    'calc_matrix_logic',
+    'ask_gemini_tutor'
 ]

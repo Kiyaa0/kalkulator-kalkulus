@@ -29,7 +29,8 @@ from core import (
     plot_derivative,
     plot_integral,
     plot_limit,
-    calc_matrix_logic
+    calc_matrix_logic,
+    ask_gemini_tutor
 )
 
 # =============================================================================
@@ -298,9 +299,11 @@ def turunan():
     if pt_err:
         return jsonify({'sukses': False, 'error': f'Titik evaluasi tidak valid: {pt_err}'}), 400
 
+    theme = str(data.get('theme', 'light')).lower()
+
     def do_work():
         res = compute_derivative(f_expr, var, orde, point_sym)
-        plot_res = plot_derivative(f_expr, res.pop('derivative_expr'), expr_str, orde, point_sym, res.pop('evaluated_expr', None), var=var)
+        plot_res = plot_derivative(f_expr, res.pop('derivative_expr'), expr_str, orde, point_sym, res.pop('evaluated_expr', None), var=var, theme=theme)
         return _attach_plot_to_result(res, plot_res, expr_str)
 
     return _handle_calc(do_work, "turunan")
@@ -312,6 +315,8 @@ def integral():
     data, f_expr, var, expr_str, err = _parse_math_request(hint="contoh: x^2, sin(x), 1/(x^2 + 1), atau e^x")
     if err:
         return err
+
+    theme = str(data.get('theme', 'light')).lower()
 
     bb = data.get('batas_bawah')
     ba = data.get('batas_atas')
@@ -333,7 +338,7 @@ def integral():
 
     def do_work():
         res = compute_integral(f_expr, var, lb, ub)
-        plot_res = plot_integral(f_expr, res.pop('indef_expr'), expr_str, lb=lb, ub=ub, def_val=res.pop('def_val', None), var=var)
+        plot_res = plot_integral(f_expr, res.pop('indef_expr'), expr_str, lb=lb, ub=ub, def_val=res.pop('def_val', None), var=var, theme=theme)
         return _attach_plot_to_result(res, plot_res, expr_str)
 
     return _handle_calc(do_work, "integral")
@@ -346,6 +351,8 @@ def limit():
     if err:
         return err
 
+    theme = str(data.get('theme', 'light')).lower()
+
     arah = str(data.get('arah', '+-')).strip()
     if arah not in ('+', '-', '+-'):
         return jsonify({'sukses': False, 'error': 'Arah limit harus +, -, atau +-'}), 400
@@ -356,7 +363,7 @@ def limit():
 
     def do_work():
         res = compute_limit(f_expr, var, point_sym, arah)
-        plot_res = plot_limit(f_expr, expr_str, point_sym, res.pop('limit_val'), direction=arah, var=var)
+        plot_res = plot_limit(f_expr, expr_str, point_sym, res.pop('limit_val'), direction=arah, var=var, theme=theme)
         return _attach_plot_to_result(res, plot_res, expr_str)
 
     return _handle_calc(do_work, "limit")
@@ -392,6 +399,39 @@ def matrix():
         is_augmented=bool(data.get('is_augmented', False)),
         split_col=data.get('split_col', None)
     ), "matriks")
+
+
+@app.route('/api/chat', methods=['POST'])
+@rate_limit(api_limit=30, api_window=60, burst_limit=15, burst_window=10, global_limit=70, global_window=60)
+def chat():
+    """Endpoint aman untuk Asisten Tutor AI CalcKu."""
+    data = request.get_json(silent=True)
+    if not data or not isinstance(data, dict):
+        return jsonify({'sukses': False, 'error': 'Format permintaan harus berupa JSON yang valid'}), 400
+
+    pesan = str(data.get('pesan', '')).strip()
+    if not pesan:
+        return jsonify({'sukses': False, 'error': 'Pesan pertanyaan tidak boleh kosong'}), 400
+
+    if len(pesan) > 600:
+        return jsonify({'sukses': False, 'error': 'Pesan terlalu panjang (maksimal 600 karakter)'}), 400
+
+    history = data.get('history', [])
+    if not isinstance(history, list):
+        history = []
+
+    try:
+        res = run_with_timeout(lambda: ask_gemini_tutor(pesan, history), timeout=25)
+        status_code = 200 if res.get('sukses') else 500
+        return jsonify(res), status_code
+    except TimeoutError:
+        return jsonify({
+            'sukses': False,
+            'error': 'Koneksi ke AI membutuhkan waktu terlalu lama (timeout). Silakan coba lagi.'
+        }), 504
+    except Exception as e:
+        logger.exception("Kesalahan pada endpoint chat: %s", str(e))
+        return jsonify({'sukses': False, 'error': 'Terjadi kesalahan sistem saat menghubungi asisten AI.'}), 500
 
 
 @app.route('/health')
