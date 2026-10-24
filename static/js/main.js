@@ -915,10 +915,11 @@ function downloadModalPlot(format) {
     downloadPlotAs(activeModalPlotTab, format);
 }
 
-// Close modal on Escape key
+// Close modals on Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closePlotModal();
+        closeWelcomeModal();
     }
 });
 
@@ -4482,4 +4483,69 @@ window.switchLimitPlotMode = switchLimitPlotMode;
 window.zoomLimitInteractive = zoomLimitInteractive;
 window.resetLimitInteractive = resetLimitInteractive;
 window.renderLimitInteractive = renderLimitInteractive;
+window.closeWelcomeModal = closeWelcomeModal;
+window.initWelcomePopup = initWelcomePopup;
 
+// =============================================================================
+// SECTION 14: POPUP PESAN PENGUNJUNG (RANDOM SIMPLE TEXT)
+// =============================================================================
+const WELCOME_MESSAGES = [
+    "Ayok berikan masukan dan saran kamu untuk pengembangan CalcKu ini.",
+    "Sebentar lagi UTS nih, jangan lupa belajar ya.",
+    "Sebentar lagi UAS nih, jangan lupa persiapkan diri dan tetap semangat belajar ya.",
+    "Gunakan kalkulator ini untuk mengecek kembali hasil latihan soal turunan, integral, dan matriks kamu.",
+    "Periksa kembali format penulisan fungsi pada menu panduan agar hasil perhitungan akurat.",
+    "Luangkan waktu untuk memahami langkah-langkah penyelesaian, bukan hanya hasil akhirnya.",
+    "Jangan lupa manfaatkan fitur grafik untuk melihat kurva fungsi secara visual.",
+    "Tetap fokus dan konsisten, belajar kalkulus jadi terasa lebih ringan dengan latihan bertahap."
+];
+
+function closeWelcomeModal() {
+    const modal = $('welcome-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function initWelcomePopup() {
+    const modal = $('welcome-modal');
+    const textEl = $('welcome-modal-text');
+    if (!modal || !textEl) return;
+
+    // Hindari pengulangan pesan yang sama dua kali berturut-turut pada refresh/review
+    let lastIdx = -1;
+    try {
+        const stored = sessionStorage.getItem('calcku_last_popup_idx');
+        if (stored !== null) lastIdx = parseInt(stored, 10);
+    } catch (e) { }
+
+    let chosenIdx = Math.floor(Math.random() * WELCOME_MESSAGES.length);
+    if (WELCOME_MESSAGES.length > 1 && chosenIdx === lastIdx) {
+        chosenIdx = (chosenIdx + 1) % WELCOME_MESSAGES.length;
+    }
+
+    try {
+        sessionStorage.setItem('calcku_last_popup_idx', chosenIdx);
+    } catch (e) { }
+
+    textEl.textContent = WELCOME_MESSAGES[chosenIdx];
+
+    // Tampilkan popup dengan jeda halus setelah render halaman utama siap
+    setTimeout(() => {
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+        const btn = modal.querySelector('.welcome-modal-btn');
+        if (btn) {
+            try {
+                btn.focus();
+            } catch (e) { }
+        }
+    }, 300);
+}
+
+// Inisialisasi otomatis pada saat pertama kali memuat web
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initWelcomePopup);
+} else {
+    initWelcomePopup();
+}

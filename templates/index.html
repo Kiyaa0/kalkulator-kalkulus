@@ -25,7 +25,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/function-plot@1.14.0/dist/function-plot.js"></script>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4.1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4.2">
 
     <!-- Vercel Web Analytics -->
     <script>
@@ -1492,7 +1492,26 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}?v=4.0"></script>
+    <!-- =========================================================================
+         POPUP PESAN PENGUNJUNG (RANDOM SIMPLE TEXT)
+         ========================================================================= -->
+    <div id="welcome-modal" class="welcome-modal hidden" role="dialog" aria-modal="true" aria-labelledby="welcome-modal-title">
+        <div class="welcome-modal-backdrop" onclick="closeWelcomeModal()"></div>
+        <div class="welcome-modal-card">
+            <div class="welcome-modal-header">
+                <span id="welcome-modal-title" class="welcome-modal-title">Pemberitahuan</span>
+                <button type="button" class="welcome-modal-close" onclick="closeWelcomeModal()" aria-label="Tutup pesan" title="Tutup">×</button>
+            </div>
+            <div class="welcome-modal-body">
+                <p id="welcome-modal-text" class="welcome-modal-text"></p>
+            </div>
+            <div class="welcome-modal-footer">
+                <button type="button" class="welcome-modal-btn" onclick="closeWelcomeModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=4.1"></script>
     <script src="{{ url_for('static', filename='js/chatbot.js') }}?v=1.2"></script>
 </body>
 
