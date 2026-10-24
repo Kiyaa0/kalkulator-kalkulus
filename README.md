@@ -30,7 +30,7 @@ This application is designed to be production-ready and includes several built-i
 
 1. Clone the repository and navigate to the project directory:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Kiyaa0/kalkulator-kalkulus
    cd kalkulator-kalkulus
    ```
 
