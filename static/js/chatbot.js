@@ -13,7 +13,6 @@
     const fabBtn = document.getElementById('calcku-chat-fab');
     const widget = document.getElementById('calcku-chat-widget');
     const closeBtn = document.getElementById('chat-close-btn');
-    const mobileBackBtn = document.getElementById('chat-mobile-back-btn');
     const clearBtn = document.getElementById('chat-clear-btn');
     const messagesBody = document.getElementById('chat-messages-body');
     const chatInput = document.getElementById('chat-input');
@@ -41,12 +40,11 @@
                 } catch (e) {}
             }
             setTimeout(() => {
-                chatInput.focus();
                 scrollToBottom();
-            }, 100);
+            }, 50);
         } else {
             widget.classList.add('hidden');
-            // Sinkronisasi riwayat jika modal ditutup melalui tombol UI (Kembali / Tutup)
+            // Sinkronisasi riwayat jika modal ditutup melalui tombol UI (Tutup)
             if (!fromPopstate && window.history.state && window.history.state.calckuChat) {
                 try {
                     window.history.back();
@@ -57,7 +55,6 @@
 
     fabBtn.addEventListener('click', () => toggleChat(true));
     if (closeBtn) closeBtn.addEventListener('click', () => toggleChat(false));
-    if (mobileBackBtn) mobileBackBtn.addEventListener('click', () => toggleChat(false));
 
     // Menutup dengan tombol fisik/gesture Back pada handphone
     window.addEventListener('popstate', () => {
@@ -362,7 +359,9 @@
         } finally {
             isLoading = false;
             sendBtn.disabled = false;
-            chatInput.focus();
+            if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+                chatInput.focus();
+            }
         }
     }
 

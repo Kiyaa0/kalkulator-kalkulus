@@ -4289,10 +4289,6 @@ select.input-field {
   border-bottom: 1px solid var(--border);
 }
 
-.chat-back-btn {
-  display: none;
-}
-
 .chat-header-info {
   display: flex;
   align-items: center;
@@ -4351,7 +4347,9 @@ select.input-field {
   color: var(--text-muted);
   cursor: pointer;
   padding: 6px;
-  border-radius: 6px;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4361,6 +4359,11 @@ select.input-field {
 .chat-action-btn:hover {
   background: var(--bg-muted);
   color: var(--text);
+}
+
+#chat-close-btn:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
 }
 
 /* Suggestion Chips */
@@ -4693,35 +4696,37 @@ select.input-field {
     flex-shrink: 0;
     padding-top: max(12px, env(safe-area-inset-top));
     padding-bottom: 12px;
-    padding-left: 14px;
-    padding-right: 14px;
+    padding-left: 16px;
+    padding-right: 16px;
     background: var(--card);
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 12px;
   }
 
-  .chat-back-btn {
-    display: inline-flex !important;
+  .chat-header-actions {
+    display: flex;
     align-items: center;
     gap: 6px;
-    background: var(--bg-muted);
-    border: 1px solid var(--border-mid);
-    color: var(--text);
-    font-size: 13px;
-    font-weight: 600;
-    padding: 7px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s, color 0.15s;
   }
 
-  .chat-back-btn:active {
-    background: var(--accent-faint);
-    color: var(--accent);
+  .chat-action-btn {
+    padding: 8px;
+    min-width: 38px;
+    min-height: 38px;
+    border-radius: 8px;
+  }
+
+  .chat-action-btn:active {
+    background: var(--bg-muted);
+    color: var(--text);
+  }
+
+  #chat-close-btn:active {
+    background: rgba(239, 68, 68, 0.14);
+    color: #ef4444;
   }
 
   .chat-sub-title {
